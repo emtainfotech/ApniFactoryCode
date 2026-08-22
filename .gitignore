@@ -17,4 +17,5 @@ yarn-error.log
 *.zip
 github_token.txt
 .git-credentials
+push_to_github.ps1
 
