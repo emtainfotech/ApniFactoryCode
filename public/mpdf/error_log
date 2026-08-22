@@ -1,0 +1,7 @@
+[12-Mar-2022 06:27:30 UTC] PHP Warning:  session_start(): open(/home/waytoizd/tmp/sess_7fe7fa8287589bd5904709a8c51fc27d, O_RDWR) failed: No such file or directory (2) in /home/dygeclp06arl/public_html/public/form/mpdf/index.php on line 3
+[12-Mar-2022 06:27:30 UTC] PHP Warning:  session_start(): Failed to read session data: files (path: /home/waytoizd/tmp) in /home/dygeclp06arl/public_html/public/form/mpdf/index.php on line 3
+[12-Mar-2022 06:27:30 UTC] PHP Warning:  include(../../config.php): failed to open stream: No such file or directory in /home/dygeclp06arl/public_html/public/form/mpdf/index.php on line 4
+[12-Mar-2022 06:27:30 UTC] PHP Warning:  include(../../config.php): failed to open stream: No such file or directory in /home/dygeclp06arl/public_html/public/form/mpdf/index.php on line 4
+[12-Mar-2022 06:27:30 UTC] PHP Warning:  include(): Failed opening '../../config.php' for inclusion (include_path='.:/opt/alt/php74/usr/share/pear') in /home/dygeclp06arl/public_html/public/form/mpdf/index.php on line 4
+[12-Mar-2022 06:27:30 UTC] PHP Warning:  require_once(../points_update.php): failed to open stream: No such file or directory in /home/dygeclp06arl/public_html/public/form/mpdf/index.php on line 5
+[12-Mar-2022 06:27:30 UTC] PHP Fatal error:  require_once(): Failed opening required '../points_update.php' (include_path='.:/opt/alt/php74/usr/share/pear') in /home/dygeclp06arl/public_html/public/form/mpdf/index.php on line 5

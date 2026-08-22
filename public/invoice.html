@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Tax Invoice - Apni Factory</title>
+    <style>
+        body {
+            font-family: 'Helvetica', 'Arial', sans-serif;
+            color: #222222;
+            margin: 0;
+            padding: 0;
+            font-size: 11px;
+        }
+        .invoice-container {
+            width: 100%;
+            background: #FFFFFF;
+        }
+        /* Top Header Styling */
+        .header-table {
+            width: 100%;
+            border-collapse: collapse;
+            border-bottom: 3px solid #B81D24;
+            margin-bottom: 15px;
+        }
+        .logo-text {
+            font-size: 26px;
+            font-weight: bold;
+            color: #222222;
+            margin: 0;
+        }
+        .logo-accent {
+            color: #B81D24;
+        }
+        .logo-subtext {
+            font-size: 9px;
+            color: #555555;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 2px;
+        }
+        .invoice-title {
+            font-size: 24px;
+            color: #B81D24;
+            text-transform: uppercase;
+            font-weight: bold;
+            text-align: right;
+        }
+        /* Details & Block Tables */
+        .section-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 15px;
+        }
+        .section-table td {
+            vertical-align: top;
+        }
+        .card-box {
+            border: 1px solid #DDDDDD;
+        }
+        .card-header {
+            background-color: #F9F9F9;
+            color: #B81D24;
+            font-weight: bold;
+            font-size: 11px;
+            text-transform: uppercase;
+            padding: 6px 10px;
+            border-bottom: 1px solid #DDDDDD;
+        }
+        .card-content {
+            padding: 8px 10px;
+            line-height: 1.4;
+            font-size: 11px;
+        }
+        /* Nested Right Side Metadata Table */
+        .meta-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .meta-table td {
+            padding: 3px 0;
+            font-size: 11px;
+        }
+        .meta-label {
+            color: #555555;
+            font-weight: bold;
+        }
+        .meta-value {
+            text-align: right;
+            font-weight: normal;
+        }
+        /* Core Items Table Layout */
+        .items-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 15px;
+        }
+        .items-table th {
+            background-color: #B81D24;
+            color: #FFFFFF;
+            text-transform: uppercase;
+            font-weight: bold;
+            font-size: 10px;
+            padding: 8px 6px;
+            border: 1px solid #B81D24;
+            text-align: center;
+        }
+        .items-table td {
+            padding: 8px 6px;
+            border: 1px solid #DDDDDD;
+            vertical-align: top;
+            font-size: 11px;
+        }
+        .item-desc {
+            font-weight: bold;
+            margin-bottom: 2px;
+        }
+        .item-subdesc {
+            color: #555555;
+            font-size: 10px;
+        }
+        /* Calculations / Tax Blocks */
+        .summary-row {
+            padding: 5px 8px;
+            border-bottom: 1px dotted #DDDDDD;
+        }
+        .summary-total-box {
+            font-weight: bold;
+            font-size: 13px;
+            color: #B81D24;
+            background-color: #FFF0F0;
+            border-top: 1px solid #DDDDDD;
+            padding: 6px 8px;
+        }
+        .tax-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 10px;
+        }
+        .tax-table th, .tax-table td {
+            padding: 5px;
+            border-bottom: 1px solid #DDDDDD;
+            text-align: right;
+        }
+        .tax-table th {
+            font-weight: bold;
+            color: #555555;
+            background-color: #F9F9F9;
+        }
+        .amount-words {
+            padding: 8px;
+            font-size: 10px;
+            background-color: #F9F9F9;
+            border-top: 1px solid #DDDDDD;
+        }
+        /* Logistics Multi-column Table mapping */
+        .logistics-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .logistics-table td {
+            padding: 6px 8px;
+            width: 25%;
+        }
+        .logistics-label {
+            font-size: 9px;
+            color: #555555;
+            font-weight: bold;
+            text-transform: uppercase;
+            display: block;
+            margin-bottom: 2px;
+        }
+        .logistics-value {
+            font-size: 11px;
+        }
+        /* Footer Details */
+        .invoice-footer {
+            text-align: center;
+            border-top: 1px solid #DDDDDD;
+            padding-top: 12px;
+            margin-top: 20px;
+            font-size: 10px;
+            color: #555555;
+        }
+    </style>
+</head>
+<body>
+
+<div class="invoice-container">
+    
+    <table class="header-table">
+        <tr>
+            <td>
+                <img src="https://panel.apnifactory.co.in/public/img/Apni-Factory-3.png" alt="Logo" width="200px">
+                    
+            </td>
+            <td class="invoice-title">Tax Invoice</td>
+        </tr>
+    </table>
+
+    <table class="section-table" style="table-layout: fixed;">
+        <tr>
+            <td style="width: 33%; padding-right: 8px;">
+                <div class="card-box">
+                    <div class="card-header">Seller Details</div>
+                    <div class="card-content">
+                        <strong>Varasiddhi Silk Exports</strong><br/>
+                        75, 3rd Cross, Lalbagh Road,<br/>
+                        Bengaluru, Karnataka - 560027, India<br/><br/>
+                        <strong>GSTIN:</strong> 29AACFV3325K1ZY
+                    </div>
+                </div>
+            </td>
+            <td style="width: 33%; padding-right: 8px;">
+                <div class="card-box">
+                    <div class="card-header">Buyer Details</div>
+                    <div class="card-content">
+                        <strong>Eurofins IT Solutions India Pvt. Ltd.</strong><br/>
+                        1st Floor, Maruti Platinum,<br/>
+                        Bengaluru, Karnataka - 560037, India<br/><br/>
+                        <strong>GSTIN:</strong> 29AAACE1234A1Z5
+                    </div>
+                </div>
+            </td>
+            <td style="width: 34%;">
+                <div class="card-box">
+                    <div class="card-header">Invoice Details</div>
+                    <div class="card-content">
+                        <table class="meta-table">
+                            <tr>
+                                <td class="meta-label">Invoice No:</td>
+                                <td class="meta-value">IN-761</td>
+                            </tr>
+                            <tr>
+                                <td class="meta-label">Invoice Date:</td>
+                                <td class="meta-value">28-10-2024</td>
+                            </tr>
+                            <tr>
+                                <td class="meta-label">Order ID:</td>
+                                <td class="meta-value">AF2024-00012345</td>
+                            </tr>
+                            <tr>
+                                <td class="meta-label">Order Date:</td>
+                                <td class="meta-value">28-10-2024</td>
+                            </tr>
+                            <tr>
+                                <td class="meta-label">Place of Supply:</td>
+                                <td class="meta-value">KARNATAKA (29)</td>
+                            </tr>
+                            <tr>
+                                <td class="meta-label">Place of Delivery:</td>
+                                <td class="meta-value">KARNATAKA</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            </td>
+        </tr>
+    </table>
+
+    <table class="items-table">
+        <thead>
+            <tr>
+                <th style="width: 5%;">#</th>
+                <th style="width: 38%; text-align: left;">Item / Description</th>
+                <th style="width: 13%;">HSN Code</th>
+                <th style="width: 8%;">GST %</th>
+                <th style="width: 8%;">Qty (Box)</th>
+                <th style="width: 8%;">Pcs/Box</th>
+                <th style="width: 10%; text-align: right;">Rate (₹)</th>
+                <th style="width: 10%; text-align: right;">Amount (₹)</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td style="text-align: center;">1</td>
+                <td>
+                    <div class="item-desc">Floor Cleaner</div>
+                    <div class="item-subdesc">Mr Shine White (1 Ltr)</div>
+                </td>
+                <td style="text-align: center;">34025099</td>
+                <td style="text-align: center;">18%</td>
+                <td style="text-align: center;">1</td>
+                <td style="text-align: center;">20</td>
+                <td style="text-align: right;">1,580.00</td>
+                <td style="text-align: right;">1,580.00</td>
+            </tr>
+            <tr>
+                <td style="text-align: center;">2</td>
+                <td>
+                    <div class="item-desc">Liquid Detergent</div>
+                    <div class="item-subdesc">Mr Shine Liquid Detergent (1 Ltr)</div>
+                </td>
+                <td style="text-align: center;">34025098</td>
+                <td style="text-align: center;">18%</td>
+                <td style="text-align: center;">2</td>
+                <td style="text-align: center;">20</td>
+                <td style="text-align: right;">2,000.00</td>
+                <td style="text-align: right;">4,000.00</td>
+            </tr>
+            <tr>
+                <td style="text-align: center;">3</td>
+                <td>
+                    <div class="item-desc">Fabric Conditioner</div>
+                    <div class="item-subdesc">Mr Shine Fabric Conditioner (1 Ltr)</div>
+                </td>
+                <td style="text-align: center;">34025098</td>
+                <td style="text-align: center;">18%</td>
+                <td style="text-align: center;">1</td>
+                <td style="text-align: center;">20</td>
+                <td style="text-align: right;">2,000.00</td>
+                <td style="text-align: right;">2,000.00</td>
+            </tr>
+        </tbody>
+    </table>
+
+   <table class="section-table" style="table-layout: fixed;">
+        <tr>
+            <td style="width: 45%; padding-right: 12px;">
+                <div class="card-box">
+                    <div class="card-header">Price & Discount Summary</div>
+                    <div class="card-content" style="padding: 0;">
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <tr>
+                                <td class="summary-row">Sub Total (Before Disc.)</td>
+                                <td class="summary-row" style="text-align: right; font-weight: bold;">₹ 7,580.00</td>
+                            </tr>
+                            <tr>
+                                <td class="summary-row">(-) Seller Discount</td>
+                                <td class="summary-row" style="text-align: right;">₹ 500.00</td>
+                            </tr>
+                            <tr>
+                                <td class="summary-row">(-) ApniFactory Discount</td>
+                                <td class="summary-row" style="text-align: right;">₹ 300.00</td>
+                            </tr>
+                            <tr>
+                                <td class="summary-row" style="background-color: #F9F9F9; font-weight: bold;">Net Taxable Value</td>
+                                <td class="summary-row" style="text-align: right; background-color: #F9F9F9; font-weight: bold;">₹ 6,780.00</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            </td>
+            <td style="width: 55%;">
+                <div class="card-box">
+                    <div class="card-header">Tax Summary</div>
+                    <div class="card-content" style="padding: 0;">
+                        <table class="tax-table">
+                            <thead>
+                                <tr>
+                                    <th style="text-align: left;">Particulars</th>
+                                    <th>Taxable (₹)</th>
+                                    <th>CGST 9%</th>
+                                    <th>SGST 9%</th>
+                                    <th>Tax (₹)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td style="text-align: left; font-weight: bold;">Total</td>
+                                    <td>6,780.00</td>
+                                    <td>610.20</td>
+                                    <td>610.20</td>
+                                    <td>1,220.40</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <tr>
+                                <td class="summary-total-box">GRAND TOTAL (₹)</td>
+                                <td class="summary-total-box" style="text-align: right;">8,000.40</td>
+                            </tr>
+                        </table>
+                        
+                        <div class="amount-words">
+                            <strong>In Words:</strong> Rupees Eight Thousand and Forty Paise Only
+                        </div>
+                    </div>
+                </div>
+            </td>
+        </tr>
+    </table>
+
+    <div class="card-box" style="margin-bottom: 15px;">
+        <div class="card-header">🚚 Dispatch & Logistics Details</div>
+        
+        <table class="logistics-table" style="border-bottom: 1px solid #DDDDDD;">
+            <tr>
+                <td>
+                    <span class="logistics-label">Dispatch Date</span>
+                    <span class="logistics-value">28-10-2024</span>
+                </td>
+                <td>
+                    <span class="logistics-label">Transporter Name</span>
+                    <span class="logistics-value">Shree Logistics</span>
+                </td>
+                <td>
+                    <span class="logistics-label">LR / GR Number</span>
+                    <span class="logistics-value">LR123456789</span>
+                </td>
+                <td>
+                    <span class="logistics-label">E-Way Bill Number</span>
+                    <span class="logistics-value">371234567890</span>
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    <span class="logistics-label">Number of Packages</span>
+                    <span class="logistics-value">4 Boxes</span>
+                </td>
+                <td>
+                    <span class="logistics-label">Transport Contact No.</span>
+                    <span class="logistics-value">9876543210</span>
+                </td>
+                <td></td>
+                <td></td>
+            </tr>
+        </table>
+
+        <table style="width: 100%; border-collapse: collapse; background-color: #FAFAFA;">
+            <tr>
+                <td style="width: 50%; padding: 8px 10px; vertical-align: top;">
+                    <span class="logistics-label">Dispatch From</span>
+                    <span style="font-size: 11px; color: #333333;">75, 3rd Cross, Lalbagh Road, Bengaluru, Karnataka - 560027</span>
+                </td>
+                <td style="width: 50%; padding: 8px 10px; vertical-align: top; border-left: 1px solid #DDDDDD;">
+                    <span class="logistics-label">Deliver To</span>
+                    <span style="font-size: 11px; color: #333333;">1st Floor, Maruti Platinum, Bengaluru, Karnataka - 560037</span>
+                </td>
+            </tr>
+        </table>
+    </div>
+
+    <div class="invoice-footer">
+        <p style="margin: 0 0 4px 0;">Thank you for your business!</p>
+        <p style="margin: 0 0 6px 0; font-size: 9px; color: #888888;">This is a computer generated invoice generated through ApniFactory Marketplace.</p>
+        <p style="margin: 0; font-weight: bold; color: #222222;">For any queries, contact support@apnifactory.com</p>
+    </div>
+
+</div>
+
+</body>
+</html>             

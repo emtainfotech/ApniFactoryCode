@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Tax Invoice</title>
+    <style>
+        body { font-family: "Helvetica", Arial, sans-serif; font-size: 8.5pt; margin: 0; }
+        .invoice-box { width: 100%; border: 0.2mm solid #000; }
+        table { width: 100%; border-collapse: collapse; }
+        td, th { padding: 4px 6px; vertical-align: top; }
+        .main-title { font-size: 11pt; font-weight: bold; text-align: center; border-bottom: 0.2mm solid #000; padding: 5px 0; }
+        .border-bottom { border-bottom: 0.2mm solid #000; }
+        .border-right { border-right: 0.2mm solid #000; }
+        .text-right { text-align: right; }
+        .text-center { text-align: center; }
+        .bold { font-weight: bold; }
+        .gray-bg { background-color: #f2f2f2; }
+        .items-table th { font-weight: bold; font-size: 8pt; border-bottom: 0.2mm solid #000; border-right: 0.2mm solid #000; }
+        .items-table td { font-size: 8pt; border-right: 0.2mm solid #000; border-bottom: 0.1mm dashed #ccc; }
+        .items-table tr.total-row td { border-top: 0.2mm solid #000; border-bottom: 0.2mm solid #000; font-weight: bold; }
+    </style>
+</head>
+<body>
+<div class="invoice-box">
+    <div class="main-title">Apnifactory Invoice <span style="font-weight: normal; font-size: 9pt;"></span></div>
+    <table class="border-bottom">
+        <tr>
+            <td width="50%" style="font-size: 8pt;text-align:center;"  class="border-bottom">
+                <div class="logo"><img src="https://panel.apnifactory.co.in/public/img/Apni-Factory-3.png" alt="Logo" width="200px"></div>
+            </td>
+            <td width="50%" style="font-size: 12pt;text-align:center;"  class="border-bottom">
+                <span class="bold">APNI FACTORY GSTIN : </span> TG2301395716<br><span class="bold">Date:</span> '.now().'
+            </td>
+        </tr>
+        <tr>
+            <td width="50%" class="border-right" style="font-size: 8pt;">
+               <span class="bold" style="font-size: 10pt;">Invoice No:# TG2301395716</span><br>
+                <span class="bold">Billing Address:</span> Tanika<br>
+                Nik ,B16 Narayan Niwas, Near saroj<br>
+                JAIPUR, RAJASTHAN, India<br>
+                302012
+            </td>
+             <td width="50%" style="font-size: 8pt;">
+                <span class="bold">Order Tracking Details:</span> <br>
+                <span class="bold">Transport Name:</span> gfhfgjj<br>
+                <span class="bold">Transport Contact Number:</span> 657567567567<br>
+                <span class="bold">LRNO:</span> 567567567<br>
+                <span class="bold">Date:</span> 2026-06-05 04:44:59<br>
+                
+            </td>
+        </tr>
+    </table>
+    <table class="items-table min-w-full divide-y divide-gray-200">
+                                    <thead class="gray-bg bg-gray-50">
+                                        <tr>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Item / Details</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Color</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Qty(box + pcs)</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rate</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">CMP Dis.</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Value</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Finalboxprice</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">GST</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sub Total</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="bg-white divide-y divide-gray-200">
+                                           
+                                                                                                                          <tr>
+                                          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                           Floor Cleaner(  <b>34029099</b>)
+                                          <br>
+                                          <small class="text-muted">SKY PRODUCTS/Floor Cleaner/Mr Shine </small>
+                                          </td> 
+                                              <td>White</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">1 ( 1 Ltr  )
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900"> ₹79.00</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900"> ₹0.00</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900"> ₹0.00</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900"> ₹1,580.00</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900"> ₹18.00%</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900"> ₹1,580.00</td>
+                                        
+                                         </tr>
+                                                                                    
+                                                                                                                          <tr>
+                                          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                           LIQUID DETERGENT(  <b>34029098</b>)
+                                          <br>
+                                          <small class="text-muted">SKY PRODUCTS/Laundry Products/Mr Shine </small>
+                                          </td> 
+                                              <td>Liquid Detergent</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">2 ( 1 Ltr  )
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900"> ₹100.00</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900"> ₹0.00</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900"> ₹0.00</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900"> ₹2,000.00</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900"> ₹5.00%</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900"> ₹4,000.00</td>
+                                        
+                                         </tr>
+                                                                                   <tr>
+                                          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                           LIQUID DETERGENT(  <b>34029098</b>)
+                                          <br>
+                                          <small class="text-muted">SKY PRODUCTS/Laundry Products/Mr Shine </small>
+                                          </td> 
+                                              <td>Fabric Conditioner</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">1 ( 1 Ltr  )
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900"> ₹100.00</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900"> ₹0.00</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900"> ₹0.00</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900"> ₹2,000.00</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900"> ₹5.00%</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900"> ₹2,000.00</td>
+                                        
+                                         </tr>
+                                       <tr>
+                                            <th colspan="8" style="text-align:right;">GrandTotal</th>
+                                            <th>65756765</th>
+                                       </tr>                                                                                  
+                                    </tbody>
+                                </table>
+    <!-- Add other sections (Bill To, Totals) similarly -->
+        <table class="border-bottom">
+       
+        <tr>
+            <td width="50%" class="border-right" style="font-size: 8pt;">
+                <span class="bold">Payment Details:</span><br>
+                Order Number : 5495922561<br>
+                Status : Success <br>
+                Txnid : 45656456 <br>
+                Payment Mode : PAYU <br>
+            </td>
+             <td width="50%" style="font-size: 8pt;">
+                <span class="bold">Order Tracking Details:</span> <br>
+                <span class="bold">Transport Name:</span> gfhfgjj<br>
+                <span class="bold">Transport Contact Number:</span> 657567567567<br>
+                <span class="bold">LRNO:</span> 567567567<br>
+                <span class="bold">Date:</span> 2026-06-05 04:44:59<br>
+                
+            </td>
+        </tr>
+    </table>
+</div>
+</body>
+</html>

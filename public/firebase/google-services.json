@@ -1,0 +1,77 @@
+/*{
+  "project_info": {
+    "project_number": "356692064303",
+    "project_id": "apni-factory",
+    "storage_bucket": "apni-factory.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:356692064303:android:8f8541144eb22f93882eda",
+        "android_client_info": {
+          "package_name": "android.apnifactory.com"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBWfjjPWuIrGOMUJO2g8GxDq9WLtjxmNMU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}*/
+{
+  "project_info": {
+    "project_number": "356692064303",
+    "project_id": "apni-factory",
+    "storage_bucket": "apni-factory.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:356692064303:android:8f8541144eb22f93882eda",
+        "android_client_info": {
+          "package_name": "android.apnifactory.com"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBWfjjPWuIrGOMUJO2g8GxDq9WLtjxmNMU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:356692064303:android:fadf1e6b04a94971882eda",
+        "android_client_info": {
+          "package_name": "com.app.apnifactory"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBWfjjPWuIrGOMUJO2g8GxDq9WLtjxmNMU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
