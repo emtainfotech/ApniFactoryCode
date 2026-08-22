@@ -15,4 +15,6 @@ yarn-error.log
 /.vscode
 /backup
 *.zip
+github_token.txt
+.git-credentials
 
