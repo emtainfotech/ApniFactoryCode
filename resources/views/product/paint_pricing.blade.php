@@ -51,30 +51,43 @@
         <div class="card shadow-sm border-0 mb-4">
             <div class="card-body p-4">
                 <div class="row align-items-center">
-                    <div class="col-md-6 mb-3 mb-md-0">
+                    <div class="col-md-3 mb-3 mb-md-0">
+                        <label for="categoryFilterSelect" class="form-label fw-bold text-dark">
+                            <i class="fa-solid fa-layer-group text-primary me-2"></i>Category Filter:
+                        </label>
+                        <select id="categoryFilterSelect" class="form-select form-select-lg border-secondary">
+                            <option value="">-- All Categories --</option>
+                            @foreach($categories as $cat)
+                                <option value="{{ $cat->id }}" {{ (isset($selectedProduct) && $selectedProduct->category_id == $cat->id) ? 'selected' : '' }}>
+                                    {{ $cat->name }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-md-4 mb-3 mb-md-0">
                         <label for="productFamilySelect" class="form-label fw-bold text-dark">
-                            <i class="fa-solid fa-paint-roller text-primary me-2"></i>Select Paint Product / Family:
+                            <i class="fa-solid fa-paint-roller text-primary me-2"></i>Select Product / Family:
                         </label>
                         <select id="productFamilySelect" class="form-select form-select-lg border-primary">
-                            <option value="">-- Choose Paint Product --</option>
+                            <option value="">-- Choose Product --</option>
                             @foreach($products as $prod)
-                                <option value="{{ $prod->id }}" {{ (isset($selectedProduct) && $selectedProduct->id == $prod->id) ? 'selected' : '' }}>
+                                <option value="{{ $prod->id }}" data-category-id="{{ $prod->category_id }}" {{ (isset($selectedProduct) && $selectedProduct->id == $prod->id) ? 'selected' : '' }}>
                                     {{ $prod->name }}
                                 </option>
                             @endforeach
                         </select>
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-md-5">
                         <div class="p-3 bg-light rounded border">
                             <div class="d-flex justify-content-between align-items-center">
                                 <div>
-                                    <span class="badge bg-primary px-3 py-2 text-uppercase">Two-Price Engine</span>
-                                    <h6 class="mt-2 mb-0 fw-bold">Factory Price vs Customer Price</h6>
-                                    <small class="text-muted">Seller enters Base Factory Price. ApniFactory applies marketplace markup/commission automatically.</small>
+                                    <span class="badge bg-primary px-3 py-1 text-uppercase">Two-Price Engine</span>
+                                    <h6 class="mt-1 mb-0 fw-bold">Factory Price vs Customer Price</h6>
+                                    <small class="text-muted">Seller enters Factory Price. Platform adds {{ $company->comission ?? 25 }}% markup.</small>
                                 </div>
                                 <div class="text-end">
                                     <span class="fs-4 fw-bold text-success">{{ $company->comission ?? 25 }}%</span>
-                                    <div class="text-muted small">Current Markup</div>
+                                    <div class="text-muted small">Markup Rate</div>
                                 </div>
                             </div>
                         </div>
@@ -131,11 +144,27 @@
                         <!-- Scope Selection -->
                         <div class="mb-3">
                             <label class="form-label fw-bold"><i class="fa-solid fa-filter me-1 text-primary"></i>2. Select Scope:</label>
-                            <select id="scopeType" class="form-select mb-3">
-                                <option value="family">Entire Paint Family (All Shades & Sizes)</option>
-                                <option value="shades">Specific Shades Only</option>
-                                <option value="packings">Specific Pack Sizes Only</option>
+                            <select id="scopeType" class="form-select mb-3 border-primary fw-bold">
+                                <option value="category">📂 Entire Category (All Products in Category)</option>
+                                <option value="family" selected>🎨 Entire Paint Family (All Shades & Sizes)</option>
+                                <option value="shades">🎨 Specific Shades Only</option>
+                                <option value="packings">📦 Specific Pack Sizes Only</option>
                             </select>
+
+                            <!-- Category Target Box -->
+                            <div id="categoryScopeBox" class="p-3 bg-light-primary rounded border border-primary mb-3" style="display: none;">
+                                <label class="form-label small fw-bold text-uppercase text-primary"><i class="fa-solid fa-layer-group me-1"></i>Target Category:</label>
+                                <select id="targetCategorySelect" class="form-select border-primary fw-bold">
+                                    @foreach($categories as $cat)
+                                        <option value="{{ $cat->id }}" {{ (isset($selectedProduct) && $selectedProduct->category_id == $cat->id) ? 'selected' : '' }}>
+                                            {{ $cat->name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                <small class="text-muted d-block mt-2">
+                                    <i class="fa-solid fa-circle-info text-info me-1"></i> Updates <strong>ALL products & SKUs</strong> in this category in a single atomic operation.
+                                </small>
+                            </div>
 
                             <!-- Shade Checkboxes -->
                             <div id="shadeScopeBox" class="p-3 bg-light rounded border mb-3" style="display: none; max-height: 200px; overflow-y: auto;">
@@ -326,19 +355,48 @@
 
 <script>
     let currentPreviewData = null;
+    let isCategoryMode = false;
+
+    // Filter Products by Category in Dropdown
+    const catFilter = document.getElementById('categoryFilterSelect');
+    const prodSelect = document.getElementById('productFamilySelect');
+    if (catFilter && prodSelect) {
+        catFilter.addEventListener('change', function() {
+            const catId = this.value;
+            let firstVisible = null;
+            Array.from(prodSelect.options).forEach(opt => {
+                if (!opt.value) return; // Keep placeholder
+                const prodCatId = opt.getAttribute('data-category-id');
+                if (!catId || prodCatId === catId) {
+                    opt.style.display = '';
+                    if (!firstVisible) firstVisible = opt.value;
+                } else {
+                    opt.style.display = 'none';
+                }
+            });
+
+            if (catId && firstVisible) {
+                window.location.href = "{{ route('seller.paint-pricing.index') }}?product_id=" + firstVisible + "&category_id=" + catId;
+            }
+        });
+    }
 
     // Change Product Family
-    document.getElementById('productFamilySelect').addEventListener('change', function() {
-        if (this.value) {
-            window.location.href = "{{ route('seller.paint-pricing.index') }}?product_id=" + this.value;
-        }
-    });
+    if (prodSelect) {
+        prodSelect.addEventListener('change', function() {
+            if (this.value) {
+                const catVal = catFilter ? catFilter.value : '';
+                window.location.href = "{{ route('seller.paint-pricing.index') }}?product_id=" + this.value + (catVal ? '&category_id=' + catVal : '');
+            }
+        });
+    }
 
     // Scope Selector toggle
     const scopeTypeSelect = document.getElementById('scopeType');
     if (scopeTypeSelect) {
         scopeTypeSelect.addEventListener('change', function() {
             const val = this.value;
+            document.getElementById('categoryScopeBox').style.display = (val === 'category') ? 'block' : 'none';
             document.getElementById('shadeScopeBox').style.display = (val === 'shades') ? 'block' : 'none';
             document.getElementById('packScopeBox').style.display = (val === 'packings') ? 'block' : 'none';
         });
@@ -366,64 +424,107 @@
     const btnPreview = document.getElementById('btnPreview');
     if (btnPreview) {
         btnPreview.addEventListener('click', function() {
-            const productId = "{{ $selectedProduct->id ?? '' }}";
             const adjType = document.querySelector('input[name="adjustment_type"]:checked').value;
             const adjValue = parseFloat(document.getElementById('adjustmentValue').value) || 0;
             const scopeType = document.getElementById('scopeType').value;
 
-            const selectedShades = [];
-            document.querySelectorAll('.shade-checkbox:checked').forEach(cb => selectedShades.push(cb.value));
-
-            const selectedPacks = [];
-            document.querySelectorAll('.pack-checkbox:checked').forEach(cb => selectedPacks.push(cb.value));
-
             btnPreview.disabled = true;
             btnPreview.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-2"></i> Calculating...';
 
-            fetch("{{ route('seller.paint-pricing.preview') }}", {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                },
-                body: JSON.stringify({
-                    product_id: productId,
-                    adjustment_type: adjType,
-                    adjustment_value: adjValue,
-                    scope_type: scopeType,
-                    shades: selectedShades,
-                    packings: selectedPacks
-                })
-            })
-            .then(async res => {
-                const isJson = res.headers.get('content-type')?.includes('application/json');
-                const data = isJson ? await res.json() : null;
-                if (!res.ok) {
-                    throw new Error((data && data.message) || `Server returned ${res.status}`);
-                }
-                return data;
-            })
-            .then(res => {
-                btnPreview.disabled = false;
-                btnPreview.innerHTML = '<i class="fa-solid fa-calculator me-2"></i> Calculate Preview';
+            if (scopeType === 'category') {
+                isCategoryMode = true;
+                const targetCatId = document.getElementById('targetCategorySelect').value;
 
-                if (res && res.status && res.data && res.data.items) {
-                    currentPreviewData = res.data;
-                    renderPreviewTable(res.data);
-                } else {
-                    alert((res && res.message) || 'No SKUs matched the selected scope.');
-                }
-            })
-            .catch(err => {
-                btnPreview.disabled = false;
-                btnPreview.innerHTML = '<i class="fa-solid fa-calculator me-2"></i> Calculate Preview';
-                alert('Error computing preview: ' + err.message);
-            });
+                fetch("{{ route('seller.paint-pricing.category.preview') }}", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                    },
+                    body: JSON.stringify({
+                        category_id: targetCatId,
+                        adjustment_type: adjType,
+                        adjustment_value: adjValue
+                    })
+                })
+                .then(async res => {
+                    const isJson = res.headers.get('content-type')?.includes('application/json');
+                    const data = isJson ? await res.json() : null;
+                    if (!res.ok) throw new Error((data && data.message) || `Server returned ${res.status}`);
+                    return data;
+                })
+                .then(res => {
+                    btnPreview.disabled = false;
+                    btnPreview.innerHTML = '<i class="fa-solid fa-calculator me-2"></i> Calculate Preview';
+
+                    if (res && res.status && res.data && res.data.product_previews && res.data.product_previews.length > 0) {
+                        currentPreviewData = res.data;
+                        renderCategoryPreviewTable(res.data);
+                    } else {
+                        alert((res && res.message) || 'No products found in this category.');
+                    }
+                })
+                .catch(err => {
+                    btnPreview.disabled = false;
+                    btnPreview.innerHTML = '<i class="fa-solid fa-calculator me-2"></i> Calculate Preview';
+                    alert('Error computing category preview: ' + err.message);
+                });
+
+            } else {
+                isCategoryMode = false;
+                const productId = "{{ $selectedProduct->id ?? '' }}";
+                const selectedShades = [];
+                document.querySelectorAll('.shade-checkbox:checked').forEach(cb => selectedShades.push(cb.value));
+
+                const selectedPacks = [];
+                document.querySelectorAll('.pack-checkbox:checked').forEach(cb => selectedPacks.push(cb.value));
+
+                fetch("{{ route('seller.paint-pricing.preview') }}", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                    },
+                    body: JSON.stringify({
+                        product_id: productId,
+                        adjustment_type: adjType,
+                        adjustment_value: adjValue,
+                        scope_type: scopeType,
+                        shades: selectedShades,
+                        packings: selectedPacks
+                    })
+                })
+                .then(async res => {
+                    const isJson = res.headers.get('content-type')?.includes('application/json');
+                    const data = isJson ? await res.json() : null;
+                    if (!res.ok) throw new Error((data && data.message) || `Server returned ${res.status}`);
+                    return data;
+                })
+                .then(res => {
+                    btnPreview.disabled = false;
+                    btnPreview.innerHTML = '<i class="fa-solid fa-calculator me-2"></i> Calculate Preview';
+
+                    if (res && res.status && res.data && res.data.items) {
+                        currentPreviewData = res.data;
+                        renderPreviewTable(res.data);
+                    } else {
+                        alert((res && res.message) || 'No SKUs matched the selected scope.');
+                    }
+                })
+                .catch(err => {
+                    btnPreview.disabled = false;
+                    btnPreview.innerHTML = '<i class="fa-solid fa-calculator me-2"></i> Calculate Preview';
+                    alert('Error computing preview: ' + err.message);
+                });
+            }
         });
     }
 
+    // Render Product-level preview
     function renderPreviewTable(data) {
         const tbody = document.getElementById('previewTableBody');
         tbody.innerHTML = '';
@@ -453,6 +554,47 @@
         document.getElementById('previewCard').scrollIntoView({ behavior: 'smooth' });
     }
 
+    // Render Category-level preview
+    function renderCategoryPreviewTable(data) {
+        const tbody = document.getElementById('previewTableBody');
+        tbody.innerHTML = '';
+
+        data.product_previews.forEach(prodPreview => {
+            const headerTr = document.createElement('tr');
+            headerTr.className = 'table-primary';
+            headerTr.innerHTML = `
+                <td colspan="6" class="fw-bold py-2">
+                    <i class="fa-solid fa-box-open me-2 text-primary"></i> ${prodPreview.product_name} (${prodPreview.affected_count} SKUs)
+                </td>
+            `;
+            tbody.appendChild(headerTr);
+
+            prodPreview.items.forEach(item => {
+                const deltaBadge = item.adjustment_delta >= 0 
+                    ? `<span class="badge bg-success">+₹${item.adjustment_delta.toFixed(2)}</span>`
+                    : `<span class="badge bg-danger">-₹${Math.abs(item.adjustment_delta).toFixed(2)}</span>`;
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>
+                        <span class="d-inline-block rounded-circle me-2 border" style="width: 12px; height: 12px; background-color: ${item.hexcode};"></span>
+                        <strong>${item.shade_name}</strong>
+                    </td>
+                    <td>${item.packing_name} <small class="text-muted">(${item.pack_litres}L)</small></td>
+                    <td class="text-muted">₹${item.old_seller_price.toFixed(2)}</td>
+                    <td>${deltaBadge}</td>
+                    <td><strong class="text-primary fs-6">₹${item.new_seller_price.toFixed(2)}</strong></td>
+                    <td><strong class="text-success fs-6">₹${item.new_customer_price.toFixed(2)}</strong></td>
+                `;
+                tbody.appendChild(tr);
+            });
+        });
+
+        document.getElementById('previewCountBadge').innerText = `${data.affected_count} SKUs across ${data.products_count} Products`;
+        document.getElementById('previewCard').style.display = 'block';
+        document.getElementById('previewCard').scrollIntoView({ behavior: 'smooth' });
+    }
+
     // Cancel Preview
     const btnCancelPreview = document.getElementById('btnCancelPreview');
     if (btnCancelPreview) {
@@ -462,7 +604,7 @@
         });
     }
 
-    // Apply Changes
+    // Apply Changes (supports Product and Category modes)
     const btnApplyChanges = document.getElementById('btnApplyChanges');
     if (btnApplyChanges) {
         btnApplyChanges.addEventListener('click', function() {
@@ -475,47 +617,84 @@
             btnApplyChanges.disabled = true;
             btnApplyChanges.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-2"></i> Applying...';
 
-            fetch("{{ route('seller.paint-pricing.apply') }}", {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                },
-                body: JSON.stringify({
-                    product_id: currentPreviewData.product_id,
-                    adjustment_type: currentPreviewData.adjustment_type,
-                    adjustment_value: currentPreviewData.adjustment_value,
-                    scope_type: currentPreviewData.scope.type || 'family',
-                    shades: currentPreviewData.scope.shades || [],
-                    packings: currentPreviewData.scope.packings || [],
-                    skus: currentPreviewData.scope.skus || []
+            if (isCategoryMode) {
+                fetch("{{ route('seller.paint-pricing.category.apply') }}", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                    },
+                    body: JSON.stringify({
+                        category_id: currentPreviewData.category_id,
+                        adjustment_type: currentPreviewData.adjustment_type,
+                        adjustment_value: currentPreviewData.adjustment_value
+                    })
                 })
-            })
-            .then(async res => {
-                const isJson = res.headers.get('content-type')?.includes('application/json');
-                const data = isJson ? await res.json() : null;
-                if (!res.ok) {
-                    throw new Error((data && data.message) || `Server returned ${res.status}`);
-                }
-                return data;
-            })
-            .then(res => {
-                if (res && res.status) {
-                    alert((res.data && res.data.message) || res.message || 'Prices successfully updated!');
-                    window.location.reload();
-                } else {
+                .then(async res => {
+                    const isJson = res.headers.get('content-type')?.includes('application/json');
+                    const data = isJson ? await res.json() : null;
+                    if (!res.ok) throw new Error((data && data.message) || `Server returned ${res.status}`);
+                    return data;
+                })
+                .then(res => {
+                    if (res && res.status) {
+                        alert(res.message || 'Category prices successfully updated!');
+                        window.location.reload();
+                    } else {
+                        btnApplyChanges.disabled = false;
+                        btnApplyChanges.innerHTML = '<i class="fa-solid fa-check-double me-2"></i> Confirm & Apply Changes';
+                        alert((res && res.message) || 'Error applying category changes.');
+                    }
+                })
+                .catch(err => {
                     btnApplyChanges.disabled = false;
                     btnApplyChanges.innerHTML = '<i class="fa-solid fa-check-double me-2"></i> Confirm & Apply Changes';
-                    alert((res && res.message) || 'Error applying changes.');
-                }
-            })
-            .catch(err => {
-                btnApplyChanges.disabled = false;
-                btnApplyChanges.innerHTML = '<i class="fa-solid fa-check-double me-2"></i> Confirm & Apply Changes';
-                alert('Error applying changes: ' + err.message);
-            });
+                    alert('Error applying category changes: ' + err.message);
+                });
+
+            } else {
+                fetch("{{ route('seller.paint-pricing.apply') }}", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                    },
+                    body: JSON.stringify({
+                        product_id: currentPreviewData.product_id,
+                        adjustment_type: currentPreviewData.adjustment_type,
+                        adjustment_value: currentPreviewData.adjustment_value,
+                        scope_type: currentPreviewData.scope.type || 'family',
+                        shades: currentPreviewData.scope.shades || [],
+                        packings: currentPreviewData.scope.packings || [],
+                        skus: currentPreviewData.scope.skus || []
+                    })
+                })
+                .then(async res => {
+                    const isJson = res.headers.get('content-type')?.includes('application/json');
+                    const data = isJson ? await res.json() : null;
+                    if (!res.ok) throw new Error((data && data.message) || `Server returned ${res.status}`);
+                    return data;
+                })
+                .then(res => {
+                    if (res && res.status) {
+                        alert((res.data && res.data.message) || res.message || 'Prices successfully updated!');
+                        window.location.reload();
+                    } else {
+                        btnApplyChanges.disabled = false;
+                        btnApplyChanges.innerHTML = '<i class="fa-solid fa-check-double me-2"></i> Confirm & Apply Changes';
+                        alert((res && res.message) || 'Error applying changes.');
+                    }
+                })
+                .catch(err => {
+                    btnApplyChanges.disabled = false;
+                    btnApplyChanges.innerHTML = '<i class="fa-solid fa-check-double me-2"></i> Confirm & Apply Changes';
+                    alert('Error applying changes: ' + err.message);
+                });
+            }
         });
     }
 
@@ -547,9 +726,7 @@
         .then(async res => {
             const isJson = res.headers.get('content-type')?.includes('application/json');
             const data = isJson ? await res.json() : null;
-            if (!res.ok) {
-                throw new Error((data && data.message) || `Server returned ${res.status}`);
-            }
+            if (!res.ok) throw new Error((data && data.message) || `Server returned ${res.status}`);
             return data;
         })
         .then(res => {

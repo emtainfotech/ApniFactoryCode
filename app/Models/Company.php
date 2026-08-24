@@ -20,5 +20,12 @@ class Company extends Model
     public function maincategory(){
         return $this->belongsTo(MainCategory::class);
     }
-  
+
+    public function auditLogs(){
+        return $this->hasMany(CompanyAuditLog::class, 'company_id')->orderBy('id', 'desc');
+    }
+
+    public function priceAdjustments(){
+        return $this->hasMany(PaintPriceAdjustment::class, 'user_id', 'user_id')->orderBy('id', 'desc');
+    }
 }

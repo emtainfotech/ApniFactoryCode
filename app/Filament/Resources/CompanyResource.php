@@ -159,7 +159,8 @@ class CompanyResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+            RelationManagers\PriceAdjustmentsRelationManager::class,
+            RelationManagers\AuditLogsRelationManager::class,
         ];
     }
     

@@ -246,12 +246,148 @@ class PaintPricingService
                 'created_by'       => $userId,
             ]);
 
+            // Also record in CompanyAuditLog for Company history
+            $company = Company::where('user_id', $userId)->first();
+            if ($company) {
+                \App\Models\CompanyAuditLog::logChange(
+                    $company->id,
+                    'price_adjustment',
+                    "Price Adjustment: {$preview['product_name']}",
+                    "Applied " . ($adjustmentType === 'percentage' ? (($adjustmentValue > 0 ? '+' : '') . $adjustmentValue . '%') : ('₹' . number_format($adjustmentValue, 2))) . " (" . ucfirst(str_replace('_', ' ', $adjustmentType)) . ") across " . count($preview['items']) . " SKUs.",
+                    ['old_total' => $preview['total_old_seller_price']],
+                    ['new_total' => $preview['total_new_seller_price']],
+                    $userId
+                );
+            }
+
             return [
                 'success'        => true,
                 'message'        => 'Successfully updated ' . count($preview['items']) . ' SKU prices.',
                 'affected_count' => count($preview['items']),
                 'audit_id'       => $audit->id,
                 'preview'        => $preview,
+            ];
+        });
+    }
+
+    /**
+     * Calculate Category-Wise Price Adjustment Preview across all products in a Category.
+     */
+    public function calculateCategoryPreview(
+        int $categoryId,
+        string $adjustmentType,
+        float $adjustmentValue,
+        $userId = null
+    ): array {
+        $category = \App\Models\Category::find($categoryId);
+        $productsQuery = Product::where('category_id', $categoryId)
+            ->where(function($q) {
+                $q->where('status', '1')
+                  ->orWhere('status', 'Active')
+                  ->orWhere('status', 'active');
+            });
+
+        if ($userId) {
+            $productsQuery->where('user_id', $userId);
+        }
+
+        $products = $productsQuery->get();
+
+        $allProductPreviews = [];
+        $totalAffectedCount = 0;
+        $grandOldTotal = 0;
+        $grandNewTotal = 0;
+
+        foreach ($products as $prod) {
+            $prodPreview = $this->calculatePreview($prod->id, $adjustmentType, $adjustmentValue, ['type' => 'family']);
+            if (!empty($prodPreview['items'])) {
+                $allProductPreviews[] = $prodPreview;
+                $totalAffectedCount += $prodPreview['affected_count'];
+                $grandOldTotal += $prodPreview['total_old_seller_price'];
+                $grandNewTotal += $prodPreview['total_new_seller_price'];
+            }
+        }
+
+        return [
+            'category_id'            => $categoryId,
+            'category_name'          => $category ? $category->name : ('Category #' . $categoryId),
+            'adjustment_type'        => $adjustmentType,
+            'adjustment_value'       => $adjustmentValue,
+            'products_count'         => count($allProductPreviews),
+            'affected_count'         => $totalAffectedCount,
+            'total_old_seller_price' => round($grandOldTotal, 2),
+            'total_new_seller_price' => round($grandNewTotal, 2),
+            'product_previews'       => $allProductPreviews,
+        ];
+    }
+
+    /**
+     * Apply Category-Wise Price Adjustment atomically across all products in a Category.
+     */
+    public function applyCategoryAdjustment(
+        int $categoryId,
+        string $adjustmentType,
+        float $adjustmentValue,
+        $userId = null
+    ): array {
+        $catPreview = $this->calculateCategoryPreview($categoryId, $adjustmentType, $adjustmentValue, $userId);
+
+        if (empty($catPreview['product_previews'])) {
+            return [
+                'success' => false,
+                'message' => 'No active products found in the selected category.',
+                'affected_count' => 0,
+            ];
+        }
+
+        return DB::transaction(function () use ($categoryId, $adjustmentType, $adjustmentValue, $userId, $catPreview) {
+            $allFlattenedItems = [];
+
+            foreach ($catPreview['product_previews'] as $prodPreview) {
+                foreach ($prodPreview['items'] as $item) {
+                    ProductAttributes::where('id', $item['sku_id'])->update([
+                        'oldprice'        => $item['old_customer_price'],
+                        'seller_price'    => $item['new_seller_price'],
+                        'price'           => $item['new_customer_price'],
+                        'commission_rate' => $item['commission_rate'],
+                        'pack_litres'     => $item['pack_litres'],
+                    ]);
+                    $allFlattenedItems[] = array_merge($item, ['product_name' => $prodPreview['product_name']]);
+                }
+
+                PaintPriceAdjustment::create([
+                    'user_id'          => $userId,
+                    'product_id'       => $prodPreview['product_id'],
+                    'adjustment_type'  => $adjustmentType,
+                    'adjustment_value' => $adjustmentValue,
+                    'scope_type'       => 'category',
+                    'scope_json'       => ['type' => 'category', 'category_id' => $categoryId],
+                    'affected_count'   => count($prodPreview['items']),
+                    'preview_data'     => $prodPreview['items'],
+                    'created_by'       => $userId,
+                ]);
+            }
+
+            // Log once at Category level in CompanyAuditLog
+            $company = Company::where('user_id', $userId)->first();
+            if ($company) {
+                \App\Models\CompanyAuditLog::logChange(
+                    $company->id,
+                    'category_price_adjustment',
+                    "Category Bulk Adjustment: {$catPreview['category_name']}",
+                    "Applied " . ($adjustmentType === 'percentage' ? (($adjustmentValue > 0 ? '+' : '') . $adjustmentValue . '%') : ('₹' . number_format($adjustmentValue, 2))) . " (" . ucfirst(str_replace('_', ' ', $adjustmentType)) . ") across {$catPreview['products_count']} products ({$catPreview['affected_count']} SKUs) in {$catPreview['category_name']}.",
+                    ['old_total' => $catPreview['total_old_seller_price']],
+                    ['new_total' => $catPreview['total_new_seller_price']],
+                    $userId
+                );
+            }
+
+            return [
+                'success'        => true,
+                'message'        => "Successfully updated {$catPreview['affected_count']} SKUs across {$catPreview['products_count']} products in {$catPreview['category_name']}.",
+                'affected_count' => $catPreview['affected_count'],
+                'products_count' => $catPreview['products_count'],
+                'preview'        => $catPreview,
             ];
         });
     }

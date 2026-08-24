@@ -27,8 +27,12 @@ class PaintPricingController extends Controller
      */
     public function index(Request $request)
     {
-        $userId = Auth::id() ?? 1;
-        $data['title'] = 'Paint Family Pricing Manager';
+        // Load categories
+        $data['categories'] = \App\Models\Category::where(function($q) {
+            $q->where('status', '1')
+              ->orWhere('status', 'Active')
+              ->orWhere('status', 'active');
+        })->orderBy('name', 'asc')->get();
 
         // Load seller's products (supporting both '1' and 'Active' status values)
         $data['products'] = Product::where('user_id', $userId)
@@ -42,6 +46,7 @@ class PaintPricingController extends Controller
 
         $data['company'] = Company::where('user_id', $userId)->first();
         $data['selectedProductId'] = $request->query('product_id', $data['products']->first()->id ?? null);
+        $data['selectedCategoryId'] = $request->query('category_id', null);
 
         if ($data['selectedProductId']) {
             $data['selectedProduct'] = Product::find($data['selectedProductId']);
@@ -265,6 +270,59 @@ class PaintPricingController extends Controller
             'status' => true,
             'code'   => 200,
             'data'   => $adjustments,
+        ]);
+    }
+
+    /**
+     * Preview proposed category-wise price adjustments across all products.
+     */
+    public function categoryPreview(Request $request)
+    {
+        $request->validate([
+            'category_id'      => 'required|exists:categories,id',
+            'adjustment_type'  => 'required|in:per_litre,per_liter,percentage,fixed',
+            'adjustment_value' => 'required|numeric',
+        ]);
+
+        $userId = Auth::id() ?? 1;
+        $preview = $this->pricingService->calculateCategoryPreview(
+            (int)$request->category_id,
+            (string)$request->adjustment_type,
+            (float)$request->adjustment_value,
+            $userId
+        );
+
+        return response()->json([
+            'status' => true,
+            'code'   => 200,
+            'data'   => $preview,
+        ]);
+    }
+
+    /**
+     * Confirm and apply category-wise price adjustment atomically across all products.
+     */
+    public function categoryApply(Request $request)
+    {
+        $request->validate([
+            'category_id'      => 'required|exists:categories,id',
+            'adjustment_type'  => 'required|in:per_litre,per_liter,percentage,fixed',
+            'adjustment_value' => 'required|numeric',
+        ]);
+
+        $userId = Auth::id() ?? 1;
+        $result = $this->pricingService->applyCategoryAdjustment(
+            (int)$request->category_id,
+            (string)$request->adjustment_type,
+            (float)$request->adjustment_value,
+            $userId
+        );
+
+        return response()->json([
+            'status'  => $result['success'],
+            'code'    => $result['success'] ? 200 : 400,
+            'message' => $result['message'],
+            'data'    => $result,
         ]);
     }
 }

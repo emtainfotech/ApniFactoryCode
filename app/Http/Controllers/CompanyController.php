@@ -9,6 +9,8 @@ use Auth;
 use DB;
 use Illuminate\Support\Facades\Hash;
 
+use App\Models\CompanyAuditLog;
+
 class CompanyController extends Controller
 {
     /**
@@ -22,6 +24,46 @@ class CompanyController extends Controller
         $request->validate([
             'profile_picture' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048', // max 2MB
         ]);
+
+        if ($request->hasFile('profile_picture')) {
+            $file = $request->file('profile_picture');
+            $filename = time() . '_' . $file->getClientOriginalName();
+            
+            // Move file to storage/app/public/product directory
+            $file->move('storage/app/public/product', $filename);
+            $photoPath = 'product/' . $filename;
+
+            // Update authenticated user record
+            $user = User::find(Auth::id());
+            $oldPhoto = $user->profilephoto;
+            $user->profilephoto = $photoPath;
+            $user->save();
+
+            // Log change
+            $company = Company::where('user_id', $user->id)->first();
+            if ($company) {
+                CompanyAuditLog::logChange(
+                    $company->id,
+                    'profile_update',
+                    'Profile Photo Updated',
+                    "User {$user->name} updated their profile picture.",
+                    ['old_photo' => $oldPhoto],
+                    ['new_photo' => $photoPath]
+                );
+            }
+
+            return response()->json([
+                'success'   => true,
+                'message'   => 'Profile picture updated successfully!',
+                'image_url' => asset('storage/app/public/' . $photoPath)
+            ]);
+        }
+
+        return response()->json([
+            'success' => false,
+            'message' => 'No image file uploaded.'
+        ], 400);
+    }
 
         $user = Auth::user(); // or Auth::guard('seller')->user() depending on your setup
         
@@ -148,74 +190,111 @@ class CompanyController extends Controller
      */
     public function update(Request $request, Company $company)
     {
-        if($request->action=='minordervalue'){
-            Company::where("user_id", Auth::user()->id)->update(["minordervalue" => $request->minvalue]);
+        $user = Auth::user();
+        $detail = Company::where('user_id', $user->id)->firstOrFail();
+
+        if($request->action == 'minordervalue'){
+            $oldMin = $detail->minordervalue;
+            $newMin = $request->input('minvalue');
+            $detail->update(["minordervalue" => $newMin]);
+
+            CompanyAuditLog::logChange(
+                $detail->id,
+                'min_order_value_change',
+                'Minimum Order Value Updated',
+                "Changed minimum order threshold from ₹" . number_format((float)$oldMin, 2) . " to ₹" . number_format((float)$newMin, 2),
+                ['old_minordervalue' => $oldMin],
+                ['new_minordervalue' => $newMin]
+            );
+
             return redirect()->back()->withErrors(['Minimum order value updated successfully!']);
         }
-        if($request->action=='passwordupdate'){
+
+        if($request->action == 'passwordupdate'){
              $oldpassword =  $request->currentpassword;
-              $newpassword =  $request->newpassword;
-             $user = Auth::user();
-            // 2. Check if the current password is correct
+             $newpassword =  $request->newpassword;
+
             if (!Hash::check($request->currentpassword, $user->password)) {
                 return back()->withErrors(['current_password' => 'The provided password does not match our records.']);
             }
-            // 3. Hash and save the new password
+
             $user->update([
                 'password' => Hash::make($request->newpassword)
             ]);
 
-              return back()->withErrors('Password updated successfully!');
-        
-        }
-        
-    $detail = Company::where('user_id', Auth::user()->id)->firstOrFail();// Replace with your actual Model name
+            CompanyAuditLog::logChange(
+                $detail->id,
+                'profile_update',
+                'Password Changed',
+                "Seller account password was updated successfully."
+            );
 
-    // Handle Banner Upload
-    if ($request->input('action') === 'update_banner') {
-        $request->validate([
-            'banner_image' => 'required|image|mimes:jpeg,png,jpg,webp|max:2048', // 2MB Max
-        ]);
-        if ($request->hasFile('banner_image')) {
-           $file = $request->file('banner_image');            // Generate a unique name
-            $filename = time() . '_' . $file->getClientOriginalName();
-            // 2. Save the file to public/uploads/profiles directory
-            $file->move('storage/app/public/product', $filename);
-            // Optional: Delete old image from server if it exists
-            if ($detail->photo && file_exists('storage/app/public/product/' . $detail->photo)) {
-                @unlink('storage/app/public/product/' . $detail->photo);
+            return back()->withErrors('Password updated successfully!');
+        }
+
+        // Handle Banner Upload
+        if ($request->input('action') === 'update_banner') {
+            $request->validate([
+                'banner_image' => 'required|image|mimes:jpeg,png,jpg,webp|max:2048', // 2MB Max
+            ]);
+            if ($request->hasFile('banner_image')) {
+                $file = $request->file('banner_image');
+                $filename = time() . '_' . $file->getClientOriginalName();
+                $file->move('storage/app/public/product', $filename);
+
+                $oldBanner = $detail->photo;
+                if ($detail->photo && file_exists('storage/app/public/product/' . $detail->photo)) {
+                    @unlink('storage/app/public/product/' . $detail->photo);
+                }
+                $detail->photo = 'product/'.$filename;
+                $detail->save();
+
+                CompanyAuditLog::logChange(
+                    $detail->id,
+                    'banner_update',
+                    'Store Banner Updated',
+                    "Seller uploaded a new store banner.",
+                    ['old_banner' => $oldBanner],
+                    ['new_banner' => 'product/'.$filename]
+                );
+
+                return redirect()->back()->withErrors('Banner updated successfully!');
             }
-            $detail->photo = 'product/'.$filename;;
-            $detail->save();
-            return redirect()->back()->withErrors('Banner updated successfully!');
         }
-    }
 
-    // Handle Logo Upload
-    if ($request->input('action') === 'update_logo') {
-        $request->validate([
-            'company_logo' => 'required|image|mimes:jpeg,png,jpg,webp|max:1024', // 1MB Max
-        ]);
+        // Handle Logo Upload
+        if ($request->input('action') === 'update_logo') {
+            $request->validate([
+                'company_logo' => 'required|image|mimes:jpeg,png,jpg,webp|max:1024', // 1MB Max
+            ]);
 
-        if ($request->hasFile('company_logo')) {
-            // Delete old logo if it exists
-            $file = $request->file('company_logo');            // Generate a unique name
-            $filename = time() . '_' . $file->getClientOriginalName();
-            // 2. Save the file to public/uploads/profiles directory
-            $file->move('storage/app/public/product', $filename);
-            // Optional: Delete old image from server if it exists
-            if ($detail->logo && file_exists('storage/app/public/product/' . $detail->logo)) {
-                @unlink('storage/app/public/product/' . $detail->logo);
+            if ($request->hasFile('company_logo')) {
+                $file = $request->file('company_logo');
+                $filename = time() . '_' . $file->getClientOriginalName();
+                $file->move('storage/app/public/product', $filename);
+
+                $oldLogo = $detail->logo;
+                if ($detail->logo && file_exists('storage/app/public/product/' . $detail->logo)) {
+                    @unlink('storage/app/public/product/' . $detail->logo);
+                }
+                $detail->logo = 'product/'.$filename;
+                $detail->save();
+                User::where("id", $user->id)->update(["profilephoto" => 'product/'.$filename]);
+
+                CompanyAuditLog::logChange(
+                    $detail->id,
+                    'profile_update',
+                    'Company Logo Updated',
+                    "Seller updated their brand logo.",
+                    ['old_logo' => $oldLogo],
+                    ['new_logo' => 'product/'.$filename]
+                );
+
+                return redirect()->back()->withErrors('Logo updated successfully!');
             }
-            $detail->logo = 'product/'.$filename;
-            $detail->save();
-           $up = User::where("id",Auth::user()->id)->update(["profilephoto"=>'product/'.$filename]);
-            return redirect()->back()->withErrors('Logo updated successfully!');
         }
-    }
 
-    return redirect()->back()->withErrors( 'Invalid action.');
-              return back()->withErrors([" Not Updated"]);
+        return redirect()->back()->withErrors('Invalid action.');
     }
 
     /**
