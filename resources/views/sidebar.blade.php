@@ -319,135 +319,60 @@ document.addEventListener('DOMContentLoaded', function() {
     setInterval(fetchLiveNotifications, 10000);
 });
 </script>
+							<!-- Support & Help Tickets Dropdown -->
 							<li class="nav-item dropdown dropdown-large drop-down-cmt">
-								<a class="nav-link "  href="javascript:;" role="button" data-bs-toggle="dropdown" aria-expanded="false"> <span class="alert-count">8</span>
-									<i class='bx bx-comment'></i>
+								<a class="nav-link dropdown-toggle dropdown-toggle-nocaret position-relative" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Support & Help Tickets">
+									@php
+										$sellerTickets = \Illuminate\Support\Facades\Auth::check() 
+											? \Illuminate\Support\Facades\DB::table('tickets')->where('user_id', \Illuminate\Support\Facades\Auth::id())->latest('id')->limit(5)->get()
+											: collect();
+										$pendingTicketsCount = \Illuminate\Support\Facades\Auth::check()
+											? \Illuminate\Support\Facades\DB::table('tickets')->where('user_id', \Illuminate\Support\Facades\Auth::id())->where('status', 'Pending')->count()
+											: 0;
+									@endphp
+									@if($pendingTicketsCount > 0)
+										<span class="alert-count bg-warning text-dark font-monospace" style="font-size: 0.72rem; min-width: 18px; text-align: center;">{{ $pendingTicketsCount }}</span>
+									@endif
+									<i class='fa-solid fa-headset'></i>
 								</a>
-								<div class="dropdown-menu dropdown-menu-end">
-									<a href="javascript:;">
-										<div class="msg-header">
-											<p class="msg-header-title">Messages</p>
-											<p class="msg-header-clear ms-auto">Marks all as read</p>
-										</div>
-									</a>
-									<div class="header-message-list">
-										<a class="dropdown-item" href="javascript:;">
-											
-										</a>
-										<a class="dropdown-item" href="javascript:;">
-											
-										</a>
-										<a class="dropdown-item" href="javascript:;">
-											<div class="d-flex align-items-center">
-												<div class="user-online">
-													<img src="images/avatars/avatar-3.png" class="msg-avatar" alt="user avatar">
-												</div>
-												<div class="flex-grow-1">
-													<h6 class="msg-name">Oscar Garner <span class="msg-time float-end">8 min
-												ago</span></h6>
-													<p class="msg-info">Various versions have evolved over</p>
-												</div>
-											</div>
-										</a>
-										<a class="dropdown-item" href="javascript:;">
-											<div class="d-flex align-items-center">
-												<div class="user-online">
-													<img src="images/avatars/avatar-4.png" class="msg-avatar" alt="user avatar">
-												</div>
-												<div class="flex-grow-1">
-													<h6 class="msg-name">Katherine Pechon <span class="msg-time float-end">15
-												min ago</span></h6>
-													<p class="msg-info">Making this the first true generator</p>
-												</div>
-											</div>
-										</a>
-										<a class="dropdown-item" href="javascript:;">
-											<div class="d-flex align-items-center">
-												<div class="user-online">
-													<img src="images/avatars/avatar-5.png" class="msg-avatar" alt="user avatar">
-												</div>
-												<div class="flex-grow-1">
-													<h6 class="msg-name">Amelia Doe <span class="msg-time float-end">22 min
-												ago</span></h6>
-													<p class="msg-info">Duis aute irure dolor in reprehenderit</p>
-												</div>
-											</div>
-										</a>
-										<a class="dropdown-item" href="javascript:;">
-											<div class="d-flex align-items-center">
-												<div class="user-online">
-													<img src="images/avatars/avatar-6.png" class="msg-avatar" alt="user avatar">
-												</div>
-												<div class="flex-grow-1">
-													<h6 class="msg-name">Cristina Jhons <span class="msg-time float-end">2 hrs
-												ago</span></h6>
-													<p class="msg-info">The passage is attributed to an unknown</p>
-												</div>
-											</div>
-										</a>
-										<a class="dropdown-item" href="javascript:;">
-											<div class="d-flex align-items-center">
-												<div class="user-online">
-													<img src="images/avatars/avatar-7.png" class="msg-avatar" alt="user avatar">
-												</div>
-												<div class="flex-grow-1">
-													<h6 class="msg-name">James Caviness <span class="msg-time float-end">4 hrs
-												ago</span></h6>
-													<p class="msg-info">The point of using Lorem</p>
-												</div>
-											</div>
-										</a>
-										<a class="dropdown-item" href="javascript:;">
-											<div class="d-flex align-items-center">
-												<div class="user-online">
-													<img src="images/avatars/avatar-8.png" class="msg-avatar" alt="user avatar">
-												</div>
-												<div class="flex-grow-1">
-													<h6 class="msg-name">Peter Costanzo <span class="msg-time float-end">6 hrs
-												ago</span></h6>
-													<p class="msg-info">It was popularised in the 1960s</p>
-												</div>
-											</div>
-										</a>
-										<a class="dropdown-item" href="javascript:;">
-											<div class="d-flex align-items-center">
-												<div class="user-online">
-													<img src="images/avatars/avatar-9.png" class="msg-avatar" alt="user avatar">
-												</div>
-												<div class="flex-grow-1">
-													<h6 class="msg-name">David Buckley <span class="msg-time float-end">2 hrs
-												ago</span></h6>
-													<p class="msg-info">Various versions have evolved over</p>
-												</div>
-											</div>
-										</a>
-										<a class="dropdown-item" href="javascript:;">
-											<div class="d-flex align-items-center">
-												<div class="user-online">
-													<img src="images/avatars/avatar-10.png" class="msg-avatar" alt="user avatar">
-												</div>
-												<div class="flex-grow-1">
-													<h6 class="msg-name">Thomas Wheeler <span class="msg-time float-end">2 days
-												ago</span></h6>
-													<p class="msg-info">If you are going to use a passage</p>
-												</div>
-											</div>
-										</a>
-										<a class="dropdown-item" href="javascript:;">
-											<div class="d-flex align-items-center">
-												<div class="user-online">
-													<img src="images/avatars/avatar-11.png" class="msg-avatar" alt="user avatar">
-												</div>
-												<div class="flex-grow-1">
-													<h6 class="msg-name">Johnny Seitz <span class="msg-time float-end">5 days
-												ago</span></h6>
-													<p class="msg-info">All the Lorem Ipsum generators</p>
-												</div>
-											</div>
+								<div class="dropdown-menu dropdown-menu-end shadow-lg border-0" style="width: 340px; max-width: 95vw; border-radius: 12px;">
+									<div class="msg-header d-flex align-items-center py-2 px-3 border-bottom bg-light">
+										<h6 class="msg-header-title mb-0 font-weight-bold text-dark"><i class="fa-solid fa-headset me-1 text-primary"></i> Support Tickets</h6>
+										<a href="{{ url('seller/ticketsupport') }}" class="msg-header-clear ms-auto text-primary small text-decoration-none font-weight-bold">
+											<i class="fa-solid fa-plus me-1"></i>New Ticket
 										</a>
 									</div>
-									<a href="javascript:;">
-										<div class="text-center msg-footer">View All Messages</div>
+									<div class="header-message-list py-1" style="max-height: 320px; overflow-y: auto;">
+										@forelse($sellerTickets as $ticket)
+											<a class="dropdown-item py-2 px-3 border-bottom" href="{{ url('seller/ticketsupport') }}">
+												<div class="d-flex align-items-center gap-2">
+													<div class="rounded-circle bg-light-primary text-primary d-flex align-items-center justify-content-center" style="width: 36px; height: 36px; font-size: 1rem; flex-shrink: 0;">
+														<i class="fa-solid fa-ticket"></i>
+													</div>
+													<div class="flex-grow-1 overflow-hidden">
+														<div class="d-flex justify-content-between align-items-center mb-1">
+															<h6 class="msg-name mb-0 text-truncate font-weight-bold" style="font-size: 0.84rem;">
+																#{{ $ticket->id }} {{ $ticket->topic }}
+															</h6>
+															<span class="badge {{ $ticket->status == 'Completed' ? 'bg-success' : ($ticket->status == 'Reject' ? 'bg-danger' : 'bg-warning text-dark') }}" style="font-size: 0.65rem;">
+																{{ $ticket->status }}
+															</span>
+														</div>
+														<p class="msg-info mb-0 text-muted small text-truncate" style="font-size: 0.78rem;">{{ $ticket->msg }}</p>
+													</div>
+												</div>
+											</a>
+										@empty
+											<div class="text-center py-4 text-muted">
+												<i class="fa-solid fa-circle-check fs-3 d-block mb-2 text-success"></i>
+												<p class="mb-0 small">No active support tickets</p>
+											</div>
+										@endforelse
+									</div>
+									<a href="{{ url('seller/ticketsupport') }}" class="text-decoration-none">
+										<div class="text-center msg-footer py-2 bg-light border-top font-weight-bold text-primary small">
+											View All Tickets <i class="fa-solid fa-arrow-right ms-1"></i>
+										</div>
 									</a>
 								</div>
 							</li>
