@@ -87,20 +87,33 @@
                                          @foreach($list as $key=>$lt)
                                          <tr>
                                              <td>{{$key+1}}</td>
-                                              <td><img src="{{ env('imagepath').'/'.$lt->image }}" width="100px"/></td>
-                                             <td>{{Helper::getbrandname($lt->brand_id)}}</td>
-                                             <td>{{substr($lt->name, 0, 15)}}</td>
-                                             <td>{{Helper::getcatname($lt->category_id)}}</td>
-                                             <td>@if($lt->status==1) <b class="text-success">Active</b>@else <b class="text-danger">Deactive</b>@endif</td>
-                                             <td>{{date("d-m-Y",strtotime($lt->created_at))}}</td>
                                              <td>
-                                                   <a class="btn btn-sm btn-icon btn-primary" href="{{ route('product.edit', $lt->id) }}" title="Edit Product">
+                                                 <img src="{{ !empty($lt->image) && file_exists(public_path('upload/'.$lt->image)) ? asset('public/upload/'.$lt->image) : asset('public/img/Apni-Factory-3.png') }}" 
+                                                      alt="{{ $lt->name }}" 
+                                                      class="rounded border" 
+                                                      style="width: 50px; height: 50px; object-fit: contain; background: #fafafa;" />
+                                             </td>
+                                             <td class="font-weight-bold">{{Helper::getbrandname($lt->brand_id)}}</td>
+                                             <td>
+                                                 <strong class="d-block text-dark">{{$lt->name}}</strong>
+                                                 <small class="text-muted">{{$lt->title ?? ''}}</small>
+                                             </td>
+                                             <td><span class="badge bg-light text-dark border">{{Helper::getcatname($lt->category_id)}}</span></td>
+                                             <td>
+                                                 @if($lt->status == 1 || $lt->status == 'Active' || $lt->status == 'active')
+                                                     <span class="badge bg-success">Active</span>
+                                                 @else
+                                                     <span class="badge bg-danger">Deactive</span>
+                                                 @endif
+                                             </td>
+                                             <td>{{date("d-M-Y",strtotime($lt->created_at))}}</td>
+                                             <td>
+                                                   <a class="btn btn-sm btn-primary" href="{{ route('product.edit', $lt->id) }}" title="Edit Product">
                                                         <i class="fa-solid fa-pen-to-square"></i>
-                                                        <span class="sr-only">Edit</span>
-                                                    </a>
-                                                    <a class="btn btn-sm btn-icon btn-info text-white" href="{{ route('seller.paint-pricing.index', ['product_id' => $lt->id]) }}" title="Smart Paint Pricing">
+                                                   </a>
+                                                   <a class="btn btn-sm btn-info text-white" href="{{ route('seller.paint-pricing.index', ['product_id' => $lt->id]) }}" title="Smart Paint Pricing">
                                                         <i class="fa-solid fa-paint-roller"></i>
-                                                    </a>
+                                                   </a>
                                                  <form action="{{ route('product.delete', $lt->id) }}" method="POST"  onSubmit="return confirm('Are you sure to delete this record?')" style="display: inline-block;">
                                                       @csrf
                                                       @method("DELETE")
