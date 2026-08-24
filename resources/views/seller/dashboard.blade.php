@@ -194,6 +194,92 @@
             </div>
         </div>
 
+@php
+    $sellerPendingOrders = \DB::table('orders')
+        ->where('orders.user_id', Auth::user()->id)
+        ->join('order_status', 'orders.orderno', '=', 'order_status.order_no')
+        ->whereIn('order_status.status', ['pending', 'Wait For Confirmation', 'Order Received'])
+        ->whereIn('order_status.id', function($q) {
+            $q->selectRaw('MAX(id)')->from('order_status')->groupBy('order_no');
+        })
+        ->select('orders.*')
+        ->orderBy('orders.id', 'desc')
+        ->get();
+@endphp
+
+@if($sellerPendingOrders->count() > 0)
+    <!-- Modal: Unread Pending Orders Popup on Login -->
+    <div class="modal fade" id="unreadOrdersModal" tabindex="-1" aria-labelledby="unreadOrdersModalLabel" aria-hidden="true" data-bs-backdrop="static">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content shadow-lg border-0">
+                <div class="modal-header bg-warning text-dark py-3">
+                    <h5 class="modal-title font-weight-bold" id="unreadOrdersModalLabel">
+                        <i class="fas fa-bell me-2 animate__animated animate__ring"></i>
+                        Action Required: {{ $sellerPendingOrders->count() }} Unread Pending Order(s)
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="alert alert-warning mb-3">
+                        <strong><i class="fas fa-clock me-1"></i> 72-Hour Response Policy:</strong> You have 3 days from order placement to <strong>Accept</strong> or <strong>Reject</strong> incoming orders. Expired orders are automatically cancelled.
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Order #</th>
+                                    <th>Placed On</th>
+                                    <th>Amount</th>
+                                    <th>Time Remaining</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($sellerPendingOrders as $pOrder)
+                                    @php
+                                        $created = \Carbon\Carbon::parse($pOrder->created_at);
+                                        $deadline = $created->copy()->addHours(72);
+                                        $hoursLeft = max(0, round(now()->diffInHours($deadline, false)));
+                                    @endphp
+                                    <tr>
+                                        <td><strong>#{{ $pOrder->orderno }}</strong></td>
+                                        <td>{{ $created->format('d M, h:i A') }}</td>
+                                        <td><strong class="text-success">₹{{ number_format($pOrder->grandtotal, 2) }}</strong></td>
+                                        <td>
+                                            @if(now()->greaterThan($deadline))
+                                                <span class="badge bg-danger">Expired</span>
+                                            @else
+                                                <span class="badge bg-warning text-dark font-monospace">⏱️ ~{{ $hoursLeft }}h left</span>
+                                            @endif
+                                        </td>
+                                        <td>
+                                            <a href="{{ route('order.detail', $pOrder->orderno) }}" class="btn btn-sm btn-primary">
+                                                Review Order
+                                            </a>
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light py-2">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Acknowledge & Close</button>
+                    <a href="{{ route('order.list') }}" class="btn btn-warning">View All Orders</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Auto trigger modal on login / page load
+            const unreadModal = new bootstrap.Modal(document.getElementById('unreadOrdersModal'));
+            unreadModal.show();
+        });
+    </script>
+@endif
+
     </div>
 </div>
 			</div>

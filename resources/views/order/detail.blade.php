@@ -197,6 +197,67 @@
     </div>
   </div>
 
+  @php
+    $latestStatus = Helper::getstatusoforder($order->orderno);
+    $stLower = strtolower($latestStatus ?? '');
+    $isPending = in_array($stLower, ['pending', 'wait for confirmation', 'order received', '']);
+    $orderCreated = \Carbon\Carbon::parse($order->created_at);
+    $deadline = $orderCreated->copy()->addHours(72);
+    $diffSecs = max(0, now()->diffInSeconds($deadline, false));
+    $isOverdue = now()->greaterThan($deadline);
+  @endphp
+
+  @if($isPending)
+  {{-- ── 3-DAY SELLER RESPONSE COUNTDOWN BANNER ── --}}
+  <div class="card mb-4 border-{{ $isOverdue ? 'danger' : 'warning' }} shadow-sm" style="border-left: 6px solid {{ $isOverdue ? '#dc3545' : '#f59e0b' }}; background: #fffdf5;">
+    <div class="card-body d-flex align-items-center justify-content-between flex-wrap gap-3">
+      <div class="d-flex align-items-center gap-3">
+        <div style="font-size: 2.2rem; color: {{ $isOverdue ? '#dc3545' : '#f59e0b' }};">
+          <i class="bi bi-alarm-fill"></i>
+        </div>
+        <div>
+          <h5 class="mb-1 font-weight-bold text-dark">Seller Response Required (3-Day Limit)</h5>
+          <p class="mb-0 text-muted small">
+            You must <strong>Accept</strong> or <strong>Reject</strong> this order within 72 hours of placement. Unanswered orders will be automatically cancelled by the system.
+          </p>
+        </div>
+      </div>
+      <div class="text-end">
+        @if($isOverdue)
+          <span class="badge bg-danger fs-6 px-3 py-2">⚠️ Response Window Expired</span>
+        @else
+          <div class="text-muted small mb-1">Time Remaining:</div>
+          <span id="detail-timer" class="badge bg-warning text-dark fs-5 font-monospace px-3 py-2 border border-warning shadow-sm" data-seconds="{{ $diffSecs }}">
+            ⏱️ Calculating...
+          </span>
+        @endif
+      </div>
+    </div>
+  </div>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const timerEl = document.getElementById('detail-timer');
+      if (timerEl) {
+        let secs = parseInt(timerEl.getAttribute('data-seconds'), 10);
+        function tick() {
+          if (secs <= 0) {
+            timerEl.className = 'badge bg-danger text-white fs-6 px-3 py-2';
+            timerEl.textContent = '⏱️ Expired';
+            return;
+          }
+          secs -= 1;
+          const h = Math.floor(secs / 3600);
+          const m = Math.floor((secs % 3600) / 60);
+          const s = secs % 60;
+          timerEl.textContent = `⏱️ ${h}h ${m}m ${s}s`;
+        }
+        tick();
+        setInterval(tick, 1000);
+      }
+    });
+  </script>
+  @endif
+
   {{-- ── SELLER & BUYER ── --}}
   <div class="od-card">
     <div class="od-card-header">

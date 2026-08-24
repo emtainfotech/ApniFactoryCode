@@ -103,6 +103,8 @@ Route::get('seller/paint-pricing/audit/{id}', [PaintPricingController::class, 'a
  Route::post('orderhistory', [OrderController::class, "orderhistory"]);
  Route::post('orderdetail', [OrderController::class, "orderdetailforapi"]);
  Route::post('orderstatus', [OrderController::class, "orderstatus_app"]);
+ Route::post('order/alternatives', [OrderController::class, "getAlternativeSellersForOrder"]);
+ Route::get('order/{orderno}/alternatives', [OrderController::class, "getAlternativeSellersForOrder"]);
  
  Route::post('search', [AppController::class, "search"]);
  

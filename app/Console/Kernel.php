@@ -15,8 +15,11 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule)
     {
-        // ADD THIS LINE TO SCHEDULE YOUR AUTOMATED CRON JOB EVERY DAY:
+        // Scheduled automated credit notes processor
         $schedule->command('credit:process-notes')->dailyAt('01:00');
+        
+        // Auto-expire and cancel pending orders where seller has not responded within 72 hours (3 days)
+        $schedule->command('orders:auto-expire-pending')->hourly();
     }
 
     /**

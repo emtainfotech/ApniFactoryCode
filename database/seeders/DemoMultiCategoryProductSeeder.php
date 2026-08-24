@@ -436,5 +436,90 @@ class DemoMultiCategoryProductSeeder extends Seeder
                 }
             }
         }
+
+        // 6. Ensure Alternative Vendor Companies exist for rejection alternatives & multi-vendor catalog
+        $alternativeVendors = [
+            [
+                'email'       => 'apex.coatings@apnifactory.local',
+                'name'        => 'Apex Coatings & Paints Ltd',
+                'mobile'      => '9811223344',
+                'gst'         => '07BBPPA1234F1Z1',
+                'city'        => 'New Delhi',
+                'state'       => 'Delhi',
+                'pincode'     => '110001',
+                'minorder'    => '2000.00',
+                'category_id' => $midPaints,
+            ],
+            [
+                'email'       => 'surat.textiles@apnifactory.local',
+                'name'        => 'Surat Silk & Cotton Mills',
+                'mobile'      => '9822334455',
+                'gst'         => '24CCPPB5678G1Z2',
+                'city'        => 'Surat',
+                'state'       => 'Gujarat',
+                'pincode'     => '395001',
+                'minorder'    => '1500.00',
+                'category_id' => $midFabrics,
+            ],
+            [
+                'email'       => 'mastercraft.tools@apnifactory.local',
+                'name'        => 'MasterCraft Hardware Mart',
+                'mobile'      => '9833445566',
+                'gst'         => '27DDPPC9012H1Z3',
+                'city'        => 'Mumbai',
+                'state'       => 'Maharashtra',
+                'pincode'     => '400001',
+                'minorder'    => '800.00',
+                'category_id' => $midAccessories,
+            ],
+            [
+                'email'       => 'premier.garments@apnifactory.local',
+                'name'        => 'Premier Garments & Apparels',
+                'mobile'      => '9844556677',
+                'gst'         => '29EEPPD3456I1Z4',
+                'city'        => 'Bengaluru',
+                'state'       => 'Karnataka',
+                'pincode'     => '560001',
+                'minorder'    => '1200.00',
+                'category_id' => $midGarments,
+            ]
+        ];
+
+        foreach ($alternativeVendors as $idx => $v) {
+            $altUserId = $idx + 10;
+            
+            DB::table('users')->updateOrInsert(
+                ['email' => $v['email']],
+                [
+                    'id'         => $altUserId,
+                    'name'       => $v['name'],
+                    'email'      => $v['email'],
+                    'password'   => \Illuminate\Support\Facades\Hash::make('seller@123'),
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]
+            );
+
+            DB::table('companies')->updateOrInsert(
+                ['user_id' => $altUserId],
+                [
+                    'name'             => $v['name'],
+                    'user_id'          => $altUserId,
+                    'email'            => $v['email'],
+                    'mobile'           => $v['mobile'],
+                    'maincategory_id'  => $v['category_id'],
+                    'gst'              => $v['gst'],
+                    'crn'              => 'CRN' . (20000 + $idx),
+                    'minordervalue'    => $v['minorder'],
+                    'city'             => $v['city'],
+                    'state'            => $v['state'],
+                    'pincode'          => $v['pincode'],
+                    'comission'        => '5.00',
+                    'status'           => 'Active',
+                    'created_at'       => now(),
+                    'updated_at'       => now(),
+                ]
+            );
+        }
     }
 }

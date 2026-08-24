@@ -48,10 +48,23 @@
         </li>
         
         <!-- Dropdown: Comprehensive Order Tracking Actions -->
+        @php
+            $pendingOrdersCount = 0;
+            if (Auth::check()) {
+                $pendingOrdersCount = \DB::table('orders')
+                    ->where('orders.user_id', Auth::user()->id)
+                    ->join('order_status', 'orders.orderno', '=', 'order_status.order_no')
+                    ->whereIn('order_status.status', ['pending', 'Wait For Confirmation', 'Order Received'])
+                    ->whereIn('order_status.id', function($q) {
+                        $q->selectRaw('MAX(id)')->from('order_status')->groupBy('order_no');
+                    })
+                    ->count();
+            }
+        @endphp
         <li>
             <a href="javascript:;" class="has-arrow">
                 <div class="parent-icon i-orders"><i class="fa-solid fa-cart-shopping"></i></div>
-                <div class="menu-title">Orders</div>
+                <div class="menu-title">Orders @if($pendingOrdersCount > 0)<span class="badge bg-danger rounded-pill ms-1 font-monospace" style="font-size: 0.75rem;">{{ $pendingOrdersCount }}</span>@endif</div>
             </a>
             <ul>
                 <li><a href="{{route('order.list')}}"><i class="fa-solid fa-boxes-stacked me-2"></i>All Orders</a></li>

@@ -64,20 +64,23 @@ public static function getNavigationBadge(): ?string
                 ->label('Orderno')
                 ->searchable()
                 ->sortable(),
-                   Tables\Columns\BadgeColumn::make('id') 
-    ->label('Status')
-    ->formatStateUsing(function ($record) {
-        return \DB::table('order_status')
-            ->where('order_no', $record->orderno)
-            ->latest('id')
-            ->value('status');
-     return $status ? strtolower($status) : null;
-    })
-    ->colors([
-        'warning' => 'pending',   // 'theme_color' => 'database_lowercase_value'
-        'danger' => 'rejected',
-        'success' => 'completed',
-    ]),
+            Tables\Columns\BadgeColumn::make('status') 
+                ->label('Status')
+                ->getStateUsing(function ($record) {
+                    $st = \DB::table('order_status')
+                        ->where('order_no', $record->orderno)
+                        ->latest('id')
+                        ->value('status');
+                    return $st ?: 'Pending Seller';
+                })
+                ->colors([
+                    'warning'   => fn ($state) => in_array(strtolower($state), ['pending', 'pending seller', 'wait for confirmation', 'order received']),
+                    'success'   => fn ($state) => in_array(strtolower($state), ['accepted', 'delivered', 'completed', 'success']),
+                    'info'      => fn ($state) => in_array(strtolower($state), ['processing', 'order processed']),
+                    'primary'   => fn ($state) => in_array(strtolower($state), ['in transit', 'out for delivery', 'shipped']),
+                    'danger'    => fn ($state) => in_array(strtolower($state), ['rejected', 'failed']),
+                    'secondary' => fn ($state) => in_array(strtolower($state), ['cancelled', 'expired']),
+                ]),
             Columns\TextColumn::make('user.name')
                 ->label('Seller')
                 ->searchable()

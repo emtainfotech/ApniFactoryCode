@@ -3,10 +3,43 @@
          .inline{display: inline-block;}
     </style> 
     <div class="space-y-6">
-        <!-- Invoice Details -->
+        @if(!empty($rejection))
+        <!-- Rejection / Cancellation Notice (Admin Visibility) -->
+        <div class="bg-red-50 border-l-4 border-red-500 p-4 rounded-r-lg shadow">
+            <div class="flex items-start">
+                <div class="flex-shrink-0">
+                    <svg class="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                    </svg>
+                </div>
+                <div class="ml-3 w-full">
+                    <h3 class="text-sm font-bold text-red-800 uppercase tracking-wider">
+                        Order {{ $rejection->status }} Alert
+                    </h3>
+                    <div class="mt-2 text-sm text-red-700">
+                        <p><strong>Reason:</strong> {{ $rejection->msg ?? 'No explicit reason provided.' }}</p>
+                        <p class="mt-1 text-xs text-red-600"><strong>Logged At:</strong> {{ \Carbon\Carbon::parse($rejection->created_at)->format('d M Y, h:i A') }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        @endif
+
+        <!-- Order Details -->
         <div class="bg-white overflow-hidden shadow rounded-lg">
             <div class="px-4 py-5 sm:p-6">
-                <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">Invoice Details</h3>
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg leading-6 font-medium text-gray-900">Order Details</h3>
+                    @if(!empty($rejection))
+                        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                            🔴 Rejected / Cancelled
+                        </span>
+                    @else
+                        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            🟢 Active Order
+                        </span>
+                    @endif
+                </div>
                 <div class="grid grid-cols-1 gap-5 sm:grid-cols-3">
                     <div>
                         <dt class="text-sm font-medium text-gray-500">Order Number</dt>
@@ -17,27 +50,38 @@
                         <dd class="mt-1 text-sm text-gray-900">{{ $record->created_at->format('d M Y, H:i') }}</dd>
                     </div>
                     <div>
-                        <dt class="text-sm font-medium text-gray-500">Invoice ID</dt>
-                        <dd class="mt-1 text-sm text-gray-900">#INV00001-{{ $record->id }}</dd>
+                        <dt class="text-sm font-medium text-gray-500">Logistics Invoice / L.R. No.</dt>
+                        <dd class="mt-1 text-sm text-gray-900 font-semibold">{{ $track->invoiceno ?? ($track->lrno ?? 'Pending Dispatch') }}</dd>
                     </div>
                 </div>
             </div>
         </div>
-        <!-- Customer Information -->
+
+        <!-- Customer & Seller Performance Information -->
         <div class="bg-white overflow-hidden shadow rounded-lg">
             <div class="px-4 py-5 sm:p-6">
-                <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">Customer Information</h3>
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg leading-6 font-medium text-gray-900">Party & Performance Information</h3>
+                    <div class="flex gap-2">
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                            Total Seller Orders: {{ $totalSellerOrders ?? 0 }}
+                        </span>
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ ($rejectionRate ?? 0) > 15 ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800' }}">
+                            Rejection Rate: {{ $rejectionRate ?? 0 }}% ({{ $rejectedSellerOrders ?? 0 }} rejected)
+                        </span>
+                    </div>
+                </div>
                 <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
                     <div>
                         <dt class="text-sm font-medium text-gray-500 inline">Customer Name</dt>:
-                        <dd class="mt-1 text-sm text-gray-900 inline">{{ $record->customer->name ?? 'N/A' }}</dd>
+                        <dd class="mt-1 text-sm text-gray-900 inline font-medium">{{ $record->customer->name ?? 'N/A' }}</dd>
                     </div>
                     <div>
                         <dt class="text-sm font-medium text-gray-500 inline">Seller Name</dt>:
-                        <dd class="mt-1 text-sm text-gray-900 inline">{{ $seller->name ?? 'N/A' }}</dd>
+                        <dd class="mt-1 text-sm text-gray-900 inline font-medium">{{ $seller->name ?? 'N/A' }}</dd>
                     </div>
                     <div>
-                        <dt class="text-sm font-medium text-gray-500 inline">Phone</dt>:
+                        <dt class="text-sm font-medium text-gray-500 inline">Customer Phone</dt>:
                         <dd class="mt-1 text-sm text-gray-900 inline">{{ $record->customer->phone ?? 'N/A' }}</dd>
                     </div>
                     <div>
@@ -45,7 +89,7 @@
                         <dd class="mt-1 text-sm text-gray-900 inline">{{ $seller->gst ?? 'N/A' }}</dd>
                     </div>
                     <div>
-                        <dt class="text-sm font-medium text-gray-500 inline">Email</dt>:
+                        <dt class="text-sm font-medium text-gray-500 inline">Customer Email</dt>:
                         <dd class="mt-1 text-sm text-gray-900 inline">{{ $record->customer->email ?? 'N/A' }}</dd>
                     </div>
                     <div>
