@@ -27,6 +27,9 @@ class PaintPricingController extends Controller
      */
     public function index(Request $request)
     {
+        $userId = Auth::id() ?? 1;
+        $data['title'] = 'Paint Family Pricing Manager';
+
         // Load categories
         $data['categories'] = \App\Models\Category::where(function($q) {
             $q->where('status', '1')
