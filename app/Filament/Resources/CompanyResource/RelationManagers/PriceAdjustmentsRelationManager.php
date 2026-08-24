@@ -80,13 +80,14 @@ class PriceAdjustmentsRelationManager extends RelationManager
                     ->label('SKU Breakdown')
                     ->icon('heroicon-o-eye')
                     ->color('primary')
-                    ->modalHeading('SKU Price Change Details')
-                    ->modalContent(function ($record) {
-                        $items = is_array($record->preview_data) 
-                            ? $record->preview_data 
-                            : (json_decode($record->preview_data, true) ?? []);
-                        return view('filament.components.price-adjustment-modal', ['items' => $items, 'record' => $record]);
-                    }),
+                    ->modalHeading(fn ($record) => 'SKU Price Breakdown: ' . ($record->product->name ?? ('Category #' . ($record->scope_json['category_id'] ?? ''))))
+                    ->modalWidth('4xl')
+                    ->modalButton('Close')
+                    ->modalActions([])
+                    ->form([
+                        Forms\Components\View::make('filament.components.price-adjustment-modal'),
+                    ])
+                    ->action(fn () => null),
             ])
             ->bulkActions([
                 //

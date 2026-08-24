@@ -87,10 +87,14 @@ class AuditLogsRelationManager extends RelationManager
                     ->label('View Changes')
                     ->icon('heroicon-o-document-text')
                     ->color('primary')
-                    ->modalHeading('Change Details & Values')
-                    ->modalContent(function ($record) {
-                        return view('filament.components.audit-log-modal', ['record' => $record]);
-                    }),
+                    ->modalHeading(fn ($record) => 'Change Details: ' . $record->title)
+                    ->modalWidth('3xl')
+                    ->modalButton('Close')
+                    ->modalActions([])
+                    ->form([
+                        Forms\Components\View::make('filament.components.audit-log-modal'),
+                    ])
+                    ->action(fn () => null),
             ])
             ->bulkActions([
                 //

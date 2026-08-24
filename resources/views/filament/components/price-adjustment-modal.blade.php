@@ -1,18 +1,24 @@
+@php
+    $rec = (isset($getRecord) && is_callable($getRecord)) ? $getRecord() : ($record ?? null);
+    $items = $rec ? (is_array($rec->preview_data) ? $rec->preview_data : (json_decode($rec->preview_data, true) ?? [])) : ($items ?? []);
+@endphp
+
+@if($rec)
 <div class="space-y-4">
     <div class="grid grid-cols-3 gap-3 p-3 bg-gray-50 rounded-lg text-sm">
         <div>
             <span class="text-gray-500 text-xs block">Adjustment Type</span>
-            <span class="font-bold text-gray-800">{{ ucfirst(str_replace('_', ' ', $record->adjustment_type)) }}</span>
+            <span class="font-bold text-gray-800">{{ ucfirst(str_replace('_', ' ', $rec->adjustment_type)) }}</span>
         </div>
         <div>
             <span class="text-gray-500 text-xs block">Value Applied</span>
             <span class="font-bold text-primary-600">
-                {{ $record->adjustment_type === 'percentage' ? (($record->adjustment_value > 0 ? '+' : '') . $record->adjustment_value . '%') : ('₹' . number_format($record->adjustment_value, 2)) }}
+                {{ $rec->adjustment_type === 'percentage' ? (($rec->adjustment_value > 0 ? '+' : '') . $rec->adjustment_value . '%') : ('₹' . number_format($rec->adjustment_value, 2)) }}
             </span>
         </div>
         <div>
             <span class="text-gray-500 text-xs block">Total Affected SKUs</span>
-            <span class="font-bold text-green-600">{{ $record->affected_count }} SKUs</span>
+            <span class="font-bold text-green-600">{{ $rec->affected_count }} SKUs</span>
         </div>
     </div>
 
@@ -50,3 +56,8 @@
         </table>
     </div>
 </div>
+@else
+<div class="p-4 text-center text-gray-400">
+    No adjustment record found.
+</div>
+@endif
