@@ -40,7 +40,11 @@ class Product extends Model
     public function user(){
         return $this->belongsTo(User::class);
     }
-     public function product_attributes(){
+    public function product_attributes(){
+        return $this->hasMany(ProductAttributes::class);
+    }
+
+    public function attributes(){
         return $this->hasMany(ProductAttributes::class);
     }
     

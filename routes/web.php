@@ -141,6 +141,9 @@ Route::delete('/product/filter/{id}', [ProductController::class, 'destroyFilter'
 
 });
 
+// Customer Mobile App Simulator & Experience Preview
+Route::get('/customer/app-preview', [\App\Http\Controllers\AppPreviewController::class, 'index'])->name('customer.app-preview');
+
 Auth::routes();
 
 Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name('home');

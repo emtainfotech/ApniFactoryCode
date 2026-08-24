@@ -77,71 +77,55 @@ class AutoExpirePendingOrders extends Command
                     ]
                 );
 
-                // 3. Notify Buyer
+                // 3. Process Automated Refund via PaymentRefundService
+                $refundService = app()->make(\App\Services\PaymentRefundService::class);
+                $refundService->processRefund($order, 'Seller response deadline (72 hours) exceeded');
+
+                // 4. Find Top 3 Alternative Sellers
+                $altService = app()->make(\App\Services\AlternativeSellerService::class);
+                $alternatives = $altService->getAlternativeSellers($order, 3);
+
+                // 5. Notify Buyer with Alternatives and Refund info
                 if ($order->customer_id) {
                     $buyer = Customer::find($order->customer_id);
                     if ($buyer) {
-                        $buyerNotification = [
-                            'customer_id' => $buyer->id,
-                            'title'       => 'Order #' . $order->orderno . ' Cancelled (Expired)',
-                            'msg'         => 'Your order #' . $order->orderno . ' was cancelled because the seller did not respond within 3 days. A full refund has been initiated.',
-                            'msgread'     => 0,
-                            'type'        => 'customer',
-                            'created_at'  => now(),
-                            'updated_at'  => now(),
-                        ];
-                        DB::table('notifications')->insert($buyerNotification);
-
-                        // If WhatsApp mobile exists
-                        if (!empty($buyer->mobile)) {
-                            try {
-                                $this->sendwhatsappmsg($buyer->mobile, 'order_cancelled_expired', $order->orderno);
-                            } catch (\Throwable $e) {
-                                // WhatsApp failure is non-blocking
-                            }
-                        }
+                        $notificationService = app()->make(\App\Services\NotificationService::class);
+                        $notificationService->send(
+                            'customer',
+                            $buyer->id,
+                            'Order #' . $order->orderno . ' Auto-Cancelled (Refunded)',
+                            'Your order was cancelled as the seller did not respond within 3 days. A 100% refund has been credited. We found ' . count($alternatives) . ' alternative verified sellers for you.',
+                            [
+                                'order_id'     => $order->id,
+                                'email_view'   => 'emails.order_cancelled_buyer',
+                                'alternatives' => $alternatives,
+                            ]
+                        );
                     }
                 }
 
-                // 4. Notify Seller of penalty / missed deadline
+                // 6. Notify Seller of SLA violation
                 if ($order->user_id) {
-                    $sellerNotification = [
-                        'user_id'     => $order->user_id,
-                        'customer_id' => $order->user_id,
-                        'title'       => 'Order #' . $order->orderno . ' Expired Due to Inactivity',
-                        'msg'         => 'Order #' . $order->orderno . ' has been auto-cancelled because no response was provided within the 72-hour window. Repeated expirations affect seller rating.',
-                        'msgread'     => 0,
-                        'type'        => 'seller',
-                        'created_at'  => now(),
-                        'updated_at'  => now(),
-                    ];
-                    DB::table('notifications')->insert($sellerNotification);
-                }
+                    $notificationService = app()->make(\App\Services\NotificationService::class);
+                    $notificationService->send(
+                        'seller',
+                        (int)$order->user_id,
+                        'Order #' . $order->orderno . ' Expired Due to Inactivity',
+                        'Order #' . $order->orderno . ' has been auto-cancelled because no response was provided within the 72-hour window. Repeated expirations affect your fulfillment rating.'
+                    );
 
-                // 5. If transaction was paid, record refund entry in wallet
-                $paidTxn = DB::table('transections')
-                    ->where('order_no', $order->orderno)
-                    ->where('status', 'success')
-                    ->first();
-
-                if ($paidTxn) {
-                    DB::table('wallet')->insert([
-                        'user_id'       => $order->user_id,
-                        'order_id'      => $order->id,
-                        'orderno'       => $order->orderno,
-                        'value'         => $order->grandtotal,
-                        'commission'    => 0,
-                        'refundtobuyer' => $order->grandtotal,
-                        'debit'         => 0,
-                        'credit'        => 0,
-                        'balance'       => 0,
-                        'type'          => 'refund',
-                        'action'        => 'refund',
-                        'addby'         => 'system',
-                        'msg'           => 'Auto-refund for expired order #' . $order->orderno,
-                        'created_at'    => now(),
-                        'updated_at'    => now(),
-                    ]);
+                    // Update Company Rejection Rate Metric
+                    $company = Company::where('user_id', $order->user_id)->first();
+                    if ($company) {
+                        $totalRec = (int)($company->total_orders_received ?? 0) + 1;
+                        $totalRej = (int)($company->total_orders_rejected ?? 0) + 1;
+                        $rejRate = ($totalRej / max(1, $totalRec)) * 100;
+                        $company->update([
+                            'total_orders_received' => $totalRec,
+                            'total_orders_rejected' => $totalRej,
+                            'rejection_rate'        => round($rejRate, 2),
+                        ]);
+                    }
                 }
 
                 $expiredCount++;

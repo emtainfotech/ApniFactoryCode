@@ -119,6 +119,27 @@ Route::get('seller/paint-pricing/audit/{id}', [PaintPricingController::class, 'a
   Route::get('adminapppages',[PageController::class,"pageslist_forappview"]);
   Route::get('helpnoforapp',[PageController::class,"helpnoforapp"]);
   Route::post('gstverification', [CustomerController::class, "verifyGST"]);
+  
+  // Payment Webhooks & Automated Refund Hooks
+  Route::post('payment/webhook', function (Request $request) {
+      $refundService = app()->make(\App\Services\PaymentRefundService::class);
+      return response()->json($refundService->handleWebhook($request->all(), $request->header('X-Razorpay-Signature')));
+  });
+
+  // Mobile Device FCM Token Registration
+  Route::post('customer/update-fcm-token', function (Request $request) {
+      $request->validate(['customer_id' => 'required', 'token' => 'required']);
+      $notificationService = app()->make(\App\Services\NotificationService::class);
+      $updated = $notificationService->updateDeviceToken('customer', (int)$request->customer_id, (string)$request->token);
+      return response()->json(['status' => $updated, 'message' => $updated ? 'FCM token updated' : 'Customer not found']);
+  });
+
+  // Alternative Sellers Direct REST Endpoint
+  Route::get('customer/orders/{id}/alternative-sellers', function ($id) {
+      $altService = app()->make(\App\Services\AlternativeSellerService::class);
+      $sellers = $altService->getAlternativeSellers((int)$id, 3);
+      return response()->json(['status' => true, 'count' => count($sellers), 'data' => $sellers]);
+  });
  
  
  
