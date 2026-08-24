@@ -8,6 +8,8 @@ use DB;
 use App\Models\CustomerAddress;
 use Google\Client;
 use App\Traits\WhatsappTraits;
+use Illuminate\Support\Facades\Hash;
+
 class CustomerController extends Controller
 {
     use WhatsappTraits;
@@ -19,15 +21,16 @@ class CustomerController extends Controller
      */
      public function verifyGST(Request $request)
     { 
-        $crtnewob = new Jwt();
-        $randno = rand('100','9999999'); 
-        $gst = $_POST['gst'];  //request->get("gst")
+        $gst = $request->input('gst') ?? ($_POST['gst'] ?? '');
+        if (empty($gst)) {
+            return response()->json(["status" => false, "code" => 400, "msg" => "GST number is required", "data" => []], 400);
+        }
         $array = $this->verifyGST_trait($gst);
         if($array["status"]==true){
-                                        return json_encode(["status"=>true,"code"=>100,"msg"=>"Successfully Verified","data"=>$array]); 
-                                    }else{
-                                        return json_encode(["status"=>false,"code"=>500,"msg"=>"Not Verified","data"=>$array]); 
-                                    }
+            return response()->json(["status"=>true,"code"=>100,"msg"=>"Successfully Verified","data"=>$array]); 
+        }else{
+            return response()->json(["status"=>false,"code"=>500,"msg"=>"Not Verified","data"=>$array]); 
+        }
                                     /*{
     "status": true,
     "code": 100,
@@ -273,87 +276,113 @@ $data = [
             curl_close($curl);
 } */
      public function verifyotp(Request $request){ 
-        $memberid =  $request['emailmobile'];
-        $otp =  $request['otp'];
-        $rmn = array();
-         $tblotp = DB::table('tbl_otp')->where('otpon',$memberid)->first();
-         if($tblotp->otp==$otp){  return json_encode(["status"=>true,"code"=>100,"msg"=>"Successfully Match","data"=>$tblotp]);}
-         else{ return json_encode(["status"=>false,"code"=>500,"msg"=>"otp Not Match","data"=>$tblotp]);}
-        // $rmn = Customer::where('email',$memberid)->orWhere('mobile',$memberid)->first();
-        // if(empty($rmn)){
-        //      return response()->json(["status"=>false,"code"=>500,"msg"=>"User Not Exist","data"=>json_decode('{}')]);
-        // }else{
-        //     if($otp==$rmn->otp){
-        //         Customer::where('id',$rmn->id)->update(["lastlogin"=>date('Y-m-d H:i:s')]);
-        //         return json_encode(["status"=>true,"code"=>100,"msg"=>"Successfully Login","data"=>$rmn]);
-        //     }else{
-        //      return json_encode(["status"=>false,"code"=>500,"msg"=>"otp Not Match","data"=>$rmn]);
-        //     }
-        // }
-       
+        $memberid = $request->input('emailmobile');
+        $otp = $request->input('otp');
+
+        if (empty($memberid) || empty($otp)) {
+            return response()->json(["status" => false, "code" => 400, "msg" => "Mobile/Email and OTP are required", "data" => null], 400);
+        }
+
+        $tblotp = DB::table('tbl_otp')->where('otpon', $memberid)->first();
+        if (!$tblotp) {
+            return response()->json(["status" => false, "code" => 404, "msg" => "No OTP requested for this mobile/email", "data" => null], 404);
+        }
+
+        if ($tblotp->otp == $otp) {
+            return response()->json(["status" => true, "code" => 100, "msg" => "Successfully Match", "data" => $tblotp]);
+        } else {
+            return response()->json(["status" => false, "code" => 500, "msg" => "OTP Does Not Match", "data" => $tblotp]);
+        }
      }  
+
      public function resetpassword(Request $request){ 
-        $memberid =  $request['emailmobile'];
-        $password =  $request['password'];
-        $rmn = array();
-        $rmn = Customer::where('email',$memberid)->orWhere('mobile',$memberid)->first();
-        if(empty($rmn)){
-             return response()->json(["status"=>false,"code"=>500,"msg"=>"User Not Exist","data"=>json_decode('{}')]);
-        }else{
-                Customer::where('id',$rmn->id)->update(["password"=>$password,"lastlogin"=>date('Y-m-d H:i:s')]);
-                 $rmn = Customer::where('id',$memberid)->first();
-                return json_encode(["status"=>true,"code"=>100,"msg"=>"Successfully Updated","data"=>$rmn]);
+        $memberid = $request->input('emailmobile');
+        $password = $request->input('password');
+
+        if (empty($memberid) || empty($password)) {
+            return response()->json(["status" => false, "code" => 400, "msg" => "Email/Mobile and new password are required", "data" => null], 400);
+        }
+
+        $rmn = Customer::where('email', $memberid)->orWhere('mobile', $memberid)->first();
+        if (empty($rmn)) {
+            return response()->json(["status" => false, "code" => 500, "msg" => "User Not Exist", "data" => json_decode('{}')]);
+        } else {
+            $hashedPassword = Hash::make($password);
+            Customer::where('id', $rmn->id)->update([
+                "password"  => $hashedPassword,
+                "lastlogin" => date('Y-m-d H:i:s')
+            ]);
+            $updatedCustomer = Customer::where('id', $rmn->id)->first();
+            return response()->json(["status" => true, "code" => 100, "msg" => "Successfully Updated", "data" => $updatedCustomer]);
         }
      }
+
      public function login(Request $request){ 
-        $memberid =  $request['email'];
-        $password =  $request['password'];
-        $deviceid =  $request['deviceid'];
-        $rmn = array();
-        $rmn = Customer::where('email',$memberid)->orwhere('mobile',$memberid)->first();
-        if(empty($rmn)){
-             return response()->json(["status"=>false,"code"=>500,"msg"=>"User Not Exist","data"=>json_decode('{}')]);
-        }else{
-            if($rmn->regby=='app'){
-            if($password==$rmn->password){
-                Customer::where('email',$memberid)->orwhere('mobile',$memberid)->update(["lastlogin"=>date('Y-m-d H:i:s'),"firebaseid"=>$deviceid]);
-                  $add = CustomerAddress::where('customer_id',$rmn->id)->first();
-                  if(!empty($add)){ $rmn['address'] = $add; }else{ $rmn['address'] = array();}
-                return response()->json(["status"=>true,"code"=>100,"msg"=>"Successfully Login","data"=>$rmn]);
-            }else{
-             return response()->json(["status"=>false,"code"=>500,"msg"=>"Password Not Match","data"=>json_decode('{}')]);
-            }
-            }else{ return response()->json(["status"=>true,"code"=>100,"msg"=>"Successfully Login","data"=>$rmn]);}
-       
+        $memberid = $request->input('email');
+        $password = $request->input('password');
+        $deviceid = $request->input('deviceid', '');
+
+        if (empty($memberid) || empty($password)) {
+            return response()->json(["status" => false, "code" => 400, "msg" => "Email/Mobile and Password are required", "data" => json_decode('{}')], 400);
+        }
+
+        $rmn = Customer::where('email', $memberid)->orWhere('mobile', $memberid)->first();
+        if (empty($rmn)) {
+            return response()->json(["status" => false, "code" => 500, "msg" => "User Not Exist", "data" => json_decode('{}')]);
+        }
+
+        // Verify password using secure Bcrypt hash OR legacy plaintext fallback (with auto-upgrade)
+        $passwordMatches = Hash::check($password, $rmn->password);
+        if (!$passwordMatches && $password === $rmn->password) {
+            // Legacy plain-text match: upgrade to Bcrypt hash immediately
+            $rmn->password = Hash::make($password);
+            $rmn->save();
+            $passwordMatches = true;
+        }
+
+        if ($passwordMatches) {
+            Customer::where('id', $rmn->id)->update([
+                "lastlogin" => date('Y-m-d H:i:s'),
+                "deviceid"  => $deviceid
+            ]);
+            $add = CustomerAddress::where('customer_id', $rmn->id)->first();
+            $rmn['address'] = !empty($add) ? $add : (object)[];
+            return response()->json(["status" => true, "code" => 100, "msg" => "Successfully Login", "data" => $rmn]);
+        } else {
+            return response()->json(["status" => false, "code" => 500, "msg" => "Password Not Match", "data" => json_decode('{}')]);
         }
      }
+
      public function register(Request $request){ 
-        $name =  $request['name'];
-        $mobile =  $request['mobile'];
-        $regby =  $request['regby'];
-        $email =  $request['email'];
-        $password =  $request['password'];
-        $whatsappno =  '0';///$request['whatsappno'];
-        $gstorpan =  '';//$request['gstorpan'];
-        $rmn = Customer::where('email',$email)->orWhere("mobile",$mobile)->first();
-        if(empty($rmn)){
-            $data = array(
-                        "email"=>$email,
-                        "mobile"=>$mobile,
-                        "regby"=>$regby,
-                        "name"=>$name,
-                        "password"=>$password,
-                        "whatsappno"=>$whatsappno,
-                        "gstorpan"=>$gstorpan
-                    );
-                Customer::insert($data);
-                $rmn = Customer::where('email',$email)->Where("mobile",$mobile)->first();
-               return response()->json(["status"=>true,"code"=>100,"msg"=>"Successfully Register","data"=>$rmn]);
-            
-        }else{
-             return response()->json(["status"=>false,"code"=>500,"msg"=>"User Already Exist","data"=>$rmn]);
+        $name     = $request->input('name');
+        $mobile   = $request->input('mobile');
+        $regby    = $request->input('regby', 'app');
+        $email    = $request->input('email');
+        $password = $request->input('password');
+
+        if (empty($email) || empty($mobile) || empty($password)) {
+            return response()->json(["status" => false, "code" => 400, "msg" => "Name, Mobile, Email, and Password are required", "data" => null], 400);
         }
-       
+
+        $rmn = Customer::where('email', $email)->orWhere("mobile", $mobile)->first();
+        if (empty($rmn)) {
+            $data = [
+                "email"      => $email,
+                "mobile"     => $mobile,
+                "regby"      => $regby,
+                "name"       => $name,
+                "password"   => Hash::make($password),
+                "status"     => 'active',
+                "type"       => 'user',
+                "created_at" => now(),
+                "updated_at" => now(),
+            ];
+            $customerId = Customer::insertGetId($data);
+            $newCustomer = Customer::find($customerId);
+            return response()->json(["status" => true, "code" => 100, "msg" => "Successfully Register", "data" => $newCustomer]);
+        } else {
+            return response()->json(["status" => false, "code" => 500, "msg" => "User Already Exist", "data" => $rmn]);
+        }
      }
     public function index()
     {

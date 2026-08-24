@@ -149,7 +149,8 @@ class CompanyController extends Controller
     public function update(Request $request, Company $company)
     {
         if($request->action=='minordervalue'){
-                $up = Company::where("user_id",Auth::user()->id)->update(["minordervalue"=>$request->minvalue]);
+            Company::where("user_id", Auth::user()->id)->update(["minordervalue" => $request->minvalue]);
+            return redirect()->back()->withErrors(['Minimum order value updated successfully!']);
         }
         if($request->action=='passwordupdate'){
              $oldpassword =  $request->currentpassword;

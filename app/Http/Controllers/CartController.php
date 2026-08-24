@@ -126,60 +126,62 @@ class CartController extends Controller
                         "productname"=>$prod->name
                     )
                 ); 
-             foreach($reqdata['attributes'] as $atrbty){
-                         $totalprice=0;
-                 $attributedetail = ProductAttributes::where("id",$atrbty['id'])->first();
-                 $price = $attributedetail->price;
-                 $fndpcs = BoxPacking::where("id",$attributedetail->quantity)->first();
-                 $pcs = $fndpcs->pcs;
-                 $unitprice = $price*$pcs;
-                 $totalprice = $unitprice*$atrbty['qty'];
-                 $tot = $totalprice*$prod->tax;
-                 $cartattribt = array(
-                                        "customer_id"=>$userid,
-                                        "cart_id"=>$cartid,
-                                        "product_attributes_id"=>$atrbty['id'],
-                                        "qty"=>$atrbty['qty'],
-                                        "boxpcs"=>$pcs,
-                                        "unitprice"=>$unitprice,
-                                        "totalprice"=>$totalprice,
-                                        "prprice"=>$price,
-                                        "tax"=>$prod->tax,
-                                        "taxamount"=>$tot/100
-                                     );
-                DB::table("cartattribute")->insert($cartattribt);                   
-             }
-             $granttotal = DB::table("cartattribute")->where("customer_id",$userid)->sum('totalprice');
-             $cnt = DB::table("cart")->where("customer_id",$userid)->count('id');
-         return response()->json(["status"=>true,"code"=>100,"msg"=>"Added to Cart","grandtotal"=>floatval($granttotal),"counter"=>$cnt]);
-         }else{
-             ////product already h but attribute new aa rha h tb
-             $cartid = $check->id;
               foreach($reqdata['attributes'] as $atrbty){
-                  $atid = $atrbty['id'];
-                  $checkattri = DB::table("cartattribute")->where("product_attributes_id",$atid)->where("customer_id",$userid)->first();
-                     if(empty($checkattri)){
-                         $totalprice=0;
-                          $attributedetail = ProductAttributes::where("id",$atrbty['id'])->first();
-                             $price = $attributedetail->price;
-                             $fndpcs = BoxPacking::where("id",$attributedetail->quantity)->first();
-                             $pcs = $fndpcs->pcs;
-                             $unitprice = $price*$pcs;
-                             $totalprice = $unitprice*$atrbty['qty'];
-                                $tot = $totalprice*$prod->tax;
-                             $cartattribt = array(
-                                                    "customer_id"=>$userid,
-                                                    "cart_id"=>$cartid,
-                                                    "product_attributes_id"=>$atrbty['id'],
-                                                    "qty"=>$atrbty['qty'],
-                                                    "boxpcs"=>$pcs,
-                                                    "unitprice"=>$unitprice,
-                                                    "totalprice"=>$totalprice,
-                                                    "prprice"=>$price,
-                                                    "tax"=>$prod->tax,
-                                                    "taxamount"=>$tot/100 
-                                                 );
-                            DB::table("cartattribute")->insert($cartattribt);   
+                  $totalprice=0;
+                  $attributedetail = ProductAttributes::where("id",$atrbty['id'])->first();
+                  if(!$attributedetail) continue;
+                  $price = $attributedetail->price;
+                  $fndpcs = BoxPacking::where("id",$attributedetail->quantity)->first();
+                  $pcs = $fndpcs ? (int)$fndpcs->pcs : 1;
+                  $unitprice = $price*$pcs;
+                  $totalprice = $unitprice*$atrbty['qty'];
+                  $tot = $totalprice*($prod ? $prod->tax : 0);
+                  $cartattribt = array(
+                                         "customer_id"=>$userid,
+                                         "cart_id"=>$cartid,
+                                         "product_attributes_id"=>$atrbty['id'],
+                                         "qty"=>$atrbty['qty'],
+                                         "boxpcs"=>$pcs,
+                                         "unitprice"=>$unitprice,
+                                         "totalprice"=>$totalprice,
+                                         "prprice"=>$price,
+                                         "tax"=>$prod ? $prod->tax : 0,
+                                         "taxamount"=>$tot/100
+                                      );
+                 DB::table("cartattribute")->insert($cartattribt);                   
+              }
+              $granttotal = DB::table("cartattribute")->where("customer_id",$userid)->sum('totalprice');
+              $cnt = DB::table("cart")->where("customer_id",$userid)->count('id');
+          return response()->json(["status"=>true,"code"=>100,"msg"=>"Added to Cart","grandtotal"=>floatval($granttotal),"counter"=>$cnt]);
+          }else{
+              ////product already h but attribute new aa rha h tb
+              $cartid = $check->id;
+               foreach($reqdata['attributes'] as $atrbty){
+                   $atid = $atrbty['id'];
+                   $checkattri = DB::table("cartattribute")->where("product_attributes_id",$atid)->where("customer_id",$userid)->first();
+                      if(empty($checkattri)){
+                          $totalprice=0;
+                           $attributedetail = ProductAttributes::where("id",$atrbty['id'])->first();
+                           if(!$attributedetail) continue;
+                              $price = $attributedetail->price;
+                              $fndpcs = BoxPacking::where("id",$attributedetail->quantity)->first();
+                              $pcs = $fndpcs ? (int)$fndpcs->pcs : 1;
+                              $unitprice = $price*$pcs;
+                              $totalprice = $unitprice*$atrbty['qty'];
+                              $tot = $totalprice*($prod ? $prod->tax : 0);
+                              $cartattribt = array(
+                                                     "customer_id"=>$userid,
+                                                     "cart_id"=>$cartid,
+                                                     "product_attributes_id"=>$atrbty['id'],
+                                                     "qty"=>$atrbty['qty'],
+                                                     "boxpcs"=>$pcs,
+                                                     "unitprice"=>$unitprice,
+                                                     "totalprice"=>$totalprice,
+                                                     "prprice"=>$price,
+                                                     "tax"=>$prod ? $prod->tax : 0,
+                                                     "taxamount"=>$tot/100 
+                                                  );
+                             DB::table("cartattribute")->insert($cartattribt);   
                         $granttotal = DB::table("cartattribute")->where("customer_id",$userid)->sum('totalprice');
                         $cnt = DB::table("cart")->where("customer_id",$userid)->count('id');
                         return response()->json(["status"=>true,"code"=>100,"msg"=>"Added to Cart","grandtotal"=>floatval($granttotal),"counter"=>$cnt]);     
@@ -219,11 +221,11 @@ class CartController extends Controller
                         $totalqty =  $crtatrbt->qty * $crtatrbt->boxpcs;
                         $paid = $crtatrbt->product_attributes_id;
                         $attributedetail = ProductAttributes::where("id",$paid)->first();
-                         $fndpcs = BoxPacking::where("id",$attributedetail->quantity)->first();
-                         $attr["boxpacking"] = $fndpcs->name;
-                         $fndclr = ShadeCard::where("id",$attributedetail->color)->first();
-                         $attr["color"] = $fndclr->name;
-                         $attr["totalprice"] = $crtatrbt->totalprice;
+                        $fndpcs = $attributedetail ? BoxPacking::where("id",$attributedetail->quantity)->first() : null;
+                        $attr["boxpacking"] = $fndpcs ? $fndpcs->name : ($attributedetail->quantity ?? '1 Unit');
+                        $fndclr = $attributedetail ? ShadeCard::where("id",$attributedetail->color)->first() : null;
+                        $attr["color"] = $fndclr ? $fndclr->name : ($attributedetail->color ?? 'Standard');
+                        $attr["totalprice"] = $crtatrbt->totalprice;
                          $attr["qty"] = $crtatrbt->qty;
                          $attr["attributeid"] = $crtatrbt->id;
                          $attr["prprice"] = $crtatrbt->prprice;

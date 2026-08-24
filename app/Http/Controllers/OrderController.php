@@ -76,15 +76,37 @@ class OrderController extends Controller
           $sendnotification = $this->sendnotification($tokenid,'order_transectionsuccess',$order_id);
           
             $cmpmoblie = Company::where("user_id",$sellerid)->first();
-            $mobile = $cmpmoblie->mobile;
-          $sendwhatsapp_toseller = $this->sendtosellerthatorderreceived($mobile,$order_id,$cmpmoblie->name);
-          $body = "New Order #'.$order_id.' Received. Please Check The Details in Order Tab.";
-            $savenotification = array("customer_id"=>$sellerid,"title"=>"New Order #'.$order_id.' Received","body"=>$body,"msgread"=>0);
+            $mobile = $cmpmoblie ? $cmpmoblie->mobile : '';
+            if ($mobile) {
+                try { $this->sendtosellerthatorderreceived($mobile,$order_id,$cmpmoblie->name); } catch (\Throwable $e) {}
+            }
+            $body = "New Order #{$order_id} Received. Please Check The Details in Order Tab.";
+            $savenotification = [
+                "user_id"     => $sellerid,
+                "customer_id" => $sellerid,
+                "title"       => "New Order #{$order_id} Received",
+                "msg"         => $body,
+                "msgread"     => 0,
+                "type"        => "seller",
+                "created_at"  => now(),
+                "updated_at"  => now()
+            ];
             DB::table("notifications")->insert($savenotification); 
-          $buyermobile = $token->mobile;
-          $sendwhatsapp_tobuyer = $this->sendtobuyerthatorderstatuschangedororderplaced($phone, $buyermobile,$order_id,'Thank You');
-          $bodybuy = "Your Order #'.$order_id.' Successfully Placed. Please Check The Details in Order History.";
-            $savenotificationbuy = array("customer_id"=>$token->id,"title"=>"Your Order #'.$order_id.' Received","body"=>$bodybuy,"msgread"=>0);
+            
+            $buyermobile = $token ? $token->mobile : '';
+            if ($buyermobile) {
+                try { $this->sendtobuyerthatorderstatuschangedororderplaced($buyermobile, $buyermobile, $order_id, 'Thank You'); } catch (\Throwable $e) {}
+            }
+            $bodybuy = "Your Order #{$order_id} Successfully Placed. Please Check The Details in Order History.";
+            $savenotificationbuy = [
+                "customer_id" => $token ? $token->id : $customerid,
+                "title"       => "Your Order #{$order_id} Received",
+                "msg"         => $bodybuy,
+                "msgread"     => 0,
+                "type"        => "customer",
+                "created_at"  => now(),
+                "updated_at"  => now()
+            ];
             DB::table("notifications")->insert($savenotificationbuy); 
         return response()->json(["message"=>"Transection Successfully!!! Please Wait..."]);
    }
@@ -202,34 +224,41 @@ class OrderController extends Controller
            $proinfogatewy ='';
            ////////////////for customer trasport address
            $addre = CustomerAddress::where("id",$addressid)->first();
-           $customerpincode = $addre->pincode;
            $address = json_encode($addre);
            
-            $orderno = rand(100000,9999999999);
-            ///////////////check daata of this customer is in cart or not
-            $cartdata = DB::table("cart")->where("customer_id",$customerid)->get();
-            if(empty($cartdata)){return response()->json(["status"=>false,"code"=>500,"msg"=>"Cart is Empty","data"=>""]);}
-           //////////////////////for tax type
-           $cmpy = DB::table("cart")->where("customer_id",$customerid)->first('company_id');
-           $cmpnypin = Company::where("id",$cmpy->company_id)->first();
-           $cmppin = $cmpnypin->pincode;$cmp_minmumordervalue = $cmpnypin->minordervalue;
-             if($cmppin==$customerpincode){$gsttype='csgst';}else{$gsttype='';}
-             ///////////////now start cart loop
+             $orderno = 'AF' . date('Ymd') . '-' . rand(1000, 9999);
+             ///////////////check data of this customer is in cart or not
+             $cartdata = DB::table("cart")->where("customer_id",$customerid)->get();
+             if($cartdata->isEmpty()){return response()->json(["status"=>false,"code"=>500,"msg"=>"Cart is Empty","data"=>""]);}
+            //////////////////////for tax type
+            $cmpy = DB::table("cart")->where("customer_id",$customerid)->first('company_id');
+            $cmpnypin = $cmpy ? Company::where("id",$cmpy->company_id)->first() : null;
+            $cmp_minmumordervalue = $cmpnypin ? $cmpnypin->minordervalue : 0;
+            
+            // State-based GST calculation (Intra-state: CGST+SGST, Inter-state: IGST)
+            $sellerState = strtolower(trim($cmpnypin->state ?? ''));
+            $custState = strtolower(trim($addre->state ?? ''));
+            if(!empty($sellerState) && !empty($custState) && $sellerState === $custState){
+                $gsttype = 'csgst';
+            }else{
+                $gsttype = '';
+            }
+              ///////////////now start cart loop
                    $adstr='';$admincouponamount=$sellercouponamount=$carttotal=0.0;
                    $str='';
             foreach($cartdata as $key=>$cart){
                  $producthsn = Product::where("id",$cart->product_id)->first();
-                 $phsn = $producthsn->hsncode;  $productname = $cart->productname;
+                 $phsn = $producthsn ? $producthsn->hsncode : '';  $productname = $cart->productname;
                  $cmpcatbrnd = Helper::getcompanyname($cart->company_id).'/'.Helper::getcatname($cart->category_id).'/'.Helper::getbrandname($cart->brand_id);
                  
                 $cartattribut = DB::table("cartattribute")->where("cart_id",$cart->id)->get();
                 $attributedata = array();
                 foreach($cartattribut as $crtatrbt){
                     $attributedetail = ProductAttributes::where("id",$crtatrbt->product_attributes_id)->first();
-                    $fndpcs = BoxPacking::where("id",$attributedetail->quantity)->first('name');
-                    $attr["boxpacking"] = $fndpcs->name;
-                    $fndclr = ShadeCard::where("id",$attributedetail->color)->first('name');
-                    $attr["color"] = $fndclr->name;
+                    $fndpcs = $attributedetail ? BoxPacking::where("id",$attributedetail->quantity)->first() : null;
+                    $attr["boxpacking"] = $fndpcs ? $fndpcs->name : ($attributedetail->quantity ?? '1 Unit');
+                    $fndclr = $attributedetail ? ShadeCard::where("id",$attributedetail->color)->first() : null;
+                    $attr["color"] = $fndclr ? $fndclr->name : ($attributedetail->color ?? 'Standard');
                     $attr["qty"] = $crtatrbt->qty;
                     $attr["boxpcs"] = $crtatrbt->boxpcs;
                     $attr["prprice"] = $crtatrbt->prprice;

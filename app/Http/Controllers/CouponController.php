@@ -85,16 +85,17 @@ class CouponController extends Controller
      * @param  \App\Models\Coupon  $coupon
      * @return \Illuminate\Http\Response
      */
-    public function show(Coupon $id)
+    public function show(Request $request, $id = null)
     {
         ///////////////used in App
-         $userid = $request->userid;
-         $couponid = $request->couponid;
-         $coupn = Coupon::where("id",$couponid)->first();
-          //////////////agr product ya brand pr h ya seller ka h to perticuler hr product pr apply hoga 
-          /////////admin pr h to grand total pr lagega
-         
-       return response()->json(["status"=>true,"code"=>100,"msg"=>"Successfully Show","data"=>$id]);
+        $couponId = $id instanceof Coupon ? $id->id : ($id ?: $request->input('couponid'));
+        $coupn = Coupon::find($couponId);
+
+        if (!$coupn) {
+            return response()->json(["status" => false, "code" => 404, "msg" => "Coupon not found", "data" => []], 404);
+        }
+
+        return response()->json(["status" => true, "code" => 100, "msg" => "Successfully Show", "data" => $coupn]);
     }
 
     /**

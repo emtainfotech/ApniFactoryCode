@@ -70,7 +70,7 @@ class BrandController extends Controller
         $data['categorylist'] = Category::where('status',1)->where('maincategory_id',$maincategory->maincategory_id)->orderby('name','asc')->get();
         $data['list'] = Brand::select('mid','user_id','name','image','status','adminresponse',DB::raw('GROUP_CONCAT(category_id) as categories'))
                     ->where('user_id',Auth::user()->id)
-                    ->groupBy('mid','user_id','name','image','status')->get();
+                    ->groupBy('mid','user_id','name','image','status','adminresponse')->get();
            // dd($data['list']);     
         return view('seller.brand',$data);
     }
