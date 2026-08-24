@@ -162,123 +162,163 @@
 							</li>
 							
 						
-							<li class="nav-item dropdown dropdown-large">
-								<a class="nav-link dropdown-toggle dropdown-toggle-nocaret position-relative" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false"> <span class="alert-count">7</span>
+							<!-- Real-Time Seller Notifications Dropdown -->
+							<li class="nav-item dropdown dropdown-large" id="sellerNotificationDropdownWrap">
+								<a class="nav-link dropdown-toggle dropdown-toggle-nocaret position-relative" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" id="notificationBellBtn">
+									<span class="alert-count bg-danger text-white rounded-pill font-monospace" id="sellerAlertCount" style="display: none; font-size: 0.72rem; min-width: 18px; text-align: center;">0</span>
 									<i class="fa-solid fa-bell"></i>
 								</a>
-								<div class="dropdown-menu dropdown-menu-end">
-									<a href="javascript:;">
-										<div class="msg-header">
-											<p class="msg-header-title">Notifications</p>
-											<p class="msg-header-clear ms-auto">Marks all as read</p>
-										</div>
-									</a>
-									<div class="header-notifications-list">
-										<a class="dropdown-item" href="javascript:;">
-											<div class="d-flex align-items-center">
-												<div class="notify bg-light-primary text-primary"><i class="bx bx-group"></i>
-												</div>
-												<div class="flex-grow-1">
-													<h6 class="msg-name">New Customers<span class="msg-time float-end">14 Sec
-												ago</span></h6>
-													<p class="msg-info">5 new user registered</p>
-												</div>
-											</div>
-										</a>
-										<a class="dropdown-item" href="javascript:;">
-											<div class="d-flex align-items-center">
-												<div class="notify bg-light-danger text-danger"><i class="bx bx-cart-alt"></i>
-												</div>
-												<div class="flex-grow-1">
-													<h6 class="msg-name">New Orders <span class="msg-time float-end">2 min
-												ago</span></h6>
-													<p class="msg-info">You have recived new orders</p>
-												</div>
-											</div>
-										</a>
-										<a class="dropdown-item" href="javascript:;">
-											<div class="d-flex align-items-center">
-												<div class="notify bg-light-success text-success"><i class="bx bx-file"></i>
-												</div>
-												<div class="flex-grow-1">
-													<h6 class="msg-name">24 PDF File<span class="msg-time float-end">19 min
-												ago</span></h6>
-													<p class="msg-info">The pdf files generated</p>
-												</div>
-											</div>
-										</a>
-										<a class="dropdown-item" href="javascript:;">
-											<div class="d-flex align-items-center">
-												<div class="notify bg-light-warning text-warning"><i class="bx bx-send"></i>
-												</div>
-												<div class="flex-grow-1">
-													<h6 class="msg-name">Time Response <span class="msg-time float-end">28 min
-												ago</span></h6>
-													<p class="msg-info">5.1 min avarage time response</p>
-												</div>
-											</div>
-										</a>
-										<a class="dropdown-item" href="javascript:;">
-											<div class="d-flex align-items-center">
-												<div class="notify bg-light-info text-info"><i class="bx bx-home-circle"></i>
-												</div>
-												<div class="flex-grow-1">
-													<h6 class="msg-name">New Product Approved <span
-												class="msg-time float-end">2 hrs ago</span></h6>
-													<p class="msg-info">Your new product has approved</p>
-												</div>
-											</div>
-										</a>
-										<a class="dropdown-item" href="javascript:;">
-											<div class="d-flex align-items-center">
-												<div class="notify bg-light-danger text-danger"><i class="bx bx-message-detail"></i>
-												</div>
-												<div class="flex-grow-1">
-													<h6 class="msg-name">New Comments <span class="msg-time float-end">4 hrs
-												ago</span></h6>
-													<p class="msg-info">New customer comments recived</p>
-												</div>
-											</div>
-										</a>
-										<a class="dropdown-item" href="javascript:;">
-											<div class="d-flex align-items-center">
-												<div class="notify bg-light-success text-success"><i class='bx bx-check-square'></i>
-												</div>
-												<div class="flex-grow-1">
-													<h6 class="msg-name">Your item is shipped <span class="msg-time float-end">5 hrs
-												ago</span></h6>
-													<p class="msg-info">Successfully shipped your item</p>
-												</div>
-											</div>
-										</a>
-										<a class="dropdown-item" href="javascript:;">
-											<div class="d-flex align-items-center">
-												<div class="notify bg-light-primary text-primary"><i class='bx bx-user-pin'></i>
-												</div>
-												<div class="flex-grow-1">
-													<h6 class="msg-name">New 24 authors<span class="msg-time float-end">1 day
-												ago</span></h6>
-													<p class="msg-info">24 new authors joined last week</p>
-												</div>
-											</div>
-										</a>
-										<a class="dropdown-item" href="javascript:;">
-											<div class="d-flex align-items-center">
-												<div class="notify bg-light-warning text-warning"><i class='bx bx-door-open'></i>
-												</div>
-												<div class="flex-grow-1">
-													<h6 class="msg-name">Defense Alerts <span class="msg-time float-end">2 weeks
-												ago</span></h6>
-													<p class="msg-info">45% less alerts last 4 weeks</p>
-												</div>
-											</div>
+								<div class="dropdown-menu dropdown-menu-end shadow-lg border-0" style="width: 380px; max-width: 95vw; border-radius: 12px;">
+									<div class="msg-header d-flex align-items-center py-2 px-3 border-bottom bg-light">
+										<h6 class="msg-header-title mb-0 font-weight-bold text-dark"><i class="fa-solid fa-bell me-1 text-warning"></i> Notifications</h6>
+										<a href="javascript:void(0);" class="msg-header-clear ms-auto text-primary small text-decoration-none font-weight-bold" id="btnMarkAllRead" onclick="markAllNotificationsRead(event)">
+											<i class="fa-solid fa-check-double me-1"></i>Mark all as read
 										</a>
 									</div>
-									<a href="javascript:;">
-										<div class="text-center msg-footer">View All Notifications</div>
+									<div class="header-notifications-list py-1" id="sellerNotificationsList" style="max-height: 380px; overflow-y: auto;">
+										<div class="text-center py-4 text-muted small" id="notificationsLoadingState">
+											<i class="fa-solid fa-spinner fa-spin me-1"></i> Loading notifications...
+										</div>
+									</div>
+									<a href="{{ route('seller.notifications.index') }}" class="text-decoration-none">
+										<div class="text-center msg-footer py-2 bg-light border-top font-weight-bold text-primary small">
+											View All Notifications <i class="fa-solid fa-arrow-right ms-1"></i>
+										</div>
 									</a>
 								</div>
 							</li>
+
+<script>
+let lastNotificationCount = null;
+
+function fetchLiveNotifications() {
+    fetch("{{ route('seller.notifications.live') }}", {
+        headers: {
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        const countBadge = document.getElementById('sellerAlertCount');
+        const listContainer = document.getElementById('sellerNotificationsList');
+        
+        if (!countBadge || !listContainer) return;
+
+        // Update badge count
+        if (data.count > 0) {
+            countBadge.textContent = data.count > 99 ? '99+' : data.count;
+            countBadge.style.display = 'inline-block';
+        } else {
+            countBadge.style.display = 'none';
+        }
+
+        // Check if new incoming notification arrived to trigger sound/alert
+        if (lastNotificationCount !== null && data.count > lastNotificationCount) {
+            showNotificationToast("New Order/Notification Received! Check your notifications.");
+        }
+        lastNotificationCount = data.count;
+
+        // Render notifications list
+        if (!data.notifications || data.notifications.length === 0) {
+            listContainer.innerHTML = `
+                <div class="text-center py-4 text-muted">
+                    <i class="fa-regular fa-bell-slash fs-3 d-block mb-2 text-secondary"></i>
+                    <p class="mb-0 small">No notifications found</p>
+                </div>
+            `;
+            return;
+        }
+
+        let html = '';
+        data.notifications.forEach(item => {
+            const unreadStyle = item.msgread === 0 ? 'background-color: #f0f7ff; border-left: 3px solid #0d6efd;' : '';
+            const unreadDot = item.msgread === 0 ? '<span class="badge bg-primary rounded-circle p-1 ms-1" style="width:7px;height:7px;display:inline-block;" title="Unread"></span>' : '';
+            
+            html += `
+                <a class="dropdown-item py-2 px-3 border-bottom" href="javascript:void(0);" onclick="handleNotificationClick(${item.id}, '${item.target_url}')" style="${unreadStyle} transition: background 0.2s;">
+                    <div class="d-flex align-items-start gap-2">
+                        <div class="notify ${item.bg_class} rounded-circle d-flex align-items-center justify-content-center mt-1" style="width: 36px; height: 36px; font-size: 1.1rem; flex-shrink: 0;">
+                            <i class="${item.icon}"></i>
+                        </div>
+                        <div class="flex-grow-1 overflow-hidden">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <h6 class="msg-name mb-0 text-truncate font-weight-bold" style="font-size: 0.85rem;">
+                                    ${item.title} ${unreadDot}
+                                </h6>
+                                <span class="msg-time text-muted ms-2" style="font-size: 0.72rem; white-space: nowrap;">${item.time_ago}</span>
+                            </div>
+                            <p class="msg-info mb-0 text-muted small text-truncate" style="font-size: 0.78rem;">${item.msg}</p>
+                        </div>
+                    </div>
+                </a>
+            `;
+        });
+
+        listContainer.innerHTML = html;
+    })
+    .catch(err => {
+        console.error("Live notifications fetch error:", err);
+    });
+}
+
+function handleNotificationClick(id, targetUrl) {
+    // Mark as read via AJAX then navigate
+    fetch(`/seller/notifications/mark-read/${id}`, {
+        method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .finally(() => {
+        window.location.href = targetUrl;
+    });
+}
+
+function markAllNotificationsRead(event) {
+    if (event) event.stopPropagation();
+    
+    fetch("{{ route('seller.notifications.mark-all-read') }}", {
+        method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(res => {
+        fetchLiveNotifications();
+    })
+    .catch(err => console.error("Error marking all read:", err));
+}
+
+function showNotificationToast(msg) {
+    const toast = document.createElement('div');
+    toast.className = 'position-fixed top-0 end-0 p-3';
+    toast.style.zIndex = '99999';
+    toast.innerHTML = `
+        <div class="toast show align-items-center text-white bg-primary border-0 shadow-lg" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="d-flex">
+                <div class="toast-body font-weight-bold">
+                    <i class="fa-solid fa-bell me-2"></i> ${msg}
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close" onclick="this.closest('.position-fixed').remove()"></button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 6000);
+}
+
+// Initial fetch on DOM load and recurring 10-second polling
+document.addEventListener('DOMContentLoaded', function() {
+    fetchLiveNotifications();
+    setInterval(fetchLiveNotifications, 10000);
+});
+</script>
 							<li class="nav-item dropdown dropdown-large drop-down-cmt">
 								<a class="nav-link "  href="javascript:;" role="button" data-bs-toggle="dropdown" aria-expanded="false"> <span class="alert-count">8</span>
 									<i class='bx bx-comment'></i>

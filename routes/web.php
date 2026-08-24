@@ -129,8 +129,13 @@ Route::delete('/product/filter/{id}', [ProductController::class, 'destroyFilter'
         Route::get('/seller/citynotallow', [CompanyController::class,"restrictedcity"]);
         Route::post('/seller/citynotallow', [CompanyController::class,"update_restrictedcity"]);
         
-         Route::post('/seller/profile/{id}', [CompanyController::class,"update"]);
+        Route::post('/seller/profile/{id}', [CompanyController::class,"update"]);
         
+        // Seller Real-Time Notifications
+        Route::get('/seller/notifications', [\App\Http\Controllers\NotificationController::class, 'indexSeller'])->name('seller.notifications.index');
+        Route::get('/seller/notifications/live', [\App\Http\Controllers\NotificationController::class, 'getSellerHeaderData'])->name('seller.notifications.live');
+        Route::post('/seller/notifications/mark-read/{id}', [\App\Http\Controllers\NotificationController::class, 'markSellerAsRead'])->name('seller.notifications.mark-read');
+        Route::post('/seller/notifications/mark-all-read', [\App\Http\Controllers\NotificationController::class, 'markAllSellerAsRead'])->name('seller.notifications.mark-all-read');
 
 });
 

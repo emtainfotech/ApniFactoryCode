@@ -112,8 +112,9 @@ Route::get('seller/paint-pricing/audit/{id}', [PaintPricingController::class, 'a
  Route::post('order/transection/failed', [OrderController::class, "transectionfailed_app"]);
  
  Route::post('branddetail',[AppController::class,"branddetail"]);
-  Route::get('notification',[AppController::class,"notificationlist"]);
-  Route::post('setreadnotification',[AppController::class,"notificationreadbyuser"]);
+  Route::get('notification',[\App\Http\Controllers\NotificationController::class, "customerNotificationList"]);
+  Route::post('notification',[\App\Http\Controllers\NotificationController::class, "customerNotificationList"]);
+  Route::post('setreadnotification',[\App\Http\Controllers\NotificationController::class, "customerMarkAsRead"]);
   Route::post('relatedproductincart',[CartController::class,"relatedproductlistincart"]);
   Route::get('adminapppages',[PageController::class,"pageslist_forappview"]);
   Route::get('helpnoforapp',[PageController::class,"helpnoforapp"]);

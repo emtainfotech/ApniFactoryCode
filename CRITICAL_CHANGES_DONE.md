@@ -68,7 +68,18 @@
 - **[MODIFY] `routes/api.php`**:
   - Registered `POST /api/order/alternatives` and `GET /api/order/{orderno}/alternatives`.
 
-### 5. Multi-Category & Multi-Seller Seeders
+### 5. Universal Real-Time Notification Engine
+- **[NEW] `app/Http/Controllers/NotificationController.php`**:
+  - `getSellerHeaderData()`: Returns dynamic unread count, relative timestamps (`diffForHumans`), formatted alert icons, and deep links.
+  - `markSellerAsRead($id)` & `markAllSellerAsRead()`: Instant AJAX actions that update database `msgread` flags and clear alert badges.
+  - `indexSeller()`: Full notification management center view with keyword search and unread filters.
+  - `customerNotificationList()` & `customerMarkAsRead()`: REST API endpoints for customer app notification feeds.
+- **[NEW] `resources/views/seller/notifications.blade.php`**:
+  - Dedicated Notifications Center with status metrics, filter tabs, search, and one-click actions.
+- **[MODIFY] `resources/views/sidebar.blade.php`**:
+  - Replaced hardcoded dummy notifications dropdown in the header with a live, real-time AJAX component with automated 10-second polling and toast alert notifications.
+
+### 6. Multi-Category & Multi-Seller Seeders
 - **[MODIFY] `database/seeders/DemoMultiCategoryProductSeeder.php`**:
   - Seeded 4 alternative vendor partner companies (`Apex Coatings & Paints Ltd`, `Surat Silk & Cotton Mills`, `MasterCraft Hardware Mart`, `Premier Garments & Apparels`) across Delhi, Gujarat, Maharashtra, and Karnataka.
 
@@ -76,16 +87,22 @@
 
 ## 🧪 Verification & Testing Results
 
-1. **Auto-Expiry Command Execution**:
+1. **Real-Time Notification Bell & Dropdown**:
+   - Verified live AJAX polling `/seller/notifications/live` renders database notifications with time-ago formatting.
+   - Tested "Mark all as read" button: clears unread badge and updates `msgread = 1` immediately without page refresh.
+2. **Customer Mobile Notification API**:
+   - Endpoint: `GET /api/notification?userid=2`
+   - Result: HTTP `200 OK` returning structured notifications with `unread_count`.
+3. **Auto-Expiry Command Execution**:
    - Command: `php artisan orders:auto-expire-pending`
    - Result: Automatically detected and expired overdue test order (`created_at > 72h`), updated status to `Cancelled`, and logged notification.
-2. **Alternative Sellers Recommendation API**:
+4. **Alternative Sellers Recommendation API**:
    - Endpoint: `GET /api/order/AF20260822-001/alternatives`
    - Result: HTTP `200 OK` returning 3 alternative sellers with ratings, locations, and sample items.
-3. **Admin Panel Status Badges & ViewOrder**:
+5. **Admin Panel Status Badges & ViewOrder**:
    - Verified `/admin/orders` table renders colored status badges.
    - Verified `/admin/orders/{id}` displays `"Order Details"` and rejection alert box.
-4. **Seller Portal Countdown & Modal**:
+6. **Seller Portal Countdown & Modal**:
    - Verified `/seller/dashboard` triggers unread orders popup when pending orders exist.
    - Verified `/seller/product/order` renders live countdown timers.
 
@@ -94,3 +111,4 @@
 ## 🚀 Git History & Next Steps
 - All code changes are committed and pushed to GitHub repository (`origin main`).
 - Local MariaDB and `artisan serve` services are active and ready for end-to-end testing.
+
