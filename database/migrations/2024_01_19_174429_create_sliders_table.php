@@ -15,9 +15,14 @@ class CreateSlidersTable extends Migration
     {
         Schema::create('sliders', function (Blueprint $table) {
             $table->id();
-            $table->string('title',100);
-            $table->string('image');
-            $table->enum('status',['Active', 'Deactive']);
+            $table->string('title',100)->nullable();
+            $table->string('image')->nullable();
+            $table->string('screen')->nullable();
+            $table->date('startdate')->nullable();
+            $table->date('enddate')->nullable();
+            $table->unsignedBigInteger('company_id')->nullable();
+            $table->integer('sequence')->nullable();
+            $table->enum('status',['Active', 'Deactive'])->default('Active');
             $table->timestamps();
         });
     }

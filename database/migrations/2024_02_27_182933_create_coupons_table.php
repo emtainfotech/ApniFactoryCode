@@ -16,13 +16,19 @@ class CreateCouponsTable extends Migration
         Schema::create('coupons', function (Blueprint $table) {
             $table->id();
             $table->string('code')->unique();
-            $table->string('name');
-            $table->string('title');
-            $table->string('description');
-            $table->string('type');
-            $table->string('amount');
-            $table->string('expiry');
-            $table->string('status');
+            $table->string('name')->nullable();
+            $table->string('title')->nullable();
+            $table->text('description')->nullable();
+            $table->string('type')->nullable();
+            $table->decimal('amount', 12, 2)->nullable();
+            $table->decimal('price', 12, 2)->nullable();
+            $table->string('expiry')->nullable();
+            $table->string('image')->nullable();
+            $table->string('couponon')->nullable();
+            $table->string('couponapplyon')->nullable();
+            $table->date('startdate')->nullable();
+            $table->unsignedBigInteger('user_id')->nullable();
+            $table->string('status')->default('Active');
             $table->timestamps();
         });
     }

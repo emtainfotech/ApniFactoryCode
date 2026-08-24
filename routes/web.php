@@ -16,6 +16,7 @@ use App\Http\Controllers\ProductAttributesController;
 use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\CustomerController;
+use App\Http\Controllers\PaintPricingController;
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -77,6 +78,14 @@ Route::delete('/product/filter/{id}', [ProductController::class, 'destroyFilter'
         Route::get('/seller/product/edit/{id}', [ProductController::class,"editview"])->name('product.edit');
         Route::post('/seller/product/edit/{id}', [ProductController::class,"update"]);
         Route::post('/seller/addproductattribute', [ProductAttributesController::class,"store"])->name('product.addproductattribute');
+        
+        // Paint Family Smart Pricing Routes
+        Route::get('/seller/paint-pricing', [PaintPricingController::class, 'index'])->name('seller.paint-pricing.index');
+        Route::get('/seller/paint-pricing/data/{id}', [PaintPricingController::class, 'getFamilyPricingData'])->name('seller.paint-pricing.data');
+        Route::post('/seller/paint-pricing/preview', [PaintPricingController::class, 'preview'])->name('seller.paint-pricing.preview');
+        Route::post('/seller/paint-pricing/apply', [PaintPricingController::class, 'apply'])->name('seller.paint-pricing.apply');
+        Route::post('/seller/paint-pricing/sku-override', [PaintPricingController::class, 'updateSingleSku'])->name('seller.paint-pricing.sku-override');
+        Route::get('/seller/paint-pricing/audit/{id}', [PaintPricingController::class, 'auditHistory'])->name('seller.paint-pricing.audit');
          
         Route::get('/seller/coupon', [CouponController::class,"index"]);
         Route::post('/seller/coupon', [CouponController::class,"store"]);

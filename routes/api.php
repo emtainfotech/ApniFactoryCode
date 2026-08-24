@@ -14,6 +14,7 @@ use App\Http\Controllers\CouponController;
 use App\Http\Controllers\ProductReviewsController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\SizeController;
+use App\Http\Controllers\PaintPricingController;
 
 /*
 |--------------------------------------------------------------------------
@@ -38,7 +39,14 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
  Route::post('updateprofile/{id}', [CustomerController::class, "update"]);
  Route::post('changepassword/{id}', [CustomerController::class, "changepassword"]);
  Route::get('viewprofile/{id}', [CustomerController::class, "show"]);
- Route::post('sendotp', [CustomerController::class, "sendotp"]);
+ Route::post('userprofile', [CustomerController::class, "userprofile"]);
+
+// Paint Family Smart Pricing APIs
+Route::get('seller/paint-families/{id}/pricing', [PaintPricingController::class, 'getFamilyPricingData']);
+Route::post('seller/paint-pricing/preview', [PaintPricingController::class, 'preview']);
+Route::post('seller/paint-pricing/apply', [PaintPricingController::class, 'apply']);
+Route::post('seller/paint-pricing/sku-override', [PaintPricingController::class, 'updateSingleSku']);
+Route::get('seller/paint-pricing/audit/{id}', [PaintPricingController::class, 'auditHistory']);
  Route::post('verifyotp', [CustomerController::class, "verifyotp"]);
  Route::post('resetpassword', [CustomerController::class, "resetpassword"]);
  Route::get('statecitypincode', [AppController::class, "statecitypincode"]);

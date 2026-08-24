@@ -15,11 +15,16 @@ class CreateCategoriesTable extends Migration
     {
         Schema::create('categories', function (Blueprint $table) {
             $table->id();
-            $table->integer('mid');
-            $table->string('name',100)->unique();
-            $table->string('title');
-            $table->string('image');
-            $table->enum('status',['Active', 'Deactive']);
+            $table->integer('mid')->nullable();
+            $table->integer('maincategory_id')->nullable();
+            $table->string('name', 100)->unique();
+            $table->string('title')->nullable();
+            $table->string('image')->nullable();
+            $table->string('addby')->nullable();
+            $table->text('adminmsg')->nullable();
+            $table->string('adminstatus')->nullable();
+            $table->integer('sequence')->nullable();
+            $table->enum('status', ['Active', 'Deactive'])->default('Active');
             $table->timestamps();
         });
     }

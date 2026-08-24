@@ -15,11 +15,12 @@ class CreateTicketsTable extends Migration
     {
         Schema::create('tickets', function (Blueprint $table) {
             $table->id();
-            $table->string('topic');
-            $table->string('msg');
-            $table->string('adminmsg');
-            $table->string('addby');
-            $table->enum('status',['Pending', 'Completed','Reject']);
+            $table->string('topic')->nullable();
+            $table->text('msg')->nullable();
+            $table->text('adminmsg')->nullable();
+            $table->string('addby')->nullable();
+            $table->unsignedBigInteger('user_id')->nullable();
+            $table->enum('status',['Pending', 'Completed','Reject'])->default('Pending');
             $table->timestamps();
         });
     }

@@ -15,11 +15,17 @@ class CreateAdvertisementsTable extends Migration
     {
         Schema::create('advertisements', function (Blueprint $table) {
             $table->id();
-            $table->string('name');
-            $table->string('content');
-            $table->string('file');
-            $table->string('addby');
-            $table->enum('status',['Active', 'Deactive']);
+            $table->string('name')->nullable();
+            $table->text('content')->nullable();
+            $table->string('file')->nullable();
+            $table->string('addby')->nullable();
+            $table->unsignedBigInteger('user_id')->nullable();
+            $table->text('adminmsg')->nullable();
+            $table->string('screen')->nullable();
+            $table->date('startdate')->nullable();
+            $table->date('enddate')->nullable();
+            $table->integer('sequence')->nullable();
+            $table->enum('status',['Active', 'Deactive'])->default('Active');
             $table->timestamps();
         });
     }

@@ -25,9 +25,14 @@
 					</div>
 				</div>
 				<!--end breadcrumb-->
-               <div class="card">
+                <div class="card">
 				  <div class="card-body p-4">
-					  <h5 class="card-title">Edit Product</h5>
+					  <div class="d-flex justify-content-between align-items-center mb-3">
+						  <h5 class="card-title mb-0">Edit Product</h5>
+						  <a href="{{ route('seller.paint-pricing.index', ['product_id' => $detail->id]) }}" class="btn btn-outline-primary shadow-sm">
+							  <i class="fa-solid fa-paint-roller me-2"></i> Open Smart Paint Pricing
+						  </a>
+					  </div>
 					  <hr/>
                        <div class="form-body mt-4">
 					    <div class="row">

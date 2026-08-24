@@ -4,7 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-class CreateProductReviewsTable extends Migration
+class CreateCartTable extends Migration
 {
     /**
      * Run the migrations.
@@ -13,13 +13,16 @@ class CreateProductReviewsTable extends Migration
      */
     public function up()
     {
-        Schema::create('product_reviews', function (Blueprint $table) {
+        Schema::create('cart', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('product_id')->nullable();
             $table->unsignedBigInteger('customer_id')->nullable();
-            $table->integer('rating')->default(5);
-            $table->text('review')->nullable();
-            $table->enum('status',['Active', 'Deactive'])->default('Active');
+            $table->unsignedBigInteger('company_id')->nullable();
+            $table->unsignedBigInteger('brand_id')->nullable();
+            $table->unsignedBigInteger('category_id')->nullable();
+            $table->string('productname')->nullable();
+            $table->unsignedBigInteger('addressid')->nullable();
+            $table->text('couponbyadmin')->nullable();
             $table->timestamps();
         });
     }
@@ -31,6 +34,6 @@ class CreateProductReviewsTable extends Migration
      */
     public function down()
     {
-        Schema::dropIfExists('product_reviews');
+        Schema::dropIfExists('cart');
     }
 }

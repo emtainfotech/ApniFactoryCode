@@ -7,12 +7,18 @@ use Illuminate\Database\Seeder;
 class DatabaseSeeder extends Seeder
 {
     /**
-     * Seed the application's database.
-     *
-     * @return void
+     * Seed the local development database with dummy data.
+     * NOTE: This does NOT touch production data.
      */
     public function run()
     {
-        // \App\Models\User::factory(10)->create();
+        $this->call([
+            AdminSeeder::class,
+            CategorySeeder::class,
+            CustomerSeeder::class,
+            ProductSeeder::class,
+            SampleDataSeeder::class,
+            DemoMultiCategoryProductSeeder::class,
+        ]);
     }
 }

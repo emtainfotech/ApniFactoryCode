@@ -15,8 +15,20 @@ class CreateCompaniesTable extends Migration
     {
         Schema::create('companies', function (Blueprint $table) {
             $table->id();
-            $table->string('name',100);
-            $table->enum('status',['Active', 'Deactive']);
+            $table->string('name',100)->nullable();
+            $table->unsignedBigInteger('user_id')->nullable();
+            $table->string('email')->nullable();
+            $table->string('mobile')->nullable();
+            $table->unsignedBigInteger('maincategory_id')->nullable();
+            $table->string('gst')->nullable();
+            $table->string('crn')->nullable();
+            $table->decimal('minordervalue', 12, 2)->nullable();
+            $table->string('photo')->nullable();
+            $table->string('city')->nullable();
+            $table->string('state')->nullable();
+            $table->string('pincode')->nullable();
+            $table->decimal('comission', 8, 2)->nullable();
+            $table->enum('status',['Active', 'Deactive'])->default('Active');
             $table->timestamps();
         });
     }

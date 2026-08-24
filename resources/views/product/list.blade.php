@@ -94,15 +94,13 @@
                                              <td>@if($lt->status==1) <b class="text-success">Active</b>@else <b class="text-danger">Deactive</b>@endif</td>
                                              <td>{{date("d-m-Y",strtotime($lt->created_at))}}</td>
                                              <td>
-                                                  <a class="btn btn-sm btn-icon btn-primary" href="{{ route('product.edit', $lt->id) }}">
-    <svg class="icon" data-bs-toggle="tooltip" data-bs-title="Edit" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-  <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
-  <path d="M7 7h-1a2 2 0 0 0 -2 2v9a2 2 0 0 0 2 2h9a2 2 0 0 0 2 -2v-1"></path>
-  <path d="M20.385 6.585a2.1 2.1 0 0 0 -2.97 -2.97l-8.415 8.385v3h3l8.385 -8.415z"></path>
-  <path d="M16 5l3 3"></path>
-</svg>            
-    <span class="sr-only">Edit</span>
-</a>
+                                                   <a class="btn btn-sm btn-icon btn-primary" href="{{ route('product.edit', $lt->id) }}" title="Edit Product">
+                                                        <i class="fa-solid fa-pen-to-square"></i>
+                                                        <span class="sr-only">Edit</span>
+                                                    </a>
+                                                    <a class="btn btn-sm btn-icon btn-info text-white" href="{{ route('seller.paint-pricing.index', ['product_id' => $lt->id]) }}" title="Smart Paint Pricing">
+                                                        <i class="fa-solid fa-paint-roller"></i>
+                                                    </a>
                                                  <form action="{{ route('product.delete', $lt->id) }}" method="POST"  onSubmit="return confirm('Are you sure to delete this record?')" style="display: inline-block;">
                                                       @csrf
                                                       @method("DELETE")

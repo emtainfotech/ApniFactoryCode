@@ -54,9 +54,7 @@ return [
     |
     */
 
-   
-    'asset_url' => 'https://panel.apnifactory.co.in/public',
-// 'asset_url' => public_path(),
+    'asset_url' => env('APP_ENV') === 'local' ? null : 'https://panel.apnifactory.co.in/public',
     /*
     |--------------------------------------------------------------------------
     | Livewire App URL

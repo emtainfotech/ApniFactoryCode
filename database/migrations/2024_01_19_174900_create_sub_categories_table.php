@@ -15,12 +15,14 @@ class CreateSubCategoriesTable extends Migration
     {
         Schema::create('sub_categories', function (Blueprint $table) {
             $table->id();
-            $table->integer('mid');
-            $table->integer('cid');
-            $table->string('name',100)->unique();
-            $table->string('title');
-            $table->string('image');
-            $table->enum('status',['Active', 'Deactive']);
+            $table->unsignedBigInteger('mid')->nullable();
+            $table->unsignedBigInteger('cid')->nullable();
+            $table->unsignedBigInteger('maincategory_id')->nullable();
+            $table->unsignedBigInteger('category_id')->nullable();
+            $table->string('name',100)->nullable();
+            $table->string('title')->nullable();
+            $table->string('image')->nullable();
+            $table->enum('status',['Active', 'Deactive'])->default('Active');
             $table->timestamps();
         });
     }

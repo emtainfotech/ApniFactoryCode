@@ -24,18 +24,18 @@ class Helper {
      if(empty($list)){return '';}else{return $data;}
  }
  public static function getmaincat(){
-     $list=MainCategory::where("status","1")->get();
+     $list=MainCategory::whereIn("status",["1", "Active", 1])->get();
      return $list;
  }
  public static function getsubcatfordropdown(){
      $mid = $_POST['mid'];
-     $list=Category::where("maincategory_id",$mid)->where("status","1")->get();
+     $list=Category::where("maincategory_id",$mid)->whereIn("status",["1", "Active", 1])->get();
      $listop = '<option value="">Select Category</option>';;
      foreach($list as $lt){ $listop .= '<option value="'.$lt->id.'">'.$lt->name.'</option>';}
      return json_encode($listop);
  }
  public static function getmaincatname($mid){
-     $list=MainCategory::where("id",$mid)->where("status","1")->first();
+     $list=MainCategory::where("id",$mid)->first();
      if(empty($list)){return '';}else{return $list->name;}
      
  }
@@ -44,27 +44,28 @@ class Helper {
      if(empty($list)){return '';}else{return $list->name;}
  }
   public static function getbrand(){
-     $list=Brand::where("user_id",Auth::user()->id)->where("status","1")->get();
+     $list=Brand::where("user_id",Auth::user()->id)->whereIn("status",["1", "Active", 1])->get();
      return $list;
  } 
  public static function getshadecardlistbycatforajax($catid){ 
     // $catid = $_REQUEST['catid'];
      $midd = Category::select("maincategory_id")->where("id",$catid)->first();
-     $mid = $midd->maincategory_id;$ids = [$mid, 0];
-     $list=ShadeCard::where("status","1")->where("category_id",$catid)->get();
+     $mid = $midd ? $midd->maincategory_id : 0;
+     $ids = [$mid, 0];
+     $list=ShadeCard::whereIn("status",["1", "Active", 1])->where("category_id",$catid)->get();
       $listop = '';
        $listop .= '<table id="" class="table table-striped table-bordered" style="width:100%">
                                         <tbody>
                                         <tr  class="table-sticky">
                                             <th></th>';
-                                            foreach(BoxPacking::where("status","1")->whereIN("maincategory_id",$ids)->orderby("maincategory_id", "desc")->get() as $bxp){
+                                            foreach(BoxPacking::whereIn("status",["1", "Active", 1])->whereIN("maincategory_id",$ids)->orderby("maincategory_id", "desc")->get() as $bxp){
                                             $listop .= '<th> <input class="form-check-input checkAll'.$bxp->id.'" onClick="checkallitsrow('.$bxp->id.')" type="checkbox" id="checkAll" name="attribu">  '.$bxp->name.' </th>';
                                             }
                                 $listop .= '</tr>';
       foreach($list as $gcr){
                               $listop .= '<tr  class="table-col-sticky">
                                             <th><span class="dot" style="background-color:'.$gcr->hexcode.'"></span>'.$gcr->name.'</th>';
-                                            foreach(BoxPacking::where("status","1")->whereIN("maincategory_id",$ids)->orderby("maincategory_id", "desc")->get() as $bxpg)
+                                            foreach(BoxPacking::whereIn("status",["1", "Active", 1])->whereIN("maincategory_id",$ids)->orderby("maincategory_id", "desc")->get() as $bxpg)
                                             {
                              $listop .= '<td>
                                                 <div class="form-check">
@@ -80,11 +81,11 @@ class Helper {
      return $listop;
  }
  public static function getcolors(){
-     $list = ShadeCard::where("status","1")->get();
+     $list = ShadeCard::whereIn("status",["1", "Active", 1])->get();
      return $list;
  }
  public static function getboxpacking(){
-     $list=BoxPacking::where("status","1")->get();
+     $list=BoxPacking::whereIn("status",["1", "Active", 1])->get();
      return $list;
  }
  public static function getcolorsnamebyid($id){
@@ -104,7 +105,7 @@ class Helper {
      if(empty($list)){return '';}else{return $list->name;}
  }
  public static function getbrandforajax(){
-     $list=Brand::where("user_id",Auth::user()->id)->where("status","1")->get();
+     $list=Brand::where("user_id",Auth::user()->id)->whereIn("status",["1", "Active", 1])->get();
      $listop = '';
      foreach($list as $lt){ 
          $catname = Helper::getcatname($lt->category_id);
@@ -116,7 +117,7 @@ class Helper {
      if(empty($list)){return '';}else{return $list->name;}
  }
  public static function getproductlistforajax(){
-     $list=Product::where("user_id",Auth::user()->id)->where("status","1")->get();
+     $list=Product::where("user_id",Auth::user()->id)->whereIn("status",["1", "Active", 1])->get();
      $listop = '';
      foreach($list as $lt){ 
          $catname = Helper::getcatname($lt->category_id);

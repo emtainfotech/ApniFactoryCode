@@ -15,14 +15,16 @@ class CreateBankDetailsTable extends Migration
     {
         Schema::create('bank_details', function (Blueprint $table) {
             $table->id();
-            $table->string('accountholder');
-            $table->string('accountno');
-            $table->string('bankname');
-            $table->string('branch');
-            $table->string('ifsc');
-            $table->enum('isprimary',['N', 'Y']);
-            $table->string('addby');
-            $table->enum('status',['Active', 'Deactive']);
+            $table->string('accountholder')->nullable();
+            $table->string('accountno')->nullable();
+            $table->string('bankname')->nullable();
+            $table->string('branch')->nullable();
+            $table->string('ifsc')->nullable();
+            $table->enum('isprimary',['N', 'Y'])->default('N');
+            $table->string('addby')->nullable();
+            $table->unsignedBigInteger('user_id')->nullable();
+            $table->unsignedBigInteger('company_id')->nullable();
+            $table->enum('status',['Active', 'Deactive'])->default('Active');
             $table->timestamps();
         });
     }

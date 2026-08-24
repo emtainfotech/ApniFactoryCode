@@ -60,24 +60,36 @@ class ProductController extends Controller
                     );
         $pid = Product::insertGetId($pary);
         
+        $pricingService = app(\App\Services\PaintPricingService::class);
+        $commissionRate = $pricingService->getEffectiveCommissionRate(Auth::id(), $pid);
+
         foreach($request->boxpacking as $key=>$bxpackg){
+            $enteredPrice = (float)($request->price[$key] ?? 0);
+            $packLitres = $pricingService->parsePackLitres($bxpackg);
+            
+            // Treat entered price as Seller Factory Base Price, calculate Customer Price with commission
+            $sellerPrice = $enteredPrice;
+            $customerPrice = round($sellerPrice * (1 + ($commissionRate / 100)), 2);
+
             $patbu = array(
-                            "product_id"=>$pid,
-                            "color"=>$request->color[$key],
-                            "quantity"=>$bxpackg,
-                            "oldprice"=>$request->price[$key],
-                            "price"=>$request->price[$key]
+                            "product_id"      => $pid,
+                            "color"           => $request->color[$key],
+                            "quantity"        => $bxpackg,
+                            "oldprice"        => $customerPrice,
+                            "seller_price"    => $sellerPrice,
+                            "commission_rate" => $commissionRate,
+                            "pack_litres"     => $packLitres,
+                            "price"           => $customerPrice
                         );
             ProductAttributes::insert($patbu);            
         }
         
-        // `products`(`id`, `product_id`, `mid`, `cid`, `sid`, `name`, `slug`, `title`, `image`, `capacity`, `description`, `multipleimages`, `status`, `created_at`, `updated_at`, `Brand`) `product_attributes`(`id`, `product_id`, `color`, `quantity`, `oldprice`, `price`, 
         return redirect('/seller/product')->withErrors(["Successfully Added"]);
   }
   public function list(Request $request){
         $data['title'] = 'Product';
-         $data['categorylist'] = Category::where('status',1)->orderby('name','asc')->get();
-         $data['Brandlist'] = Brand::where('user_id',Auth::user()->id)->where('status',1)->orderby('name','asc')->get();
+        $data['categorylist'] = Category::where(function($q){ $q->where('status', 'Active')->orWhere('status', '1')->orWhere('status', 1); })->orderby('name','asc')->get();
+        $data['Brandlist'] = Brand::where('user_id',Auth::user()->id)->where(function($q){ $q->where('status', 'Active')->orWhere('status', '1')->orWhere('status', 1); })->orderby('name','asc')->get();
         $query = Product::where('user_id',Auth::user()->id);
         if ($request->filled('Brand')) {    $query = $query->where("brand_id", $request->input('Brand'));           }
         if ($request->filled('srchcategory')) {    $query = $query->where("category_id", $request->input('srchcategory'));  }
@@ -115,78 +127,86 @@ class ProductController extends Controller
              $rmn = Product::where("id",$request->get('productid'))->first();
              $rmn['multipleimages'] = json_decode($rmn->multipleimages);
              $attribute = ProductAttributes::where("product_id",$request->get('productid'))->where("color",$request->get('colorid'))->get();
-             foreach($attribute as $atrbt){
-                  $color=ShadeCard::where("id",$atrbt->color)->first();
-                  $sbm['color']=$color->name;
-                  $quantity=BoxPacking::where("id",$atrbt->quantity)->first();
-                  $sbm['boxpacking']=$quantity->name;
-                  $sbm['quantity']=$quantity->pcs;
-                  $sbm['price']=$atrbt->price;
-                  $sbm['oldprice']=$atrbt->oldprice;
-                  $sbm['attributeid']=$atrbt->id;
-                  array_push($rt,$sbm);
-             }
-             $rmn['attributes'] = $rt;
-             /////////////////seller detail
-             $sellerdetail = Company::where("user_id",$rmn->user_id)->first();
-             $srh["name"] =  $sellerdetail->name;
-             $srh["email"] =  $sellerdetail->email;
-             $srh["mobile"] =  $sellerdetail->mobile;
-             $srh["city"] =  $sellerdetail->city;
-             $srh["photo"] =  $sellerdetail->photo;
-             $rmn['sellerdetail'] = $srh;
-             
-             ////////////////product reviews
-             $revary = $related = array();
-             $reviewlist = ProductReviews::where("product_id",$request->get('productid'))->where("status","1")->get();
-             foreach($reviewlist as $review){
-                 $custmr = Customer::where("id",$review->customer_id)->first();
-                 if(!empty($custmr)){
-                 $rw["customername"] = $custmr->name;
-                 $rw["customerimage"] = $custmr->image;
-                 $rw["review"] = $review->review;
-                 $rw["rating"] = $review->rating;
-                 $rw["date"] = $review->created_at; 
-                 array_push($revary,$rw);
-                 }
-             }
-             $rmn["reviewlist"] = $revary;
-             ///////////is customer cable to post review
-              $rmn["postreview"]=true;
-              $rmn["wishlist"]=false;
-               $wihl = DB::table("wishlist")->where("userid",$request->get('userid'))->where("productid",$request->get('productid'))->first();
-               if(!empty($wihl)){ $rmn["wishlist"]=true; }
-               ///////////related product/////
-              $relatedpr = Product::where("user_id",$rmn->user_id)->where("id","!=",$rmn->id)->orderby("id","desc")->limit(5)->get();
-              foreach($relatedpr as $rel){
-                  $rlt['id'] = $rel->id;
-                  $rlt['name'] = $rel->name;
-                  $rlt['image'] = $rel->image;
-                  $price = ProductAttributes::where("product_id",$rel->id)->orderby('price','asc')->first();
-                  $rlt['color']= Helper::getcolorsnamebyid($price->color);
-                  $rlt['colorid']= $price->color;
-                  $quantity=BoxPacking::where("id",$price->quantity)->first();
-                  $rlt['price'] = 'Rs. '.$price->price.'('.$quantity->name.')';
-                  array_push($related,$rlt);
+              foreach($attribute as $atrbt){
+                   $color=ShadeCard::where("id",$atrbt->color)->first();
+                   $sbm['color']=$color ? $color->name : '';
+                   $sbm['hexcode']=$color ? $color->hexcode : '';
+                   $quantity=BoxPacking::where("id",$atrbt->quantity)->first();
+                   $sbm['boxpacking']=$quantity ? $quantity->name : '';
+                   $sbm['quantity']=$quantity ? $quantity->pcs : 1;
+                   $sbm['pack_litres']=$atrbt->pack_litres ?: 1.0;
+                   $sbm['seller_price']=$atrbt->seller_price ?: $atrbt->price;
+                   $sbm['price']=$atrbt->price;
+                   $sbm['oldprice']=$atrbt->oldprice;
+                   $sbm['attributeid']=$atrbt->id;
+                   array_push($rt,$sbm);
               }
-             $rmn["relatedproductlist"] = $related;
-               if($request->get('colorid')!==''){
-                   $list=ShadeCard::where("id",$request->get('colorid'))->first();
-                        $rmn['colordetail']= $list;
+              $rmn['attributes'] = $rt;
+              /////////////////seller detail
+              $sellerdetail = Company::where("user_id",$rmn->user_id)->first();
+              $srh["name"] =  $sellerdetail ? $sellerdetail->name : '';
+              $srh["email"] =  $sellerdetail ? $sellerdetail->email : '';
+              $srh["mobile"] =  $sellerdetail ? $sellerdetail->mobile : '';
+              $srh["city"] =  $sellerdetail ? $sellerdetail->city : '';
+              $srh["photo"] =  $sellerdetail ? $sellerdetail->photo : '';
+              $rmn['sellerdetail'] = $srh;
+              
+              ////////////////product reviews
+              $revary = $related = array();
+              $reviewlist = ProductReviews::where("product_id",$request->get('productid'))->where("status","1")->get();
+              foreach($reviewlist as $review){
+                  $custmr = Customer::where("id",$review->customer_id)->first();
+                  if(!empty($custmr)){
+                  $rw["customername"] = $custmr->name;
+                  $rw["customerimage"] = $custmr->image;
+                  $rw["review"] = $review->review;
+                  $rw["rating"] = $review->rating;
+                  $rw["date"] = $review->created_at; 
+                  array_push($revary,$rw);
+                  }
+              }
+              $rmn["reviewlist"] = $revary;
+              ///////////is customer cable to post review
+               $rmn["postreview"]=true;
+               $rmn["wishlist"]=false;
+                $wihl = DB::table("wishlist")->where("userid",$request->get('userid'))->where("productid",$request->get('productid'))->first();
+                if(!empty($wihl)){ $rmn["wishlist"]=true; }
+                ///////////related product/////
+               $relatedpr = Product::where("user_id",$rmn->user_id)->where("id","!=",$rmn->id)->orderby("id","desc")->limit(5)->get();
+               foreach($relatedpr as $rel){
+                   $rlt['id'] = $rel->id;
+                   $rlt['name'] = $rel->name;
+                   $rlt['image'] = $rel->image;
+                   $price = ProductAttributes::where("product_id",$rel->id)->orderby('price','asc')->first();
+                   $rlt['color']= $price ? Helper::getcolorsnamebyid($price->color) : '';
+                   $rlt['colorid']= $price ? $price->color : 0;
+                   $quantity= $price ? BoxPacking::where("id",$price->quantity)->first() : null;
+                   $rlt['price'] = $price ? ('Rs. '.$price->price.($quantity ? '('.$quantity->name.')' : '')) : '';
+                   array_push($related,$rlt);
                }
-         return response()->json(["status"=>true,"code"=>100,"msg"=>"Successfully Show","data"=>$rmn]);
-     }
+              $rmn["relatedproductlist"] = $related;
+                if($request->get('colorid')!==''){
+                    $list=ShadeCard::where("id",$request->get('colorid'))->first();
+                         $rmn['colordetail']= $list;
+                }
+          return response()->json(["status"=>true,"code"=>100,"msg"=>"Successfully Show","data"=>$rmn]);
+      }
      public function productattributeprice(Request $request){ 
-         $attribute = ProductAttributes::where("product_id",$request->get('productid'));
-         if($request->get('color')!=''){
-            $attribute = $attribute->where("color",$request->get('color'));
-            }
-         if($request->get('quantity')!=''){
-            $attribute = $attribute->where("quantity",$request->get('quantity'));
-            }
-            $attribute = $attribute->first();
-         return response()->json(["status"=>true,"code"=>100,"msg"=>"Successfully Show","data"=>$attribute]);
-     }
+          $attribute = ProductAttributes::where("product_id",$request->get('productid'));
+          if($request->get('color')!=''){
+             $attribute = $attribute->where("color",$request->get('color'));
+          }
+          if($request->get('quantity')!=''){
+             $attribute = $attribute->where("quantity",$request->get('quantity'));
+          }
+          $attribute = $attribute->first();
+          
+          if ($attribute && empty($attribute->seller_price)) {
+              $attribute->seller_price = $attribute->price;
+          }
+          
+          return response()->json(["status"=>true,"code"=>100,"msg"=>"Successfully Show","data"=>$attribute]);
+      }
      
      public function update(Request $request, $id)
 { 

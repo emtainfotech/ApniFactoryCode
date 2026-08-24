@@ -15,8 +15,10 @@ class CreateBoxPackingsTable extends Migration
     {
         Schema::create('box_packings', function (Blueprint $table) {
             $table->id();
-            $table->string('name',100);
-            $table->enum('status',['Active', 'Deactive']);
+            $table->string('name',100)->nullable();
+            $table->integer('pcs')->nullable();
+            $table->unsignedBigInteger('maincategory_id')->nullable();
+            $table->enum('status',['Active', 'Deactive'])->default('Active');
             $table->timestamps();
         });
     }

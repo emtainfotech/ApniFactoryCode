@@ -16,9 +16,10 @@ class CreateMainCategoriesTable extends Migration
         Schema::create('main_categories', function (Blueprint $table) {
             $table->id();
             $table->string('name',100)->unique();
-            $table->string('title');
-            $table->string('image');
-            $table->enum('status',['Active', 'Deactive']);
+            $table->string('title')->nullable();
+            $table->string('image')->nullable();
+            $table->integer('sequence')->nullable();
+            $table->enum('status',['Active', 'Deactive'])->default('Active');
             $table->timestamps();
         });
     }

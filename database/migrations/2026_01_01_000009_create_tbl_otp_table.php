@@ -4,7 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-class CreateFaqsTable extends Migration
+class CreateTblOtpTable extends Migration
 {
     /**
      * Run the migrations.
@@ -13,12 +13,10 @@ class CreateFaqsTable extends Migration
      */
     public function up()
     {
-        Schema::create('faqs', function (Blueprint $table) {
+        Schema::create('tbl_otp', function (Blueprint $table) {
             $table->id();
-            $table->string('question')->nullable();
-            $table->text('answer')->nullable();
-            $table->unsignedBigInteger('user_id')->nullable();
-            $table->enum('status',['Active', 'Deactive'])->default('Active');
+            $table->string('otpon')->nullable();
+            $table->string('otp')->nullable();
             $table->timestamps();
         });
     }
@@ -30,6 +28,6 @@ class CreateFaqsTable extends Migration
      */
     public function down()
     {
-        Schema::dropIfExists('faqs');
+        Schema::dropIfExists('tbl_otp');
     }
 }

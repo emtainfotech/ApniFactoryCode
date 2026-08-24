@@ -15,11 +15,15 @@ class CreateShadeCardsTable extends Migration
     {
         Schema::create('shade_cards', function (Blueprint $table) {
             $table->id();
-            $table->integer('subcategoryid');
-            $table->string('name',100);
-            $table->string('hexcode',100);
-            $table->string('image',200);
-            $table->enum('status',['Active', 'Deactive']);
+            $table->unsignedBigInteger('subcategoryid')->nullable();
+            $table->unsignedBigInteger('maincategory_id')->nullable();
+            $table->unsignedBigInteger('category_id')->nullable();
+            $table->unsignedBigInteger('user_id')->nullable();
+            $table->string('name',100)->nullable();
+            $table->string('hexcode',100)->nullable();
+            $table->string('image',200)->nullable();
+            $table->text('adminmsg')->nullable();
+            $table->enum('status',['Active', 'Deactive'])->default('Active');
             $table->timestamps();
         });
     }
