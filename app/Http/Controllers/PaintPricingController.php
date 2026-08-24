@@ -30,9 +30,13 @@ class PaintPricingController extends Controller
         $userId = Auth::id() ?? 1;
         $data['title'] = 'Paint Family Pricing Manager';
 
-        // Load seller's products
+        // Load seller's products (supporting both '1' and 'Active' status values)
         $data['products'] = Product::where('user_id', $userId)
-            ->where('status', '1')
+            ->where(function($q) {
+                $q->where('status', '1')
+                  ->orWhere('status', 'Active')
+                  ->orWhere('status', 'active');
+            })
             ->orderBy('name', 'asc')
             ->get();
 
@@ -43,7 +47,11 @@ class PaintPricingController extends Controller
             $data['selectedProduct'] = Product::find($data['selectedProductId']);
             if ($data['selectedProduct']) {
                 $data['shades'] = ShadeCard::where('category_id', $data['selectedProduct']->category_id)->get();
-                $data['packings'] = BoxPacking::where('status', '1')->get();
+                $data['packings'] = BoxPacking::where(function($q) {
+                    $q->where('status', '1')
+                      ->orWhere('status', 'Active')
+                      ->orWhere('status', 'active');
+                })->get();
                 $data['skus'] = ProductAttributes::where('product_id', $data['selectedProductId'])->get();
                 $data['adjustments'] = PaintPriceAdjustment::where('product_id', $data['selectedProductId'])
                     ->orderBy('id', 'desc')
@@ -65,7 +73,11 @@ class PaintPricingController extends Controller
 
         $skus = ProductAttributes::where('product_id', $id)->get();
         $shades = ShadeCard::where('category_id', $product->category_id)->get();
-        $packings = BoxPacking::where('status', '1')->get();
+        $packings = BoxPacking::where(function($q) {
+            $q->where('status', '1')
+              ->orWhere('status', 'Active')
+              ->orWhere('status', 'active');
+        })->get();
 
         $skuMatrix = [];
         foreach ($skus as $sku) {
