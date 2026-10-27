@@ -65,36 +65,7 @@ class CompanyController extends Controller
         ], 400);
     }
 
-        $user = Auth::user(); // or Auth::guard('seller')->user() depending on your setup
-        
-        if ($request->hasFile('profile_picture')) {
-            $file = $request->file('profile_picture');
-            
-            // Generate a unique name
-            $filename = time() . '_' . $file->getClientOriginalName();
-            
-            // 2. Save the file to public/uploads/profiles directory
-            $file->move('storage/app/public/product', $filename);
-            // Optional: Delete old image from server if it exists
-            if ($user->profilephoto && file_exists('storage/app/public/product/' . $user->profilephoto)) {
-                @unlink('storage/app/public/product/' . $user->profilephoto);
-            }
-
-            // 3. Update the database column
-            $user->profilephoto = 'product/'.$filename;
-            $user->save();
-            $rt = Company::where('user_id',Auth::user()->id)->update(["photo"=>'product/'.$filename]);
-            // 4. Return json response back to the page
-            return response()->json([
-                'success' => true,
-                'image_url' => asset('storage/app/public/product/' . $filename)
-            ]);
-        }
-
-        return response()->json(['success' => false, 'message' => 'No file uploaded.'], 400);
-    }
-
-     public function  update_restrictedcity(Request $request){
+    public function  update_restrictedcity(Request $request){
             $city = json_encode($request->get('city'));
             $rt = Company::where('user_id',Auth::user()->id)->update(["restricted_city"=>$city]);
               return back()->withErrors(["Cities Successfully Updated"]);
