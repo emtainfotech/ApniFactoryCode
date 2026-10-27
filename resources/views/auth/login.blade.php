@@ -90,8 +90,35 @@
                             </div>
                         </div>
                     </form>
+
+                    <!-- Quick Demo Credentials Box -->
+                    <div class="mt-4 p-3 rounded" style="background: #f8f9fa; border: 1px dashed #6c757d;">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <strong class="text-secondary"><i class="fa fa-key me-1"></i> Quick Demo Accounts:</strong>
+                        </div>
+                        <div class="d-flex flex-wrap gap-2">
+                            <button type="button" class="btn btn-sm btn-outline-success" onclick="fillCredentials('seller@apnifactory.local', 'password123')">
+                                <i class="fa fa-store me-1"></i> <strong>Demo Seller</strong> (12 Products)
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="fillCredentials('admin@apnifactory.local', 'password123')">
+                                <i class="fa fa-user-shield me-1"></i> <strong>Super Admin</strong>
+                            </button>
+                        </div>
+                        <small class="text-muted d-block mt-2">
+                            <strong>Seller Login:</strong> <code>seller@apnifactory.local</code> / <code>password123</code>
+                        </small>
+                    </div>
+
+                    <script>
+                        function fillCredentials(email, pass) {
+                            var emailInput = document.getElementById('email');
+                            var passInput = document.getElementById('password');
+                            if (emailInput) emailInput.value = email;
+                            if (passInput) passInput.value = pass;
+                        }
+                    </script>
 								
-											<div class="text-center pt-5">
+											<div class="text-center pt-4">
 										
 										<p>Don't have an account yet? <a href="{{url('register')}}">Sign up here</a>
 										</p>
