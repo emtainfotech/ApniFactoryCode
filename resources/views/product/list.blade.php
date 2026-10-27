@@ -18,8 +18,9 @@
 							</ol>
 						</nav>
 					</div>
-					<div class="ms-auto">
-						
+					<div class="ms-auto d-flex gap-2">
+						<a href="{{ url('seller/product/add') }}" class="btn btn-primary"><i class="fa fa-plus me-1"></i> Add Product</a>
+						<a href="{{ route('seller.product.bulk-upload') }}" class="btn btn-success"><i class="fa fa-file-excel me-1"></i> Bulk Upload CSV</a>
 					</div>
 				</div>
 				<!--end breadcrumb-->
@@ -66,6 +67,12 @@
                            <div class="border border-3 p-4 rounded">
 						
                               <div class="mb-3">
+                                @if(session('success'))
+                                    <div class="alert alert-success alert-dismissible fade show" role="alert">
+                                        <i class="fa fa-check-circle me-1"></i> {{ session('success') }}
+                                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                                    </div>
+                                @endif
                                    @foreach($errors->all() as $error)
 						             <div class="alert alert-danger">{{ $error ?? ''  }}</div>
                                 @endforeach
@@ -132,6 +139,9 @@
                                         @endforeach
                                              </tbody>
                                         </table>
+                                        </div>
+                                        <div class="mt-3 d-flex justify-content-end">
+                                            {{ $list->links() }}
                                         </div>
 
 

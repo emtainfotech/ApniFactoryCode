@@ -44,8 +44,8 @@ class TicketController extends Controller
             $check = Ticket::where("user_id",$addby)->where("topic",$question)->first();
             if(empty($check)){
             $array = array(
-                            "topic"=>$answer,
-                            "msg"=>$question,
+                            "topic"=>$question,
+                            "msg"=>$answer,
                             "status"=>$status,
                             "user_id"=>$addby,
                             "adminmsg"=>''

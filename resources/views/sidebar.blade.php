@@ -51,14 +51,17 @@
         @php
             $pendingOrdersCount = 0;
             if (Auth::check()) {
-                $pendingOrdersCount = \DB::table('orders')
-                    ->where('orders.user_id', Auth::user()->id)
-                    ->join('order_status', 'orders.orderno', '=', 'order_status.order_no')
-                    ->whereIn('order_status.status', ['pending', 'Wait For Confirmation', 'Order Received'])
-                    ->whereIn('order_status.id', function($q) {
-                        $q->selectRaw('MAX(id)')->from('order_status')->groupBy('order_no');
-                    })
-                    ->count();
+                $sellerUserId = Auth::user()->id;
+                $pendingOrdersCount = \Illuminate\Support\Facades\Cache::remember("seller_pending_orders_{$sellerUserId}", 30, function() use ($sellerUserId) {
+                    return \DB::table('orders')
+                        ->where('orders.user_id', $sellerUserId)
+                        ->join('order_status', 'orders.orderno', '=', 'order_status.order_no')
+                        ->whereIn('order_status.status', ['pending', 'Wait For Confirmation', 'Order Received'])
+                        ->whereIn('order_status.id', function($q) {
+                            $q->selectRaw('MAX(id)')->from('order_status')->groupBy('order_no');
+                        })
+                        ->count();
+                });
             }
         @endphp
         <li>
@@ -148,8 +151,8 @@
 					</div>
 					<div class="search-bar flex-grow-1">
 						<div class="position-relative search-bar-box">
-							<form>
-							  <input type="text" class="form-control search-control" autofocus placeholder="Type to search..."> <span class="position-absolute top-50 search-show translate-middle-y"><i class="fa-solid fa-magnifying-glass"></i></span>
+							<form action="{{ url('seller/product') }}" method="GET">
+							  <input type="text" name="product" class="form-control search-control" placeholder="Search products..." value="{{ request('product') }}"> <span class="position-absolute top-50 search-show translate-middle-y"><i class="fa-solid fa-magnifying-glass"></i></span>
 							   <span class="position-absolute top-50 search-close translate-middle-y"><i class="fa-solid fa-xmark"></i></span>
 						    </form>
 						</div>

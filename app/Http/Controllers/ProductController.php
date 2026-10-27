@@ -93,10 +93,265 @@ class ProductController extends Controller
         $query = Product::where('user_id',Auth::user()->id);
         if ($request->filled('Brand')) {    $query = $query->where("brand_id", $request->input('Brand'));           }
         if ($request->filled('srchcategory')) {    $query = $query->where("category_id", $request->input('srchcategory'));  }
-        if ($request->filled('product')) {    $query = $query->where("name", $request->input('product'));           }
-             $data['list'] = $query->orderby("id","desc")->get();
+        if ($request->filled('product')) {    $query = $query->where("name", 'like', '%' . $request->input('product') . '%');           }
+        $data['list'] = $query->orderby("id","desc")->paginate(20)->withQueryString();
              
         return view('product.list',$data);  
+  }
+
+  public function bulkUploadView()
+  {
+      $company = Company::where("user_id", Auth::user()->id)->first();
+      if (empty($company)) {
+          return redirect('/seller/product')->withErrors(["Please Add Your Company By Admin First"]);
+      }
+      $data['title'] = 'Bulk Upload Products';
+      $data['categorylist'] = Category::where(function($q){ $q->where('status', 'Active')->orWhere('status', '1')->orWhere('status', 1); })->orderby('name','asc')->get();
+      $data['Brandlist'] = Brand::where('user_id', Auth::user()->id)->where(function($q){ $q->where('status', 'Active')->orWhere('status', '1')->orWhere('status', 1); })->orderby('name','asc')->get();
+      return view('product.bulk-upload', $data);
+  }
+
+  public function downloadBulkSample()
+  {
+      $headers = [
+          'Content-Type'        => 'text/csv; charset=UTF-8',
+          'Content-Disposition' => 'attachment; filename="apnifactory_products_bulk_sample.csv"',
+      ];
+
+      $callback = function () {
+          $handle = fopen('php://output', 'w');
+          fputcsv($handle, [
+              'category_name',
+              'brand_name',
+              'product_name',
+              'title',
+              'description',
+              'hsn_code',
+              'tax_percent',
+              'box_packing',
+              'shade_or_color',
+              'seller_price',
+              'customer_mrp'
+          ]);
+
+          fputcsv($handle, [
+              'Enamel Paints',
+              'Asian Paints Pro',
+              'Apcolite Premium Gloss White',
+              'Apcolite Premium Gloss Enamel Paint',
+              'High gloss solvent based exterior and interior enamel',
+              '3208',
+              '18',
+              '1 Litre',
+              'Super White',
+              '400.00',
+              '500.00'
+          ]);
+
+          fputcsv($handle, [
+              'Enamel Paints',
+              'Asian Paints Pro',
+              'Apcolite Premium Gloss White',
+              'Apcolite Premium Gloss Enamel Paint',
+              'High gloss solvent based exterior and interior enamel',
+              '3208',
+              '18',
+              '4 Litres',
+              'Super White',
+              '1550.00',
+              '1950.00'
+          ]);
+
+          fputcsv($handle, [
+              'Cotton Fabrics',
+              'Vardhman Textiles',
+              'Premium Cambric Cotton 60s',
+              'Fine Cambric Cotton Fabric Roll',
+              '100% fine combed cotton weave for luxury apparel',
+              '5208',
+              '5',
+              '25 Meters',
+              'White',
+              '2400.00',
+              '3000.00'
+          ]);
+
+          fputcsv($handle, [
+              'Men Wear',
+              'Raymond Apparel',
+              'Slim-Fit Cotton Oxford Shirt Navy',
+              'Slim-Fit Oxford Shirt',
+              'Premium formal button-down shirt',
+              '6205',
+              '12',
+              'Size L',
+              'Navy Blue',
+              '650.00',
+              '899.00'
+          ]);
+
+          fclose($handle);
+      };
+
+      return response()->stream($callback, 200, $headers);
+  }
+
+  public function processBulkUpload(Request $request)
+  {
+      $request->validate([
+          'csv_file' => 'required|file|max:10240',
+      ]);
+
+      $file = $request->file('csv_file');
+      $filePath = $file->getRealPath();
+
+      $company = Company::where("user_id", Auth::user()->id)->first();
+      if (empty($company)) {
+          return redirect()->back()->withErrors(["Please Add Your Company By Admin First"]);
+      }
+
+      $handle = fopen($filePath, 'r');
+      if (!$handle) {
+          return redirect()->back()->withErrors(["Unable to open uploaded CSV file."]);
+      }
+
+      $header = fgetcsv($handle);
+      if (!$header) {
+          fclose($handle);
+          return redirect()->back()->withErrors(["The uploaded CSV file is empty."]);
+      }
+
+      // Clean headers (trim, lowercase, remove BOM)
+      $cleanHeaders = array_map(function($h) {
+          return strtolower(trim(str_replace(["\xEF\xBB\xBF", ' '], ['', '_'], $h)));
+      }, $header);
+
+      $pricingService = app(\App\Services\PaintPricingService::class);
+      $importedProducts = 0;
+      $importedVariants = 0;
+      $rowNumber = 1;
+      $errors = [];
+
+      DB::beginTransaction();
+      try {
+          while (($row = fgetcsv($handle)) !== false) {
+              $rowNumber++;
+              if (count(array_filter($row)) === 0) {
+                  continue;
+              }
+
+              $rowData = [];
+              foreach ($cleanHeaders as $index => $key) {
+                  $rowData[$key] = isset($row[$index]) ? trim($row[$index]) : '';
+              }
+
+              $categoryName = $rowData['category_name'] ?? '';
+              $brandName    = $rowData['brand_name'] ?? '';
+              $productName  = $rowData['product_name'] ?? '';
+              $boxPacking   = !empty($rowData['box_packing']) ? $rowData['box_packing'] : 'Standard';
+              $shadeColor   = !empty($rowData['shade_or_color']) ? $rowData['shade_or_color'] : 'Standard';
+              $sellerPrice  = (float) ($rowData['seller_price'] ?? 0);
+              $customerMrp  = (float) ($rowData['customer_mrp'] ?? 0);
+              $tax          = (int) ($rowData['tax_percent'] ?? 18);
+              $hsnCode      = !empty($rowData['hsn_code']) ? $rowData['hsn_code'] : '0000';
+              $title        = !empty($rowData['title']) ? $rowData['title'] : $productName;
+              $description  = !empty($rowData['description']) ? $rowData['description'] : $title;
+
+              if (empty($productName)) {
+                  $errors[] = "Row #{$rowNumber}: Product name is required.";
+                  continue;
+              }
+
+              // Resolve Category
+              $category = Category::where('name', 'like', $categoryName)->first();
+              if (!$category) {
+                  $category = Category::where('status', 'Active')->first() ?? Category::first();
+              }
+              $categoryId = $category ? $category->id : 1;
+              $mainCategoryId = $category ? ($category->maincategory_id ?? $category->mid ?? 1) : 1;
+
+              // Resolve Brand
+              $brand = Brand::where('name', 'like', $brandName)->where('user_id', Auth::user()->id)->first();
+              if (!$brand) {
+                  $brand = Brand::where('name', 'like', $brandName)->first();
+              }
+              if (!$brand) {
+                  $brand = Brand::create([
+                      'name'          => !empty($brandName) ? $brandName : 'Seller Brand',
+                      'user_id'       => Auth::user()->id,
+                      'company_id'    => $company->id,
+                      'category_id'   => $categoryId,
+                      'mid'           => $mainCategoryId,
+                      'status'        => 'Active',
+                      'adminresponse' => 'Approved',
+                  ]);
+              }
+              $brandId = $brand->id;
+
+              // Find or create parent Product
+              $product = Product::where('user_id', Auth::user()->id)
+                  ->where('name', $productName)
+                  ->first();
+
+              if (!$product) {
+                  $slug = strtolower(trim(preg_replace('/[^A-Za-z0-9-]+/', '-', $productName))) . '-' . rand(1000, 99999);
+                  $product = Product::create([
+                      'user_id'         => Auth::user()->id,
+                      'brand_id'        => $brandId,
+                      'category_id'     => $categoryId,
+                      'maincategory_id' => $mainCategoryId,
+                      'subcategory_id'  => 0,
+                      'name'            => $productName,
+                      'slug'            => $slug,
+                      'title'           => $title,
+                      'description'     => $description,
+                      'image'           => 'default.png',
+                      'multipleimages'  => json_encode(['default.png']),
+                      'hsncode'         => $hsnCode,
+                      'tax'             => $tax,
+                      'status'          => '1',
+                      'product_id'      => rand(100000, 999999),
+                  ]);
+                  $importedProducts++;
+              }
+
+              // Compute pricing with commission
+              $commissionRate = $pricingService->getEffectiveCommissionRate(Auth::id(), $product->id);
+              $packLitres     = $pricingService->parsePackLitres($boxPacking);
+              if ($customerMrp <= 0) {
+                  $customerMrp = round($sellerPrice * (1 + ($commissionRate / 100)), 2);
+              }
+
+              // Insert or update variant in product_attributes
+              ProductAttributes::updateOrCreate(
+                  [
+                      'product_id' => $product->id,
+                      'color'      => $shadeColor,
+                      'quantity'   => $boxPacking,
+                  ],
+                  [
+                      'oldprice'        => $customerMrp,
+                      'seller_price'    => $sellerPrice,
+                      'commission_rate' => $commissionRate,
+                      'pack_litres'     => $packLitres,
+                      'price'           => $customerMrp,
+                      'status'          => 'Active',
+                  ]
+              );
+              $importedVariants++;
+          }
+
+          DB::commit();
+          fclose($handle);
+
+          $msg = "Bulk Upload Successful! {$importedProducts} new products created, and {$importedVariants} product variants updated.";
+          return redirect('/seller/product')->with('success', $msg);
+
+      } catch (\Exception $e) {
+          DB::rollBack();
+          fclose($handle);
+          return redirect()->back()->withErrors(["Bulk import failed: " . $e->getMessage()]);
+      }
   }
   public function destroy(Product $product)
     {

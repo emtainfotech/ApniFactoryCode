@@ -66,6 +66,9 @@ Route::group(['middleware' => ['auth']], function () {
         
         Route::post('/seller/getmaincatandcatbybrand', [Helper::class,"getmaincatandcatbybrand"]);
         Route::get('/seller/product', [ProductController::class,"list"])->name('product.list');
+        Route::get('/seller/product/bulk-upload', [ProductController::class, 'bulkUploadView'])->name('seller.product.bulk-upload');
+        Route::post('/seller/product/bulk-upload', [ProductController::class, 'processBulkUpload'])->name('seller.product.bulk-upload.process');
+        Route::get('/seller/product/bulk-sample', [ProductController::class, 'downloadBulkSample'])->name('seller.product.bulk-sample');
         Route::get('/seller/product/add', [ProductController::class,"addform"]);
         Route::post('/seller/product/add', function () {
             $data['title'] = 'Add Poduct'; $data['formdata'] = $_POST;$data['formfiles'] = $_FILES;

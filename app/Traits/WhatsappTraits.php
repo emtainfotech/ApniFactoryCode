@@ -556,8 +556,8 @@ $data = [
         {
         $url = "https://graph.facebook.com/v22.0/960010463853608/messages";
         $currentDate = date("M j, Y"); // Dynamically generates text like "Jun 17, 2026"
-$status = "Delivered";         // Or your dynamic status variable
-$note = "Thank you";
+        $status = !empty($status) ? $status : "Processing";
+        $note = !empty($note) ? $note : "Thank you for shopping with us.";
    $dataArray = [
     "messaging_product" => "whatsapp",
     "recipient_type"    => "individual",

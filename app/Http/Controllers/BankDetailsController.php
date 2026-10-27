@@ -15,7 +15,7 @@ class BankDetailsController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-    public function index()
+    public function index(Request $request)
     {
         $banklist = BankDetails::where('user_id',Auth::user()->id)->get();
         if(!empty($banklist[0])){$data["first"]=$banklist[0];}else{ $data["first"]='';}
@@ -29,7 +29,10 @@ class BankDetailsController extends Controller
              return back()->withErrors(["Please Registered Your Company And its Mobile Number"]);
         }
          $mobile = $cmpid->mobile;
-         if(!empty($_GET['otpsend']) && $_GET['otpsend']==3){
+         $otpsend = $request->input('otpsend', $_GET['otpsend'] ?? null);
+         $getotp = $request->input('otp', $_GET['otp'] ?? null);
+
+         if(!empty($otpsend) && $otpsend==3){
              $otp = rand(1000,999999);
              $tbl = DB::table("tbl_otp")->updateOrInsert(["otpon"=>$mobile], ["otpon"=>$mobile,"otp"=>$otp]);
              $sendotp = $this->sendotponwhatsapp($mobile,$otp);
@@ -40,8 +43,7 @@ class BankDetailsController extends Controller
                    return back()->withErrors(["Whatsapp Api Error"]);
              }
          }
-         if(!empty($_GET['otpsend']) && $_GET['otpsend']==2){
-             $getotp=$_GET['otp'];
+         if(!empty($otpsend) && $otpsend==2){
              $tbl = DB::table("tbl_otp")->where("otpon",$mobile)->where("otp",$getotp)->orderby("id","desc")->first();
              if(!empty($tbl)){$data['otpsend']=1;}else{ return back()->withErrors(["OTP Not Match "]);}
          }
