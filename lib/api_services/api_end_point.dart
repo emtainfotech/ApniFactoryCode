@@ -1,0 +1,57 @@
+class ApiEndPoint {
+  // Localhost API Endpoint for local backend (accessible via adb reverse tcp:8000 tcp:8000)
+  static const String baseUrl = "http://127.0.0.1:8000/api/";
+  // Alternative local Wi-Fi IP: "http://192.168.29.118:8000/api/";
+  // Production URL: "https://panel.apnifactory.co.in/api/";
+  static const String signUpApi = "${baseUrl}register";
+  static const String loginApi = "${baseUrl}login";
+  static const String getOtpApi = "${baseUrl}sendotp";
+  static const String verifyOtpApi = "${baseUrl}verifyotp";
+  static const String resetPasswordApi = "${baseUrl}resetpassword";
+  static const String homeScreenApi = "${baseUrl}homescreen";
+  static const String searchApi ="${baseUrl}search";
+  static const String categoryScreenApi = "${baseUrl}categoryscreen?";
+  static const String companyScreenApi = "${baseUrl}companyscreen?";
+  static const String brandScreenApi = "${baseUrl}brandscreen?";
+  static const String productCategoryListScreenApi = "${baseUrl}productlist?";
+  static const String productListBySubCategoryScreenApi =
+      "${baseUrl}productlistbycategory?";
+  static const String productDetailApi = "${baseUrl}productdetail";
+  static const String getAddressListApi = "${baseUrl}address";
+  static const String addAddressApi = "${baseUrl}addaddress";
+  static const String getAddressDetailApi = "${baseUrl}address/";
+  static const String updateAddressApi = "${baseUrl}address/";
+  static const String deleteAddressApi = "${baseUrl}address/";
+  static const String updateCartAddressApi = "${baseUrl}updatecartaddress";
+  static const String productReviewApi = "${baseUrl}productreview";
+  static const String addToCartApi = "${baseUrl}addtocart";
+  static const String userCartApi = "${baseUrl}usercart";
+  static const String deleteCartApi = "${baseUrl}deletecart";
+  static const String deleteCartAttributeApi = "${baseUrl}deletecartattribute";
+  static const String emptyCartApi = "${baseUrl}emptycart";
+  static const String addToWishlistApi = "${baseUrl}addtowishlist";
+  static const String userWishlistApi = "${baseUrl}userwishlist";
+  static const String deleteWishlistApi = "${baseUrl}deletewishlist";
+  static const String getProfileApi = "${baseUrl}viewprofile/";
+  static const String updateProfileApi = "${baseUrl}updateprofile/";
+  static const String getFaqApi = "${baseUrl}faq";
+  static const String getFeedbackListApi = "${baseUrl}feedback/";
+  static const String postFeedbackApi = "${baseUrl}feedback";
+  static const String changePasswordApi = "${baseUrl}changepassword/";
+  static const String increaseCartQuantityApi = "${baseUrl}increasecartqty";
+  static const String orderApi = "${baseUrl}order";
+  static const String orderHistoryApi = "${baseUrl}orderhistory";
+  static const String getPagesApi = "${baseUrl}pages";
+  static const String getCouponListApi = "${baseUrl}couponlist";
+  static const String applyCouponApi = "${baseUrl}applycoupon";
+  static const String stateCityPincodeApi = "${baseUrl}statecitypincode";
+  static const String checkAvailabilityApi = "${baseUrl}checkavailability";
+  static const String payuHashApi = "${baseUrl}payuhash";
+  static const String singleOrderDetailApi = "${baseUrl}orderdetail";
+  static const String brandDetailApi ="${baseUrl}branddetail";
+  static const String notificationApi ="${baseUrl}notification?";
+  static const String relatedProductApi ="${baseUrl}relatedproductincart";
+  static const String adminAppPagesApi ="${baseUrl}adminapppages";
+  static const String helpNoForAppApi ="${baseUrl}helpnoforapp";
+  static const String gstVerificationApi ="${baseUrl}gstverification";
+}
