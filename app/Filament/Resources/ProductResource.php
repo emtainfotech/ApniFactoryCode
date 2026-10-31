@@ -37,7 +37,10 @@ protected static ?string $navigationBadgeTooltip = 'Number of pending orders';
 
     public static function getNavigationBadge(): ?string
     {
-        return 'Active : '.static::getModel()::where('status', '1')->count();
+        $count = \Illuminate\Support\Facades\Cache::remember('admin_active_products_badge', 60, function () {
+            return static::getModel()::where('status', '1')->count();
+        });
+        return 'Active : ' . (string) $count;
     }
     public static function getNavigationBadgeColor(): ?string
     {
@@ -115,19 +118,13 @@ protected static ?string $navigationBadgeTooltip = 'Number of pending orders';
                                         ->schema([
                                                Select::make('quantity')
                                                 ->placeholder('Select a BoxPacking')
-                                                ->options(BoxPacking::all()->pluck('name', 'id'))
+                                                ->options(fn () => \Illuminate\Support\Facades\Cache::remember('filament_boxpackings_pluck', 300, fn() => BoxPacking::pluck('name', 'id')))
                                                 ->searchable()
                                                 ->label('BoxPacking')
                                                 ->reactive(),
                                             
                                                Select::make('color')
-                                                ->options(function (callable $get){ 
-                                                //                             $cityst1 = ShadeCard::where('subcategoryid', $get('cid'))->pluck('name','id');
-                                                //                             if(!$cityst1){
-                                                                                return ShadeCard::all()->pluck('name','id');
-                                                                            // }
-                                                                            //  return $cityst1;
-                                                                        })
+                                                ->options(fn () => \Illuminate\Support\Facades\Cache::remember('filament_shadecards_pluck', 300, fn() => ShadeCard::pluck('name', 'id')))
                                                 ->searchable()
                                                 ->label('Shade'),
                                             Forms\Components\TextInput::make('price')->required()->numeric()

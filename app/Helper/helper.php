@@ -15,6 +15,16 @@ use Auth;
 use Illuminate\Http\Request;
 
 class Helper {
+     private static $catCache = [];
+     private static $mainCatCache = [];
+     private static $shadeCardCache = [];
+     private static $boxPackingCache = [];
+     private static $brandCache = [];
+     private static $companyCache = [];
+     private static $productCache = [];
+     private static $customerCache = [];
+     private static $orderStatusCache = [];
+
      public static function getmidcidbybid(){
           $bid = $_REQUEST['bid'];
      $list=Brand::where("id",$bid)->first();
@@ -35,13 +45,20 @@ class Helper {
      return json_encode($listop);
  }
  public static function getmaincatname($mid){
-     $list=MainCategory::where("id",$mid)->first();
-     if(empty($list)){return '';}else{return $list->name;}
-     
+     if(empty($mid)) return '';
+     if (!array_key_exists($mid, self::$mainCatCache)) {
+         $list = MainCategory::where("id", $mid)->first();
+         self::$mainCatCache[$mid] = $list ? $list->name : '';
+     }
+     return self::$mainCatCache[$mid];
  }
  public static function getcatname($cid){
-     $list=Category::where("id",$cid)->first();
-     if(empty($list)){return '';}else{return $list->name;}
+     if(empty($cid)) return '';
+     if (!array_key_exists($cid, self::$catCache)) {
+         $list = Category::where("id", $cid)->first();
+         self::$catCache[$cid] = $list ? $list->name : '';
+     }
+     return self::$catCache[$cid];
  }
   public static function getbrand(){
      $list=Brand::where("user_id",Auth::user()->id)->whereIn("status",["1", "Active", 1])->get();
@@ -89,20 +106,34 @@ class Helper {
      return $list;
  }
  public static function getcolorsnamebyid($id){
-     $list=ShadeCard::where("id",$id)->first();
-     if(empty($list)){return '';}else{return $list->name;}
+     if(empty($id)) return '';
+     if (!array_key_exists($id, self::$shadeCardCache)) {
+         self::$shadeCardCache[$id] = ShadeCard::where("id", $id)->first();
+     }
+     return self::$shadeCardCache[$id] ? self::$shadeCardCache[$id]->name : '';
  }
  public static function getcolorshexcodebyid($id){
-     $list=ShadeCard::where("id",$id)->first();
-     if(empty($list)){return '';}else{return $list->hexcode;}
+     if(empty($id)) return '';
+     if (!array_key_exists($id, self::$shadeCardCache)) {
+         self::$shadeCardCache[$id] = ShadeCard::where("id", $id)->first();
+     }
+     return self::$shadeCardCache[$id] ? self::$shadeCardCache[$id]->hexcode : '';
  }
  public static function getboxpackingnamebyid($id){
-     $list=BoxPacking::where("id",$id)->first();
-     if(empty($list)){return '';}else{return $list->name;}
+     if(empty($id)) return '';
+     if (!array_key_exists($id, self::$boxPackingCache)) {
+         $list = BoxPacking::where("id", $id)->first();
+         self::$boxPackingCache[$id] = $list ? $list->name : '';
+     }
+     return self::$boxPackingCache[$id];
  }
  public static function getbrandname($bid){
-     $list=Brand::where("id",$bid)->first();
-     if(empty($list)){return '';}else{return $list->name;}
+     if(empty($bid)) return '';
+     if (!array_key_exists($bid, self::$brandCache)) {
+         $list = Brand::where("id", $bid)->first();
+         self::$brandCache[$bid] = $list ? $list->name : '';
+     }
+     return self::$brandCache[$bid];
  }
  public static function getbrandforajax(){
      $list=Brand::where("user_id",Auth::user()->id)->whereIn("status",["1", "Active", 1])->get();
@@ -113,8 +144,12 @@ class Helper {
      return json_encode($listop);
  }
  public static function getcompanyname($bid){
-     $list=Company::where("id",$bid)->first();
-     if(empty($list)){return '';}else{return $list->name;}
+     if(empty($bid)) return '';
+     if (!array_key_exists($bid, self::$companyCache)) {
+         $list = Company::where("id", $bid)->first();
+         self::$companyCache[$bid] = $list ? $list->name : '';
+     }
+     return self::$companyCache[$bid];
  }
  public static function getproductlistforajax(){
      $list=Product::where("user_id",Auth::user()->id)->whereIn("status",["1", "Active", 1])->get();
@@ -125,17 +160,25 @@ class Helper {
      return json_encode($listop);
  }
  public static function getproductname($pid){
-     $list=Product::where("id",$pid)->first();
-     if(empty($list)){return '';}else{return $list->name;}
+     if(empty($pid)) return '';
+     if (!array_key_exists($pid, self::$productCache)) {
+         $list = Product::where("id", $pid)->first();
+         self::$productCache[$pid] = $list ? $list->name : '';
+     }
+     return self::$productCache[$pid];
  }
  public static function getcompanynamebybrandid($bid){
-     $b=Brand::where("id",$bid)->first();
-     $list=Company::where("id",$b->company_id)->first();
-     if(empty($list)){return '';}else{return $list->name;}
+     if(empty($bid)) return '';
+     $b = Brand::where("id", $bid)->first();
+     if(empty($b)) return '';
+     return Helper::getcompanyname($b->company_id);
  }
-  public static function getcustomerdetail($id){
-     $list=Customer::where("id",$id)->first();
-     return $list;
+ public static function getcustomerdetail($id){
+     if(empty($id)) return null;
+     if (!array_key_exists($id, self::$customerCache)) {
+         self::$customerCache[$id] = Customer::where("id", $id)->first();
+     }
+     return self::$customerCache[$id];
  }
  
  public static function getmaincatandcatbybrand(Request $request){ 
@@ -178,9 +221,12 @@ class Helper {
      return json_encode($listoper);
  }
    public static function getstatusoforder($id){
-     $list= DB::table("order_status")->where("order_no",$id)->orderby("id","desc")->first('status');
-     if(!empty($list)){ return $list->status;}else{return false;}
-    
+     if(empty($id)) return false;
+     if (!array_key_exists($id, self::$orderStatusCache)) {
+         $list = DB::table("order_status")->where("order_no", $id)->orderby("id", "desc")->first('status');
+         self::$orderStatusCache[$id] = $list ? $list->status : false;
+     }
+     return self::$orderStatusCache[$id];
  }
  
  public static function addnotificationindb($userid,$usertype,$title,$msg){
@@ -193,31 +239,3 @@ class Helper {
          if($rt){ return true;}
  }
 }
-?>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

@@ -246,6 +246,8 @@ class OrderController extends Controller
               ///////////////now start cart loop
                    $adstr='';$admincouponamount=$sellercouponamount=$carttotal=0.0;
                    $str='';
+            DB::beginTransaction();
+            try {
             foreach($cartdata as $key=>$cart){
                  $producthsn = Product::where("id",$cart->product_id)->first();
                  $phsn = $producthsn ? $producthsn->hsncode : '';  $productname = $cart->productname;
@@ -312,6 +314,7 @@ class OrderController extends Controller
             ////////////////////////min order value check
                 //$cmp_minmumordervalue;
                 if($netamount<$cmp_minmumordervalue){
+                    DB::rollBack();
                     return response()->json(["status"=>false,"code"=>500,"msg"=>"Add More Product into Cart, to match minimum order value amount $cmp_minmumordervalue","data"=>json_decode('{}')]);
                 }
            /////////////tx calculation
@@ -371,6 +374,11 @@ class OrderController extends Controller
                              'user_id'=>$producthsn->user_id
                              );
         $orderid = DB::table("order_status")->insert($orderstatus);    
+        DB::commit();
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return response()->json(["status"=>false,"code"=>500,"msg"=>"Order placement failed: ".$e->getMessage(),"data"=>null]);
+        }
           $customer = Customer::where("id",$customerid)->first();
           $salt = DB::table("Admin")->where("usedin","gateway")->where("attribute","salt")->first();
           $key = DB::table("Admin")->where("usedin","gateway")->where("attribute","key")->first();
@@ -396,21 +404,23 @@ class OrderController extends Controller
       }
     
     public function orderhistory(Request $request){
-        $ordr = array();
-         $customerid = $request->get('userid');
-         $order = order::where("customer_id",$customerid)->orderby("id","desc")->get();
-        //$order = DB::table("transections")->where("customer_id",$customerid)->where("status","success")->orderby("id","desc")->get("order_id");
-         foreach($order as $ord){
-             $orderdetail=$ordertrack=$orderstatus='';
-             $orderdetail =  DB::table("orderdetail")->where("orderno",$ord->orderno)->get();
-             $ord["orderdetail"] = $orderdetail;
-             $ordertrack =  DB::table("order_tracks")->where("orderno",$ord->orderno)->first();
-             $ord["ordertrack"] = $ordertrack;
-             $orderstatus =  DB::table("order_status")->where("order_no",$ord->orderno)->orderby("id","desc")->get();
-             $ord["orderstatus"] = $orderstatus;
-             array_push($ordr,$ord);
-         }
-          return response()->json(["status"=>true,"code"=>100,"msg"=>"Successfully Show","data"=>$ordr]);
+        $customerid = $request->get('userid');
+        $order = order::where("customer_id",$customerid)->orderby("id","desc")->get();
+        $ordr = [];
+        if($order->isNotEmpty()){
+            $orderNos = $order->pluck('orderno')->toArray();
+            $detailsByOrder = DB::table("orderdetail")->whereIn("orderno", $orderNos)->get()->groupBy('orderno');
+            $tracksByOrder = DB::table("order_tracks")->whereIn("orderno", $orderNos)->get()->keyBy('orderno');
+            $statusesByOrder = DB::table("order_status")->whereIn("order_no", $orderNos)->orderby("id","desc")->get()->groupBy('order_no');
+
+            foreach($order as $ord){
+                $ord["orderdetail"] = $detailsByOrder->get($ord->orderno, collect())->values();
+                $ord["ordertrack"] = $tracksByOrder->get($ord->orderno, null);
+                $ord["orderstatus"] = $statusesByOrder->get($ord->orderno, collect())->values();
+                $ordr[] = $ord;
+            }
+        }
+        return response()->json(["status"=>true,"code"=>100,"msg"=>"Successfully Show","data"=>$ordr]);
     }
     
     public function orderdetailforapi(Request $request){

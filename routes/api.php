@@ -52,6 +52,7 @@ Route::get('seller/paint-pricing/audit/{id}', [PaintPricingController::class, 'a
  Route::get('statecitypincode', [AppController::class, "statecitypincode"]);
  /////homescreen
  Route::get('homescreen', [AppController::class, "homescreen"]);
+ Route::get('randomproducts', [AppController::class, "randomproducts"]);
  Route::get('categoryscreen', [AppController::class, "secondscreen_category_company"]);
  Route::get('brandscreen',[AppController::class,"brandlist_bycompanyid"]);
  Route::get('companyscreen',[AppController::class,"companylist_bycategoryid"]);

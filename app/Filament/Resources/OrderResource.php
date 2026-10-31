@@ -30,15 +30,18 @@ class OrderResource extends Resource
 
 public static function getNavigationBadge(): ?string
 {
-    return 'Pending : '.(string) DB::table('orders')
-        ->join('order_status', 'orders.orderno', '=', 'order_status.order_no')
-        ->where('order_status.status', 'pending')
-        ->whereIn('order_status.id', function ($query) {
-            $query->selectRaw('MAX(id)')
-                ->from('order_status')
-                ->groupBy('order_no');
-        })
-        ->count();
+    $count = \Illuminate\Support\Facades\Cache::remember('admin_pending_orders_badge', 30, function () {
+        return DB::table('orders')
+            ->join('order_status', 'orders.orderno', '=', 'order_status.order_no')
+            ->where('order_status.status', 'pending')
+            ->whereIn('order_status.id', function ($query) {
+                $query->selectRaw('MAX(id)')
+                    ->from('order_status')
+                    ->groupBy('order_no');
+            })
+            ->count();
+    });
+    return 'Pending : ' . (string) $count;
 }
 
 
@@ -67,11 +70,15 @@ public static function getNavigationBadge(): ?string
             Tables\Columns\BadgeColumn::make('status') 
                 ->label('Status')
                 ->getStateUsing(function ($record) {
-                    $st = \DB::table('order_status')
-                        ->where('order_no', $record->orderno)
-                        ->latest('id')
-                        ->value('status');
-                    return $st ?: 'Pending Seller';
+                    static $statusCache = [];
+                    if (!isset($statusCache[$record->orderno])) {
+                        $st = \DB::table('order_status')
+                            ->where('order_no', $record->orderno)
+                            ->latest('id')
+                            ->value('status');
+                        $statusCache[$record->orderno] = $st ?: 'Pending Seller';
+                    }
+                    return $statusCache[$record->orderno];
                 })
                 ->colors([
                     'warning'   => fn ($state) => in_array(strtolower($state), ['pending', 'pending seller', 'wait for confirmation', 'order received']),

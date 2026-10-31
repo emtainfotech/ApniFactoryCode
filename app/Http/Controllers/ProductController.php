@@ -33,8 +33,9 @@ class ProductController extends Controller
     $slug = $slug.'-'.rand(1000,999999);
       if($files=$request->file('images')){
         foreach($files as $key=>$file){
-            $fname=$file->getClientOriginalName();
-            $file->move('storage/app/public/product',$fname);
+            $ext = $file->getClientOriginalExtension() ?: 'jpg';
+            $fname = time() . '_' . uniqid() . '.' . $ext;
+            $file->move('storage/app/public/product', $fname);
             $images[]='product/'.$fname;
             if($key==0){$img = 'product/'.$fname;}
             }
@@ -382,6 +383,14 @@ class ProductController extends Controller
              $rmn = Product::where("id",$request->get('productid'))->first();
              $rmn['multipleimages'] = json_decode($rmn->multipleimages);
              $attribute = ProductAttributes::where("product_id",$request->get('productid'))->where("color",$request->get('colorid'))->get();
+              if ($attribute->isEmpty()) {
+                  $firstColor = ProductAttributes::where("product_id", $request->get('productid'))->value('color');
+                  if ($firstColor) {
+                      $attribute = ProductAttributes::where("product_id", $request->get('productid'))->where("color", $firstColor)->get();
+                  } else {
+                      $attribute = ProductAttributes::where("product_id", $request->get('productid'))->get();
+                  }
+              }
               foreach($attribute as $atrbt){
                    $color=ShadeCard::where("id",$atrbt->color)->first();
                    $sbm['color']=$color ? $color->name : '';
@@ -391,8 +400,8 @@ class ProductController extends Controller
                    $sbm['quantity']=$quantity ? $quantity->pcs : 1;
                    $sbm['pack_litres']=$atrbt->pack_litres ?: 1.0;
                    $sbm['seller_price']=$atrbt->seller_price ?: $atrbt->price;
-                   $sbm['price']=$atrbt->price;
-                   $sbm['oldprice']=$atrbt->oldprice;
+                   $sbm['price']=(float)$atrbt->price;
+                   $sbm['oldprice']=(float)$atrbt->oldprice;
                    $sbm['attributeid']=$atrbt->id;
                    array_push($rt,$sbm);
               }
@@ -408,7 +417,7 @@ class ProductController extends Controller
               
               ////////////////product reviews
               $revary = $related = array();
-              $reviewlist = ProductReviews::where("product_id",$request->get('productid'))->where("status","1")->get();
+              $reviewlist = ProductReviews::where("product_id",$request->get('productid'))->whereIn("status", ["Active", "active", "1"])->get();
               foreach($reviewlist as $review){
                   $custmr = Customer::where("id",$review->customer_id)->first();
                   if(!empty($custmr)){

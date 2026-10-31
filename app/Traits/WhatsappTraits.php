@@ -18,6 +18,8 @@ trait WhatsappTraits
                                     $url1 =  'https://crm.apnifactory.co.in/core/api/mobile/gst-check/';
                                     curl_setopt($ch1,CURLOPT_URL, $url1);
                                     curl_setopt($ch1, CURLOPT_RETURNTRANSFER, 1);
+                                    curl_setopt($ch1, CURLOPT_TIMEOUT, 5);
+                                    curl_setopt($ch1, CURLOPT_CONNECTTIMEOUT, 3);
                                     curl_setopt($ch1, CURLOPT_HTTPHEADER, array(
                                     "Accept: application/json",
                                     "Content-Type: application/json",
@@ -165,7 +167,8 @@ $note = "Thank you";
               CURLOPT_RETURNTRANSFER => true,
               CURLOPT_ENCODING => '',
               CURLOPT_MAXREDIRS => 10,
-              CURLOPT_TIMEOUT => 0,
+              CURLOPT_TIMEOUT => 5,
+              CURLOPT_CONNECTTIMEOUT => 3,
               CURLOPT_FOLLOWLOCATION => true,
               CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
               CURLOPT_CUSTOMREQUEST => 'POST',
@@ -296,6 +299,8 @@ $data = [
             'Content-Type: application/json'
         ]);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 5);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 3);
         curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
 
         // Execute the request
@@ -395,6 +400,8 @@ $data = [
             'Content-Type: application/json'
         ]);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 5);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 3);
         curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
         // Execute the request
         $response = curl_exec($ch);
@@ -519,7 +526,8 @@ $data = [
               CURLOPT_RETURNTRANSFER => true,
               CURLOPT_ENCODING => '',
               CURLOPT_MAXREDIRS => 10,
-              CURLOPT_TIMEOUT => 0,
+              CURLOPT_TIMEOUT => 5,
+              CURLOPT_CONNECTTIMEOUT => 3,
               CURLOPT_FOLLOWLOCATION => true,
               CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
               CURLOPT_CUSTOMREQUEST => 'POST',
@@ -614,7 +622,8 @@ $data = [
                   CURLOPT_RETURNTRANSFER => true,
                   CURLOPT_ENCODING => '',
                   CURLOPT_MAXREDIRS => 10,
-                  CURLOPT_TIMEOUT => 0,
+                  CURLOPT_TIMEOUT => 5,
+              CURLOPT_CONNECTTIMEOUT => 3,
                   CURLOPT_FOLLOWLOCATION => true,
                   CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
                   CURLOPT_CUSTOMREQUEST => 'POST',
@@ -677,7 +686,8 @@ $dataArray = [
               CURLOPT_RETURNTRANSFER => true,
               CURLOPT_ENCODING => '',
               CURLOPT_MAXREDIRS => 10,
-              CURLOPT_TIMEOUT => 0,
+              CURLOPT_TIMEOUT => 5,
+              CURLOPT_CONNECTTIMEOUT => 3,
               CURLOPT_FOLLOWLOCATION => true,
               CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
               CURLOPT_CUSTOMREQUEST => 'POST',
@@ -734,7 +744,8 @@ $dataArray = [
                   CURLOPT_RETURNTRANSFER => true,
                   CURLOPT_ENCODING => '',
                   CURLOPT_MAXREDIRS => 10,
-                  CURLOPT_TIMEOUT => 0,
+                  CURLOPT_TIMEOUT => 5,
+              CURLOPT_CONNECTTIMEOUT => 3,
                   CURLOPT_FOLLOWLOCATION => true,
                   CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
                   CURLOPT_CUSTOMREQUEST => 'POST',
