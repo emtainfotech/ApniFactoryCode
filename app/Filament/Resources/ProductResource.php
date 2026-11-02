@@ -193,11 +193,11 @@ protected static ?string $navigationBadgeTooltip = 'Number of pending orders';
                 }),
                  Filters\SelectFilter::make('brand_id')
                 ->label('Search By Brand')
-                    ->relationship("brand","name")
-                    ->searchable(),
+                ->options(fn () => \Illuminate\Support\Facades\Cache::remember('filament_brands_pluck', 300, fn () => Brand::orderBy('name')->pluck('name', 'id')))
+                ->searchable(),
                  Filters\SelectFilter::make('category_id')
                 ->label('Search By Category')
-                ->relationship("category","name")
+                ->options(fn () => \Illuminate\Support\Facades\Cache::remember('filament_categories_pluck', 300, fn () => Category::orderBy('name')->pluck('name', 'id')))
                 ->searchable(),
                  Filters\SelectFilter::make('status')
                 ->label('Status')
