@@ -130,3 +130,4 @@ foreach ($brands as $b) {
 }
 
 echo "DONE!\n";
+

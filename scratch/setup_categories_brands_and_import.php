@@ -456,3 +456,4 @@ echo "Successfully configured catalog!\n";
 echo "Products Created/Updated: " . count($jsonProducts) . "\n";
 echo "Variants Created/Updated: {$importedVariants}\n";
 echo "=== ALL STEPS COMPLETED SUCCESSFULLY ===\n";
+

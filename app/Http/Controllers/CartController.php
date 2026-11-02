@@ -212,6 +212,11 @@ class CartController extends Controller
                     $cnt++;
                     $catary["cartid"]=$prod->id;
                     $pnme = Product::where("id",$prod->product_id)->first();
+                    if (!$pnme) {
+                        DB::table("cart")->where("id", $prod->id)->delete();
+                        DB::table("cartattribute")->where("cart_id", $prod->id)->delete();
+                        continue;
+                    }
                     $catary["productid"]=$pnme->id;
                     $catary["productname"]=$pnme->name;
                     $catary["productimage"]=$pnme->image;//echo '</br>'.$prod->id;

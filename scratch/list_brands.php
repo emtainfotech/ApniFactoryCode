@@ -10,3 +10,4 @@ use App\Models\Brand;
 foreach (Brand::all(['id', 'name', 'image']) as $b) {
     echo "{$b->id} | {$b->name} | {$b->image}\n";
 }
+

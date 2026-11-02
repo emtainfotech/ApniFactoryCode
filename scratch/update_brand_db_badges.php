@@ -37,3 +37,4 @@ foreach ($map as $brandName => $imgRel) {
 }
 
 echo "All brand records updated successfully!\n";
+

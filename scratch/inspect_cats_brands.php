@@ -20,3 +20,4 @@ $brands = Brand::all();
 foreach ($brands as $b) {
     echo "ID: {$b->id} | User: {$b->user_id} | CatID: {$b->category_id} | Name: {$b->name} | Image: {$b->image} | Status: {$b->status}\n";
 }
+
