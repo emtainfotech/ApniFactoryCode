@@ -141,7 +141,7 @@ class CouponController extends Controller
          $cmpid = DB::table("cart")->where("customer_id",$userid)->first();
         if(empty($cmpid)){ return response()->json(["status"=>false,"code"=>500,"msg"=>"Please add Product into cart"]);}
          $sellerid = Company::where("id",$cmpid->company_id)->first();
-         $data= Coupon::where("status","1")->where('startdate','<=',date('Y-m-d'))->where('expiry','>=',date('Y-m-d'));
+         $data= Coupon::whereIn("status", ["Active", "active", "1"])->where('startdate','<=',date('Y-m-d'))->where('expiry','>=',date('Y-m-d'));
          $couponof = $request->couponof;
          if($couponof=='seller'){ $data=$data->where('user_id',$sellerid->user_id); }
         if($couponof=='admin'){$data=$data->where('user_id',"0");}

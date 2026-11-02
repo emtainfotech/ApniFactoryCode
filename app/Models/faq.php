@@ -17,4 +17,12 @@ class faq extends Model
     public function user(){
         return $this->belongsTo(User::class);
     }
+
+    public function getStatusAttribute($value)
+    {
+        if (request()->is('api/*')) {
+            return in_array(strtolower((string)$value), ['1', 'active', 'true']) ? 1 : 0;
+        }
+        return $value;
+    }
 }

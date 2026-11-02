@@ -18,4 +18,12 @@ class Page extends Model
     public function user(){
         return $this->belongsTo(User::class);
     }
+
+    public function getStatusAttribute($value)
+    {
+        if (request() && request()->is('api/*')) {
+            return in_array(strtolower($value ?? ''), ['active', '1']) ? 1 : 0;
+        }
+        return $value;
+    }
 }

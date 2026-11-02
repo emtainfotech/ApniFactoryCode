@@ -26,10 +26,12 @@ class CartController extends Controller
                   $rlt['name'] = $rel->name;
                   $rlt['image'] = $rel->image;
                   $price = ProductAttributes::where("product_id",$rel->id)->orderby('price','asc')->first();
+                  if(!$price) continue;
                   $rlt['color']= Helper::getcolorsnamebyid($price->color);
                   $rlt['colorid']= $price->color;
                   $quantity=BoxPacking::where("id",$price->quantity)->first();
-                  $rlt['price'] = 'Rs. '.$price->price.'('.$quantity->name.')';
+                  $qtyName = $quantity ? $quantity->name : '1 Unit';
+                  $rlt['price'] = 'Rs. '.$price->price.'('.$qtyName.')';
                   array_push($related,$rlt);
               }
           return response()->json(["status"=>true,"code"=>100,"msg"=>"Successfully Show","data"=>$related]);
@@ -225,15 +227,14 @@ class CartController extends Controller
                         $attr["boxpacking"] = $fndpcs ? $fndpcs->name : ($attributedetail->quantity ?? '1 Unit');
                         $fndclr = $attributedetail ? ShadeCard::where("id",$attributedetail->color)->first() : null;
                         $attr["color"] = $fndclr ? $fndclr->name : ($attributedetail->color ?? 'Standard');
-                        $attr["totalprice"] = $crtatrbt->totalprice;
-                         $attr["qty"] = $crtatrbt->qty;
-                         $attr["attributeid"] = $crtatrbt->id;
-                         $attr["prprice"] = $crtatrbt->prprice;
-                         $attr["boxpcs"] = $crtatrbt->boxpcs;
-                         $attr["unitprice"] = $crtatrbt->unitprice;
-                         $attr["productattributeid"] = $paid;
-                         $attr["productattributeid"] = $paid;
-                         $attr["couponamount"] = $crtatrbt->coupon * $totalqty;
+                        $attr["totalprice"] = floatval($crtatrbt->totalprice);
+                         $attr["qty"] = intval($crtatrbt->qty);
+                         $attr["attributeid"] = intval($crtatrbt->id);
+                         $attr["prprice"] = intval(round(floatval($crtatrbt->prprice)));
+                         $attr["boxpcs"] = intval($crtatrbt->boxpcs);
+                         $attr["unitprice"] = floatval($crtatrbt->unitprice);
+                         $attr["productattributeid"] = intval($paid);
+                         $attr["couponamount"] = floatval($crtatrbt->coupon ?? 0) * $totalqty;
                           $granttotal += $crtatrbt->totalprice;
                         array_push($catary["attributedata"],$attr);
                         //   print_r($attr);

@@ -31,3 +31,4 @@ class ProductVolumeSlab extends Model
         return $this->belongsTo(User::class, 'seller_user_id');
     }
 }
+

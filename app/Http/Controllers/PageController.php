@@ -31,8 +31,8 @@ class PageController extends Controller
     }
       public function pageslist_forappview()
     {
-        $data = Page::where("status",1)->select("id","name","slug")->get();
-        return json_encode(["status"=>true,"code"=>100,"msg"=>"Successfully Show","data"=>$data]);
+        $data = Page::whereIn("status", ["Active", "active", "1"])->select("id","name","slug")->get();
+        return json_encode(["status"=>true,"code"=>100,"msg"=>"Successfully Show","data"=>array_values($data->toArray())]);
     }
         public function sellertransections(Request $request)
     {

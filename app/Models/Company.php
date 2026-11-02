@@ -28,4 +28,36 @@ class Company extends Model
     public function priceAdjustments(){
         return $this->hasMany(PaintPriceAdjustment::class, 'user_id', 'user_id')->orderBy('id', 'desc');
     }
+
+    public function getStatusAttribute($value)
+    {
+        if (request() && request()->is('api/*')) {
+            return in_array(strtolower($value ?? ''), ['active', '1']) ? 1 : 0;
+        }
+        return $value;
+    }
+
+    public function getMinordervalueAttribute($value)
+    {
+        if (request() && request()->is('api/*')) {
+            return (int) round((float) ($value ?? 0));
+        }
+        return $value;
+    }
+
+    public function getPincodeAttribute($value)
+    {
+        if (request() && request()->is('api/*')) {
+            return (int) ($value ?? 0);
+        }
+        return $value;
+    }
+
+    public function getComissionAttribute($value)
+    {
+        if (request() && request()->is('api/*')) {
+            return (int) round((float) ($value ?? 0));
+        }
+        return $value;
+    }
 }

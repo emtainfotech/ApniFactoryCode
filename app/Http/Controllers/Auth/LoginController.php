@@ -52,9 +52,9 @@ class LoginController extends Controller
         $password = (string) $request->input('password');
 
         // Normalize email aliases or partial inputs
-        if (in_array($email, ['seller@apnifactory.lo', 'seller@apnifactory.com', 'seller@apni.com', 'seller@apnifactory'])) {
+        if (in_array($email, ['seller@apnifactory.loc', 'seller@apnifactory.lo', 'seller@apnifactory.l', 'seller@apnifactory.com', 'seller@apni.com', 'seller@apnifactory', 'seller']) || str_starts_with($email, 'seller@apni')) {
             $email = 'seller@apnifactory.local';
-        } elseif (in_array($email, ['admin@apnifactory.com', 'admin@apni.com', 'admin@admin.com'])) {
+        } elseif (in_array($email, ['admin@apnifactory.loc', 'admin@apnifactory.lo', 'admin@apnifactory.com', 'admin@apni.com', 'admin@admin.com', 'admin@apnifactory', 'admin']) || str_starts_with($email, 'admin@apni')) {
             $email = 'admin@apnifactory.local';
         }
 

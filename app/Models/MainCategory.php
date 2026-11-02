@@ -14,4 +14,12 @@ class MainCategory extends Model
         'image',
         'status','sequence'
     ];
+
+    public function getStatusAttribute($value)
+    {
+        if (request() && request()->is('api/*')) {
+            return in_array(strtolower($value ?? ''), ['active', '1']) ? 1 : 0;
+        }
+        return $value;
+    }
 }

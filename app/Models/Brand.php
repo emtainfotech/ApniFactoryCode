@@ -32,6 +32,14 @@ class Brand extends Model
     public function user(){
         return $this->belongsTo(User::class);
     }
+
+    public function getStatusAttribute($value)
+    {
+        if (request() && request()->is('api/*')) {
+            return in_array(strtolower($value ?? ''), ['active', '1']) ? 1 : 0;
+        }
+        return $value;
+    }
   public function getRouteKeyName()
 {
     return 'company_id';

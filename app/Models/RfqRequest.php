@@ -47,3 +47,4 @@ class RfqRequest extends Model
         return $this->hasMany(RfqQuote::class, 'rfq_request_id');
     }
 }
+

@@ -22,7 +22,7 @@ class FaqController extends Controller
     
     public function index()
     {
-       $data = faq::where("status","1")->get();
+       $data = faq::whereIn("status", ["Active", "active", "1"])->get();
         return json_encode(["status"=>true,"code"=>100,"msg"=>"Successfully Show","data"=>$data]);
     }
 

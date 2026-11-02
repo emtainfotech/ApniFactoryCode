@@ -148,28 +148,68 @@ Route::delete('/product/filter/{id}', [ProductController::class, 'destroyFilter'
 // Customer Mobile App Simulator & Experience Preview
 Route::get('/customer/app-preview', [\App\Http\Controllers\AppPreviewController::class, 'index'])->name('customer.app-preview');
 
-// Storage route for Flutter App image resolution
+// Storage route for Flutter App and Web image resolution with automatic remote caching
 Route::get('/storage/app/public/{path?}', function ($path = null) {
+    $defaultImage = public_path('img/Apni-Factory-3.png');
+
     if (empty($path)) {
-        $defaultImage = public_path('img/Apni-Factory-3.png');
         if (file_exists($defaultImage) && is_file($defaultImage)) {
             return response()->file($defaultImage);
         }
+        abort(404);
     }
-    \Illuminate\Support\Facades\Log::info("Requested image path: " . $path);
+
     $decodedPath = urldecode($path);
-    $filePath = public_path('storage/' . $decodedPath);
+    // Remove duplicate prefix if passed
+    $cleanPath = ltrim(preg_replace('#^(storage/app/public/|storage/|public/)#', '', $decodedPath), '/');
+
+    // 1. Check local public/storage
+    $filePath = public_path('storage/' . $cleanPath);
     if (file_exists($filePath) && is_file($filePath)) {
         return response()->file($filePath);
     }
-    $storageAppPath = storage_path('app/public/' . $decodedPath);
+
+    // 2. Check local storage/app/public
+    $storageAppPath = storage_path('app/public/' . $cleanPath);
     if (file_exists($storageAppPath) && is_file($storageAppPath)) {
         return response()->file($storageAppPath);
     }
-    $defaultImage = public_path('img/Apni-Factory-3.png');
+
+    // 3. Auto-cache from live remote panel if missing locally
+    try {
+        $encodedSubPath = implode('/', array_map('rawurlencode', explode('/', $cleanPath)));
+        $remoteUrl = 'https://panel.apnifactory.co.in/storage/app/public/' . $encodedSubPath;
+        
+        $ctx = stream_context_create([
+            'http' => ['timeout' => 5, 'user_agent' => 'ApniFactory-App/2.0'],
+            'ssl'  => ['verify_peer' => false, 'verify_peer_name' => false]
+        ]);
+        
+        $remoteData = @file_get_contents($remoteUrl, false, $ctx);
+        if (!empty($remoteData)) {
+            $dir = dirname($filePath);
+            if (!file_exists($dir)) {
+                @mkdir($dir, 0755, true);
+            }
+            @file_put_contents($filePath, $remoteData);
+            
+            $dir2 = dirname($storageAppPath);
+            if (!file_exists($dir2)) {
+                @mkdir($dir2, 0755, true);
+            }
+            @file_put_contents($storageAppPath, $remoteData);
+
+            return response()->file($filePath);
+        }
+    } catch (\Exception $e) {
+        \Illuminate\Support\Facades\Log::warning("Could not auto-cache image: " . $cleanPath . " - " . $e->getMessage());
+    }
+
+    // 4. Fallback to clean branded default image so app never crashes
     if (file_exists($defaultImage) && is_file($defaultImage)) {
         return response()->file($defaultImage);
     }
+
     abort(404);
 })->where('path', '.*');
 

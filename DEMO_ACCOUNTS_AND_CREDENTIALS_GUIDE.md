@@ -6,12 +6,13 @@ This reference document outlines all active demo credentials, company associatio
 
 ## 1. Quick Access Matrix
 
-| Portal | URL | Demo Email | Demo Password | Role / Details |
+| Portal | URL | Demo Email / Mobile | Demo Password | Role / Details |
 | :--- | :--- | :--- | :--- | :--- |
-| **Seller Web Portal** | [`http://127.0.0.1:8000/login`](http://127.0.0.1:8000/login) | `seller@apnifactory.local` | `password123` | **Demo Seller** (12 Products, 8 Brands) |
+| **Mobile App (Android/Flutter)** | *Mobile Screen* | `9876543210` or `customer@apnifactory.local` | `password123` *(OTP: 1234)* | **Demo Customer** (Pre-seeded address, active) |
+| **Mobile App (Alternative)** | *Mobile Screen* | `9999999999` or `demo@apnifactory.local` | `password123` *(OTP: 1234)* | **Apni Factory User** (Pre-seeded address, active) |
+| **Seller Web Portal** | [`http://127.0.0.1:8000/login`](http://127.0.0.1:8000/login) | `seller@apnifactory.local` | `password123` | **Demo Seller** (14 Products, 8 Brands) |
 | **Admin Filament Panel** | [`http://127.0.0.1:8000/admin/login`](http://127.0.0.1:8000/admin/login) | `admin@apnifactory.local` | `password123` | **Super Admin** (Full backoffice control) |
-| **Admin Alternative** | [`http://127.0.0.1:8000/admin/login`](http://127.0.0.1:8000/admin/login) | `admin@admin.com` | `password` | Legacy Filament Admin account |
-| **Customer App Preview** | [`http://127.0.0.1:8000/customer/app-preview`](http://127.0.0.1:8000/customer/app-preview) | `customer@apnifactory.local` | `customer@123` | Mobile app web simulator |
+| **Customer Web Simulator** | [`http://127.0.0.1:8000/customer/app-preview`](http://127.0.0.1:8000/customer/app-preview) | `customer@apnifactory.local` | `password123` | Mobile app web simulator |
 | **REST APIs Base** | [`http://127.0.0.1:8000/api/v1/...`](http://127.0.0.1:8000/api/) | *Header: Bearer Token / CRN* | — | Mobile & 3PL Integration Endpoints |
 
 ---
@@ -150,4 +151,37 @@ Write-Host "Auth HTTP Code:" $authResp.StatusCode "-> Redirects to:" $authResp.H
 
 ---
 
+## 8. Mobile Application Demo Users (Customers)
+
+Two customer accounts have been configured in the local database (`customers`, `customer_addresses`, `tbl_otp`, and `users` tables) with pre-seeded addresses and instant OTP capabilities for testing the Android Flutter application.
+
+### Demo Customer 1 (Primary)
+- **Name:** Demo Customer
+- **Login Identifier (Mobile):** `9876543210`
+- **Login Identifier (Email):** `customer@apnifactory.local`
+- **Password:** `password123` *(also supports `customer@123`)*
+- **Universal Test OTP:** `1234`
+- **Pre-configured Address:**
+  - Name: Demo Customer
+  - Address: Plot No. 42, Connaught Place, Near Central Park
+  - City / State / PIN: New Delhi, Delhi - 110001
+  - Phone: `9876543210`
+  - Tag: `Home`
+
+### Demo Customer 2 (Secondary / Alternative)
+- **Name:** Apni Factory User
+- **Login Identifier (Mobile):** `9999999999`
+- **Login Identifier (Email):** `demo@apnifactory.local`
+- **Password:** `password123`
+- **Universal Test OTP:** `1234`
+- **Pre-configured Address:**
+  - Name: Apni Factory User
+  - Address: Sector 18, Commercial Zone, Next to Metro Station
+  - City / State / PIN: New Delhi, Delhi - 110001
+  - Phone: `9999999999`
+  - Tag: `Office`
+
+---
+
 *Document compiled and verified against live MariaDB database and Laravel 9 backend.*
+
