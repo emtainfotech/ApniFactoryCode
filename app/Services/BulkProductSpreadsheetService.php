@@ -29,6 +29,12 @@ class BulkProductSpreadsheetService
      */
     public function generateSampleExcel($userId = null)
     {
+        $prebuiltPath = base_path('apnifactory_products_bulk_template.xlsx');
+        if (file_exists($prebuiltPath)) {
+            $tempPath = storage_path('app/temp_bulk_sample_' . uniqid() . '.xlsx');
+            copy($prebuiltPath, $tempPath);
+            return $tempPath;
+        }
         $userId = $userId ?: (Auth::check() ? Auth::id() : 1);
         $company = Company::where('user_id', $userId)->first();
         $companyId = $company ? $company->id : 1;
@@ -235,6 +241,12 @@ class BulkProductSpreadsheetService
      */
     public function generateSampleCsv()
     {
+        $prebuiltPath = base_path('apnifactory_products_bulk_sample.csv');
+        if (file_exists($prebuiltPath)) {
+            $tempPath = storage_path('app/temp_bulk_sample_' . uniqid() . '.csv');
+            copy($prebuiltPath, $tempPath);
+            return $tempPath;
+        }
         $headers = [
             'category_name',
             'brand_name',
@@ -683,20 +695,21 @@ class BulkProductSpreadsheetService
     protected function downloadRemoteImage($url)
     {
         try {
-            $ch = curl_init($url);
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-            curl_setopt($ch, CURLOPT_TIMEOUT, 10);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-            $data = curl_exec($ch);
-            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            $contentType = curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
-            curl_close($ch);
+            $ctx = stream_context_create([
+                'http' => [
+                    'timeout' => 8,
+                    'user_agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
+                ],
+                'ssl' => ['verify_peer' => false, 'verify_peer_name' => false]
+            ]);
 
-            if ($httpCode === 200 && !empty($data)) {
+            $data = @file_get_contents($url, false, $ctx);
+            if (!empty($data)) {
                 $ext = 'jpg';
-                if (str_contains($contentType, 'png'))  $ext = 'png';
-                if (str_contains($contentType, 'webp')) $ext = 'webp';
+                $lowerUrl = strtolower($url);
+                if (str_contains($lowerUrl, '.png'))  $ext = 'png';
+                if (str_contains($lowerUrl, '.webp')) $ext = 'webp';
+                if (str_contains($lowerUrl, '.jpeg')) $ext = 'jpeg';
 
                 $destinationPath = public_path('storage/product');
                 if (!File::isDirectory($destinationPath)) {
@@ -1008,3 +1021,4 @@ class BulkProductSpreadsheetService
         return $xml;
     }
 }
+
