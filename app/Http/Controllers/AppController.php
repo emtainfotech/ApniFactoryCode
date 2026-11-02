@@ -178,13 +178,37 @@ class AppController extends Controller
             ->get();
         $moreProducts = $this->formatProductCollection($moreProductsRaw);
 
+        // 5. Fetch Verified Factory Companies
+        $companiesRaw = Company::whereIn("status", ["Active", "active", "1"])
+            ->whereNotNull('name')
+            ->where('name', '!=', '')
+            ->limit(10)
+            ->get(['id', 'name', 'photo', 'city', 'state']);
+        $companies = [];
+        foreach ($companiesRaw as $comp) {
+            $companies[] = [
+                'id' => $comp->id,
+                'name' => $comp->name,
+                'photo' => $comp->photo ?: '',
+                'city' => $comp->city ?: 'India',
+                'state' => $comp->state ?: '',
+            ];
+        }
+
+        // 6. Fetch Subcategories (child categories) for sliders
+        $allCategories = Category::whereIn("status", ["Active", "active", "1"])
+            ->orderBy("name")
+            ->get(['id', 'name', 'image', 'maincategory_id']);
+
         $rmn = [
             "slider" => $slider,
             "maincategory" => $maincategory,
+            "subcategories" => $allCategories,
             "advertisement" => $advertisement,
             "notification" => $cntnotification,
             "random_products" => $randomProducts,
             "brands" => $brands,
+            "companies" => $companies,
             "category_carousels" => $categoryCarousels,
             "more_products" => $moreProducts,
         ];
@@ -315,7 +339,14 @@ class AppController extends Controller
      public function productcategorylist_bybrandid(Request $request){
           $bid = $request->get('bid');
           $cid = $request->get('cid');
-          $productlist  = Product::whereIn("status", ["Active", "active", "1"])->where("brand_id",$bid)->where("category_id",$cid)->get();
+          $query = Product::whereIn("status", ["Active", "active", "1"]);
+          if (!empty($bid) && $bid > 0) {
+              $query->where("brand_id", $bid);
+          }
+          if (!empty($cid) && $cid > 0) {
+              $query->where("category_id", $cid);
+          }
+          $productlist = $query->get();
           $rmn['product'] = [];
           $sbct = [];
           $userid = '';
@@ -335,29 +366,45 @@ class AppController extends Controller
 
               foreach($productlist as $prod){
                   $prodAttrs = $attrsByProduct->get($prod->id, collect());
-                  foreach($prodAttrs as $pat){
-                      $sc = $shadeCards->get($pat->color);
-                      $colorName = $sc ? $sc->name : '';
-                      $hexcode = $sc ? $sc->hexcode : '';
-                      $cm = [
-                          'name' => $prod->name . '(' . $colorName . ')',
+                  if ($prodAttrs->isEmpty()) {
+                      // Fallback if no attributes
+                      $rmn['product'][] = [
+                          'name' => $prod->name,
                           'image' => $prod->image,
-                          'price' => (float)$pat->min_price,
+                          'price' => 0.0,
                           'cid' => $prod->category_id,
-                          'categoryname' => $catName,
+                          'categoryname' => $catName ?: ($prod->category ? $prod->category->name : ''),
                           'pid' => $prod->id,
-                          'color' => $colorName,
-                          'hexcode' => $hexcode,
-                          'hexcode_image' => ($hexcode == '' && $sc) ? ($sc->image ?? '') : '',
-                          'colorid' => $pat->color,
+                          'color' => '',
+                          'hexcode' => '',
+                          'hexcode_image' => '',
+                          'colorid' => '0',
                       ];
-                      $rmn['product'][] = $cm;
+                  } else {
+                      foreach($prodAttrs as $pat){
+                          $sc = $shadeCards->get($pat->color);
+                          $colorName = $sc ? $sc->name : '';
+                          $hexcode = $sc ? $sc->hexcode : '';
+                          $cm = [
+                              'name' => $colorName ? $prod->name . ' (' . $colorName . ')' : $prod->name,
+                              'image' => $prod->image,
+                              'price' => (float)$pat->min_price,
+                              'cid' => $prod->category_id,
+                              'categoryname' => $catName,
+                              'pid' => $prod->id,
+                              'color' => $colorName,
+                              'hexcode' => $hexcode,
+                              'hexcode_image' => ($hexcode == '' && $sc) ? ($sc->image ?? '') : '',
+                              'colorid' => $pat->color ?: '0',
+                          ];
+                          $rmn['product'][] = $cm;
+                      }
                   }
                   $userid = $prod->user_id;
               }
           }
 
-          if(!empty($userid)){
+          if(!empty($userid) && !empty($bid)){
               $b = Helper::getbrandname($bid);
               $brandModels = Brand::where("user_id", $userid)->where("name", "like", '%' . $b . '%')->get(['id', 'category_id']);
               $brandIds = $brandModels->pluck('id')->toArray();
@@ -386,6 +433,25 @@ class AppController extends Controller
                   ];
               }
           }
+
+          if (empty($sbct) && !empty($cid)) {
+              $currentCat = Category::find($cid);
+              if ($currentCat) {
+                  $relatedCats = Category::where('maincategory_id', $currentCat->maincategory_id)
+                      ->whereIn('status', ['Active', 'active', '1'])
+                      ->get();
+                  foreach ($relatedCats as $rc) {
+                      $sbct[] = [
+                          'highlight' => ($rc->id == $cid),
+                          'name' => $rc->name,
+                          'image' => $rc->image,
+                          'cid' => $rc->id,
+                          'bid' => $bid ?: 0,
+                      ];
+                  }
+              }
+          }
+
           $rmn['subcategory'] = $sbct;
           $slider = Slider::where("screen","CategoryScreen")->orderby("id","desc")->first();
           $rmn['bannerimage'] = $slider ? $slider->image : '';

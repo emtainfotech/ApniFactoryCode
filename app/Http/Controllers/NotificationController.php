@@ -19,6 +19,7 @@ class NotificationController extends Controller
         }
 
         $userId = Auth::user()->id;
+        session_write_close(); // Release session file lock immediately so other tabs don't stall!
 
         // Fetch unread count
         $unreadCount = DB::table('notifications')

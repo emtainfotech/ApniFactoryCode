@@ -1,5 +1,9 @@
 <?php
 
+@ini_set('max_execution_time', 300);
+@set_time_limit(300);
+@ini_set('memory_limit', '512M');
+
 /**
  * Laravel - A PHP Framework For Web Artisans
  *
@@ -10,6 +14,7 @@
 $uri = urldecode(
     parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH)
 );
+error_log("[REQUEST " . date('H:i:s') . "] " . ($_SERVER['REQUEST_METHOD'] ?? 'GET') . " " . $uri);
 
 // This file allows us to emulate Apache's "mod_rewrite" functionality from the
 // built-in PHP web server. This provides a convenient way to test a Laravel
