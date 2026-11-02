@@ -42,6 +42,7 @@
             </a>
             <ul>
                 <li><a href="{{url('seller/product/add')}}"><i class="fa-solid fa-plus-circle me-2"></i>Create New</a></li>
+                <li><a href="{{route('seller.product.bulk-upload')}}"><i class="fa-solid fa-file-excel me-2 text-success"></i>Bulk Upload (Excel/CSV)</a></li>
                 <li><a href="{{url('seller/product')}}"><i class="fa-solid fa-list-ul me-2"></i>List All</a></li>
                 <li><a href="{{route('seller.paint-pricing.index')}}"><i class="fa-solid fa-paint-roller me-2" style="color: #6f42c1;"></i>Paint Pricing Manager</a></li>
             </ul>

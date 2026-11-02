@@ -20,7 +20,7 @@
 					</div>
 					<div class="ms-auto d-flex gap-2">
 						<a href="{{ url('seller/product/add') }}" class="btn btn-primary"><i class="fa fa-plus me-1"></i> Add Product</a>
-						<a href="{{ route('seller.product.bulk-upload') }}" class="btn btn-success"><i class="fa fa-file-excel me-1"></i> Bulk Upload CSV</a>
+						<a href="{{ route('seller.product.bulk-upload') }}" class="btn btn-success"><i class="fa fa-file-excel me-1"></i> Bulk Upload (Excel / CSV)</a>
 					</div>
 				</div>
 				<!--end breadcrumb-->

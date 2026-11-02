@@ -68,7 +68,8 @@ Route::group(['middleware' => ['auth']], function () {
         Route::get('/seller/product', [ProductController::class,"list"])->name('product.list');
         Route::get('/seller/product/bulk-upload', [ProductController::class, 'bulkUploadView'])->name('seller.product.bulk-upload');
         Route::post('/seller/product/bulk-upload', [ProductController::class, 'processBulkUpload'])->name('seller.product.bulk-upload.process');
-        Route::get('/seller/product/bulk-sample', [ProductController::class, 'downloadBulkSample'])->name('seller.product.bulk-sample');
+        Route::get('/seller/product/bulk-sample-excel', [ProductController::class, 'downloadBulkSampleExcel'])->name('seller.product.bulk-sample-excel');
+        Route::get('/seller/product/bulk-sample', [ProductController::class, 'downloadBulkSampleCsv'])->name('seller.product.bulk-sample');
         Route::get('/seller/product/add', [ProductController::class,"addform"]);
         Route::post('/seller/product/add', function () {
             $data['title'] = 'Add Poduct'; $data['formdata'] = $_POST;$data['formfiles'] = $_FILES;
@@ -146,6 +147,31 @@ Route::delete('/product/filter/{id}', [ProductController::class, 'destroyFilter'
 
 // Customer Mobile App Simulator & Experience Preview
 Route::get('/customer/app-preview', [\App\Http\Controllers\AppPreviewController::class, 'index'])->name('customer.app-preview');
+
+// Storage route for Flutter App image resolution
+Route::get('/storage/app/public/{path?}', function ($path = null) {
+    if (empty($path)) {
+        $defaultImage = public_path('img/Apni-Factory-3.png');
+        if (file_exists($defaultImage) && is_file($defaultImage)) {
+            return response()->file($defaultImage);
+        }
+    }
+    \Illuminate\Support\Facades\Log::info("Requested image path: " . $path);
+    $decodedPath = urldecode($path);
+    $filePath = public_path('storage/' . $decodedPath);
+    if (file_exists($filePath) && is_file($filePath)) {
+        return response()->file($filePath);
+    }
+    $storageAppPath = storage_path('app/public/' . $decodedPath);
+    if (file_exists($storageAppPath) && is_file($storageAppPath)) {
+        return response()->file($storageAppPath);
+    }
+    $defaultImage = public_path('img/Apni-Factory-3.png');
+    if (file_exists($defaultImage) && is_file($defaultImage)) {
+        return response()->file($defaultImage);
+    }
+    abort(404);
+})->where('path', '.*');
 
 Auth::routes();
 
