@@ -63,3 +63,4 @@ echo "\n=== PRODUCTS TO KEEP (" . count($toKeep) . ") ===\n";
 foreach ($toKeep as $item) {
     echo "ID: {$item['id']} | Name: {$item['name']} | Img: {$item['image']}\n";
 }
+

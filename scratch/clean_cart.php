@@ -39,3 +39,4 @@ foreach ($remainingCarts as $rc) {
     $p = Product::find($rc->product_id);
     echo "  Cart ID {$rc->id} | Product: " . ($p ? $p->name : 'MISSING') . "\n";
 }
+

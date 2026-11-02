@@ -17,3 +17,4 @@ Product::whereIn('id', $legacyIds)->delete();
 
 echo "Removed legacy products 23 and 26.\n";
 echo "Active products count: " . Product::count() . "\n";
+

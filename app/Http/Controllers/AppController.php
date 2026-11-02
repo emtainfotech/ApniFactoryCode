@@ -92,42 +92,13 @@ class AppController extends Controller
              $slider = [];
              $advertisement = [];
          }
-                 // 1. Fetch Random Products
+        // 1. Fetch Random Products (Trending Now)
         $randomProductsRaw = Product::whereIn("status", ["Active", "active", "1"])
             ->inRandomOrder()
             ->limit(10)
             ->get();
-
         $prodIds = $randomProductsRaw->pluck('id')->toArray();
-        $minPrices = DB::table('product_attributes')
-            ->select('product_id', DB::raw('MIN(price) as min_price'), DB::raw('MIN(color) as first_color'))
-            ->whereIn('product_id', $prodIds)
-            ->groupBy('product_id')
-            ->get()
-            ->keyBy('product_id');
-
-        $randomProducts = [];
-        foreach ($randomProductsRaw as $p) {
-            $attr = $minPrices->get($p->id);
-            $price = $attr ? (float)$attr->min_price : 0.0;
-            if ($price <= 0 && $p->price) {
-                $price = (float)$p->price;
-            }
-            $colorId = $attr && $attr->first_color ? (string)$attr->first_color : '0';
-
-            $randomProducts[] = [
-                'id' => $p->id,
-                'name' => $p->name,
-                'image' => $p->image ?: 'default.png',
-                'category_id' => $p->category_id ?: 0,
-                'category_name' => Helper::getcatname($p->category_id),
-                'brand_id' => $p->brand_id ?: 0,
-                'brand_name' => Helper::getbrandname($p->brand_id),
-                'price' => $price,
-                'oldprice' => $price > 0 ? round($price * 1.2, 2) : 0.0,
-                'color_id' => $colorId,
-            ];
-        }
+        $randomProducts = $this->formatProductCollection($randomProductsRaw);
 
         // 2. Fetch Popular Brands
         $brandsRaw = Brand::whereIn("status", ["Active", "active", "1"])
@@ -137,7 +108,7 @@ class AppController extends Controller
             ->get(['id', 'name', 'image', 'company_id', 'category_id'])
             ->unique('name')
             ->values()
-            ->take(10);
+            ->take(12);
 
         $brands = [];
         foreach ($brandsRaw as $b) {
@@ -150,43 +121,62 @@ class AppController extends Controller
             ];
         }
 
-        // 3. Fetch More Products (Second random batch)
+        // 3. Blinkit-Style Category Carousels
+        $carouselDefs = [
+            [
+                'title' => 'Wall Primers & Undercoats',
+                'subtitle' => 'Interior & Exterior Base Protection',
+                'badge' => 'Direct Factory',
+                'categories' => ['Interior Wall Primer', 'Exterior Wall Primer', 'Oil Based Primer']
+            ],
+            [
+                'title' => 'Industrial & PU Protective Finishes',
+                'subtitle' => 'Heavy-Duty 2K & 1K PU Protective Coatings',
+                'badge' => 'Industrial Grade',
+                'categories' => ['2K PU Metal Finish', '2K PU Wood Finish', 'Polyurethane Coating PU', 'Hammertone Finish']
+            ],
+            [
+                'title' => 'High Gloss & Silk Emulsions',
+                'subtitle' => 'Platinum Luxury Sheen & Metallic Emulsions',
+                'badge' => 'Top Rated',
+                'categories' => ['Metallic Paints', 'Shine Emulsion', 'Interior Emulsion Water Based', 'Exterior Emulsion Water Based']
+            ],
+            [
+                'title' => 'Enamel & Automotive Coatings',
+                'subtitle' => 'Quick Drying, Synthetic & NC Lacquers',
+                'badge' => 'High Durability',
+                'categories' => ['Enamel Paints', 'Synthetic Enamel Oil Paint', 'Fast Drying Enamel', 'NC Paints']
+            ],
+            [
+                'title' => 'Formulation Bases & Distemper',
+                'subtitle' => 'Wholesale Tinting Bases & Economy Packs',
+                'badge' => 'Best Value',
+                'categories' => ['Bases', 'Distemper', 'Distemper Bucket', 'Wood Finishes', 'Furniture Enamel']
+            ]
+        ];
+
+        $categoryCarousels = [];
+        foreach ($carouselDefs as $cDef) {
+            $catIds = Category::whereIn('name', $cDef['categories'])->pluck('id')->toArray();
+            $cProds = Product::whereIn('status', ['Active', 'active', '1'])
+                ->whereIn('category_id', $catIds)
+                ->get();
+            if ($cProds->isNotEmpty()) {
+                $categoryCarousels[] = [
+                    'title' => $cDef['title'],
+                    'subtitle' => $cDef['subtitle'],
+                    'badge' => $cDef['badge'],
+                    'products' => $this->formatProductCollection($cProds)
+                ];
+            }
+        }
+
+        // 4. Fetch More Products (Initial batch for Infinite Scroll Feed)
         $moreProductsRaw = Product::whereIn("status", ["Active", "active", "1"])
-            ->whereNotIn('id', $prodIds)
             ->inRandomOrder()
             ->limit(10)
             ->get();
-
-        $moreProdIds = $moreProductsRaw->pluck('id')->toArray();
-        $moreMinPrices = DB::table('product_attributes')
-            ->select('product_id', DB::raw('MIN(price) as min_price'), DB::raw('MIN(color) as first_color'))
-            ->whereIn('product_id', $moreProdIds)
-            ->groupBy('product_id')
-            ->get()
-            ->keyBy('product_id');
-
-        $moreProducts = [];
-        foreach ($moreProductsRaw as $p) {
-            $attr = $moreMinPrices->get($p->id);
-            $price = $attr ? (float)$attr->min_price : 0.0;
-            if ($price <= 0 && $p->price) {
-                $price = (float)$p->price;
-            }
-            $colorId = $attr && $attr->first_color ? (string)$attr->first_color : '0';
-
-            $moreProducts[] = [
-                'id' => $p->id,
-                'name' => $p->name,
-                'image' => $p->image ?: 'default.png',
-                'category_id' => $p->category_id ?: 0,
-                'category_name' => Helper::getcatname($p->category_id),
-                'brand_id' => $p->brand_id ?: 0,
-                'brand_name' => Helper::getbrandname($p->brand_id),
-                'price' => $price,
-                'oldprice' => $price > 0 ? round($price * 1.2, 2) : 0.0,
-                'color_id' => $colorId,
-            ];
-        }
+        $moreProducts = $this->formatProductCollection($moreProductsRaw);
 
         $rmn = [
             "slider" => $slider,
@@ -195,23 +185,15 @@ class AppController extends Controller
             "notification" => $cntnotification,
             "random_products" => $randomProducts,
             "brands" => $brands,
+            "category_carousels" => $categoryCarousels,
             "more_products" => $moreProducts,
         ];
-        return json_encode(["status"=>true,"code"=>100,"msg"=>"Successfully Show","data"=>$rmn]);
+        return response()->json(["status"=>true,"code"=>100,"msg"=>"Successfully Show","data"=>$rmn]);
      }
 
-     public function randomproducts(Request $request){
-        $limit = (int)($request->get('limit') ?: 10);
-        $exclude = $request->get('exclude');
-        $excludeIds = is_array($exclude) ? $exclude : (is_string($exclude) ? explode(',', $exclude) : []);
-
-        $query = Product::whereIn("status", ["Active", "active", "1"]);
-        if (!empty($excludeIds)) {
-            $query->whereNotIn('id', $excludeIds);
-        }
-        $productsRaw = $query->inRandomOrder()->limit($limit)->get();
-        $prodIds = $productsRaw->pluck('id')->toArray();
-
+     private function formatProductCollection($collection) {
+        if ($collection->isEmpty()) return [];
+        $prodIds = $collection->pluck('id')->toArray();
         $minPrices = DB::table('product_attributes')
             ->select('product_id', DB::raw('MIN(price) as min_price'), DB::raw('MIN(color) as first_color'))
             ->whereIn('product_id', $prodIds)
@@ -219,8 +201,8 @@ class AppController extends Controller
             ->get()
             ->keyBy('product_id');
 
-        $products = [];
-        foreach ($productsRaw as $p) {
+        $out = [];
+        foreach ($collection as $p) {
             $attr = $minPrices->get($p->id);
             $price = $attr ? (float)$attr->min_price : 0.0;
             if ($price <= 0 && $p->price) {
@@ -228,7 +210,7 @@ class AppController extends Controller
             }
             $colorId = $attr && $attr->first_color ? (string)$attr->first_color : '0';
 
-            $products[] = [
+            $out[] = [
                 'id' => $p->id,
                 'name' => $p->name,
                 'image' => $p->image ?: 'default.png',
@@ -237,12 +219,36 @@ class AppController extends Controller
                 'brand_id' => $p->brand_id ?: 0,
                 'brand_name' => Helper::getbrandname($p->brand_id),
                 'price' => $price,
-                'oldprice' => $price > 0 ? round($price * 1.2, 2) : 0.0,
+                'oldprice' => $price > 0 ? round($price * 1.25, 2) : 0.0,
                 'color_id' => $colorId,
             ];
         }
+        return $out;
+     }
 
-        return json_encode(["status"=>true,"code"=>100,"msg"=>"Successfully Show","data"=>$products]);
+     public function randomproducts(Request $request){
+        $limit = (int)($request->get('limit') ?: 10);
+        $page = (int)($request->get('page') ?: 1);
+        $exclude = $request->get('exclude');
+        $excludeIds = is_array($exclude) ? $exclude : (is_string($exclude) && strlen($exclude) > 0 ? explode(',', $exclude) : []);
+
+        $query = Product::whereIn("status", ["Active", "active", "1"]);
+        if (!empty($excludeIds)) {
+            $query->whereNotIn('id', $excludeIds);
+        }
+
+        $productsRaw = $query->paginate($limit, ['*'], 'page', $page);
+        $products = $this->formatProductCollection(collect($productsRaw->items()));
+
+        return response()->json([
+            "status" => true,
+            "code" => 100,
+            "msg" => "Successfully Show",
+            "has_more" => $productsRaw->hasMorePages(),
+            "total" => $productsRaw->total(),
+            "current_page" => $productsRaw->currentPage(),
+            "data" => $products
+        ]);
      }
      public function secondscreen_category_company(Request $request){
          $rmn['category']=$rmn['company']=$rmn['advertisement']=array();

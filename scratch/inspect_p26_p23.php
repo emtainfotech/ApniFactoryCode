@@ -12,3 +12,4 @@ $p23 = Product::find(23);
 
 if ($p26) echo "ID 26: {$p26->name} | Img: {$p26->image}\n";
 if ($p23) echo "ID 23: {$p23->name} | Img: {$p23->image}\n";
+

@@ -81,3 +81,4 @@ echo "\nRemaining active products count: " . $remaining->count() . "\n";
 foreach ($remaining as $rp) {
     echo "ID: {$rp->id} | {$rp->name} | Img: {$rp->image}\n";
 }
+
