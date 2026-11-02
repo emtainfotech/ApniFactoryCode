@@ -30,7 +30,10 @@ class AdvertisementResource extends Resource
     protected static ?string $pluralModelLabel = 'Advertisements (1080*450)';
      public static function getNavigationBadge(): ?string
     {
-        return 'Pending : '.static::getModel()::where("adminmsg","")->count();
+        $count = \Illuminate\Support\Facades\Cache::remember('admin_pending_ads_badge', 60, function () {
+            return static::getModel()::where("adminmsg","")->count();
+        });
+        return 'Pending : ' . $count;
     }
     public static function getNavigationBadgeColor(): ?string
     {

@@ -29,7 +29,10 @@ class TransectionResource extends Resource
 
     public static function getNavigationBadge(): ?string
     {
-        return 'Success : '.static::getModel()::where('status', 'success')->count();
+        $count = \Illuminate\Support\Facades\Cache::remember('admin_success_transactions_badge', 60, function () {
+            return static::getModel()::where('status', 'success')->count();
+        });
+        return 'Success : ' . $count;
     }
     public static function getNavigationBadgeColor(): ?string
     {

@@ -38,7 +38,7 @@ protected static ?string $navigationBadgeTooltip = 'Number of pending orders';
     public static function getNavigationBadge(): ?string
     {
         $count = \Illuminate\Support\Facades\Cache::remember('admin_active_products_badge', 60, function () {
-            return static::getModel()::where('status', '1')->count();
+            return static::getModel()::whereIn('status', ['Active', '1'])->count();
         });
         return 'Active : ' . (string) $count;
     }
@@ -48,11 +48,9 @@ protected static ?string $navigationBadgeTooltip = 'Number of pending orders';
     }
     public static function form(Form $form): Form
     {
-        $pd = Product::orderby('id','desc')->first();
-        $pid = $pd->id + 1;
         return $form
             ->schema([
-                 TextInput::make('product_id')->default($pid),
+                 TextInput::make('product_id')->default(fn () => (Product::max('id') ?? 0) + 1),
                 Select::make('user_id')
                     ->relationship("user","name")
                 ->required()
@@ -159,6 +157,12 @@ protected static ?string $navigationBadgeTooltip = 'Number of pending orders';
                            
             ]);
     }
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()
+            ->with(['brand', 'category', 'user.company']);
+    }
+
     public static function table(Table $table): Table
     {
         return $table
@@ -168,17 +172,17 @@ protected static ?string $navigationBadgeTooltip = 'Number of pending orders';
                 Tables\Columns\TextColumn::make('category.name')->sortable()->searchable(),
                 Tables\Columns\TextColumn::make('user.company.name')->sortable()->searchable(),
                 Tables\Columns\TextColumn::make('created_at')->date(),
-                ToggleColumn::make('status'),
+                Tables\Columns\BadgeColumn::make('status')
+                    ->colors([
+                        'success' => fn ($state): bool => in_array(strtolower((string)$state), ['active', '1']),
+                        'danger'  => fn ($state): bool => !in_array(strtolower((string)$state), ['active', '1']),
+                    ]),
                 Tables\Columns\TextColumn::make('name')->sortable()->searchable(),
             ])
             ->defaultSort('id', 'desc')
             ->filters([
                 Filters\SelectFilter::make('Company Name')
-                ->options(
-                    // Fetch all company names for the select filter options
-                    // Ensure you are using the correct relationships
-                    Company::all()->pluck('name', 'id')
-                )
+                ->options(fn () => \Illuminate\Support\Facades\Cache::remember('filament_companies_pluck', 300, fn () => Company::pluck('name', 'id')))
                 ->query(function (Builder $query, array $data): Builder {
                     if (empty($data['value'])) { // Check if a value is selected
                         return $query;
@@ -198,9 +202,18 @@ protected static ?string $navigationBadgeTooltip = 'Number of pending orders';
                  Filters\SelectFilter::make('status')
                 ->label('Status')
                 ->options([
-                        '1' => 'Active',
-                        '0' => 'Deactive',
+                        'Active' => 'Active',
+                        'Deactive' => 'Deactive',
                 ])
+                ->query(function (Builder $query, array $data): Builder {
+                    if (empty($data['value'])) {
+                        return $query;
+                    }
+                    if ($data['value'] === 'Active') {
+                        return $query->whereIn('status', ['Active', '1']);
+                    }
+                    return $query->whereNotIn('status', ['Active', '1']);
+                })
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),

@@ -21,7 +21,10 @@ class UserResource extends Resource
     protected static ?string $navigationIcon = 'heroicon-o-collection';
  public static function getNavigationBadge(): ?string
     {
-        return 'Total : '.static::getModel()::count();
+        $count = \Illuminate\Support\Facades\Cache::remember('admin_total_users_badge', 60, function () {
+            return static::getModel()::count();
+        });
+        return 'Total : ' . $count;
     }
     public static function getNavigationBadgeColor(): ?string
     {

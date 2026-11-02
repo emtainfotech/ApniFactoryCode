@@ -36,7 +36,10 @@ class BrandResource extends Resource
 
     public static function getNavigationBadge(): ?string
     {
-        return 'Processing : '.static::getModel()::where('type', 'Processing')->count();
+        $count = \Illuminate\Support\Facades\Cache::remember('admin_processing_brands_badge', 60, function () {
+            return static::getModel()::where('type', 'Processing')->count();
+        });
+        return 'Processing : ' . $count;
     }
     public static function getNavigationBadgeColor(): ?string
     {

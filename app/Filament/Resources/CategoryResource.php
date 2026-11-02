@@ -30,7 +30,10 @@ class CategoryResource extends Resource
 
     public static function getNavigationBadge(): ?string
     {
-        return 'Pending : '.static::getModel()::where('adminstatus', 'pending')->count();
+        $count = \Illuminate\Support\Facades\Cache::remember('admin_pending_categories_badge', 60, function () {
+            return static::getModel()::where('adminstatus', 'pending')->count();
+        });
+        return 'Pending : ' . $count;
     }
     public static function getNavigationBadgeColor(): ?string
     {

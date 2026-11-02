@@ -5,6 +5,10 @@ use Illuminate\Http\Request;
 
 define('LARAVEL_START', microtime(true));
 
+@ini_set('max_execution_time', 180);
+@set_time_limit(180);
+@ini_set('memory_limit', '512M');
+
 /*
 |--------------------------------------------------------------------------
 | Check If The Application Is Under Maintenance

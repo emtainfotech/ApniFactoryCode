@@ -26,7 +26,10 @@ class TicketResource extends Resource
 
     public static function getNavigationBadge(): ?string
     {
-        return 'Pending : '.static::getModel()::where('status', 'Pending')->count();
+        $count = \Illuminate\Support\Facades\Cache::remember('admin_pending_tickets_badge', 60, function () {
+            return static::getModel()::where('status', 'Pending')->count();
+        });
+        return 'Pending : ' . $count;
     }
     public static function getNavigationBadgeColor(): ?string
     {
