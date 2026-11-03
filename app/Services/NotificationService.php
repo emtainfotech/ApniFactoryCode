@@ -64,7 +64,7 @@ class NotificationService
                 $recipientName = $customer->name;
                 $recipientEmail = $customer->email;
                 $recipientMobile = $customer->mobile;
-                $fcmToken = $customer->fcm_token ?? $customer->device_token ?? null;
+                $fcmToken = $customer->deviceid ?? $customer->fcm_token ?? $customer->device_token ?? null;
             }
         } elseif (in_array($recipientType, ['seller', 'admin'])) {
             $user = User::find($recipientId);
@@ -103,6 +103,7 @@ class NotificationService
     public function sendFcmPush($token, string $title, string $message, array $data = []): bool
     {
         $serverKey = env('FCM_SERVER_KEY');
+        $img = !empty($data['image']) ? $data['image'] : (!empty($data['banner']) ? $data['banner'] : null);
 
         if (!$serverKey) {
             // Local simulation / Mock mode
@@ -122,6 +123,18 @@ class NotificationService
                     'body'  => $message,
                     'sound' => 'default',
                     'badge' => '1',
+                    'image' => $img,
+                    'android_channel_id' => 'high_importance_channel',
+                ],
+                'android' => [
+                    'priority' => 'high',
+                    'notification' => [
+                        'channel_id' => 'high_importance_channel',
+                        'image' => $img,
+                        'sound' => 'default',
+                        'default_vibrate_timings' => true,
+                        'default_sound' => true,
+                    ],
                 ],
                 'data' => array_merge($data, [
                     'click_action' => 'FLUTTER_NOTIFICATION_CLICK',
@@ -140,6 +153,138 @@ class NotificationService
             Log::error("FCM Push delivery error: " . $e->getMessage());
             return false;
         }
+    }
+
+    /**
+     * Broadcast Custom Notification with Banner & Deep Link to customers from Admin Dashboard.
+     */
+    public function broadcastCustomPush(
+        string $title,
+        string $message,
+        ?string $imageUrl = null,
+        ?string $screen = null,
+        ?string $screenId = null,
+        string $targetAudience = 'all_customers',
+        ?int $customerId = null
+    ): array {
+        $serverKey = env('FCM_SERVER_KEY');
+        $fullImageUrl = null;
+        if (!empty($imageUrl)) {
+            $fullImageUrl = str_starts_with($imageUrl, 'http') ? $imageUrl : url('storage/' . $imageUrl);
+        }
+
+        $deepData = [
+            'title'     => $title,
+            'body'      => $message,
+            'msg'       => $message,
+            'image'     => $fullImageUrl ?? '',
+            'banner'    => $fullImageUrl ?? '',
+            'screen'    => $screen ?? 'none',
+            'screenid'  => (string) ($screenId ?? ''),
+            'deep_link' => ($screen && $screenId) ? "{$screen}/{$screenId}" : '',
+        ];
+
+        // 1. Save to database
+        if ($targetAudience === 'specific_customer' && $customerId) {
+            DB::table('notifications')->insert([
+                'customer_id' => $customerId,
+                'title'       => $title,
+                'msg'         => $message,
+                'type'        => 'promo',
+                'image'       => $imageUrl,
+                'deep_link'   => $deepData['deep_link'],
+                'screen'      => $screen,
+                'screenid'    => $screenId,
+                'msgread'     => 0,
+                'created_at'  => now(),
+                'updated_at'  => now(),
+            ]);
+            $tokens = Customer::where('id', $customerId)
+                ->where(function($q) {
+                    $q->whereNotNull('deviceid')->orWhereNotNull('fcm_token');
+                })
+                ->pluck('deviceid')
+                ->filter()
+                ->unique()
+                ->toArray();
+        } else {
+            // Broadcast to all customers
+            DB::table('notifications')->insert([
+                'customer_id' => null, // null = broadcast to all customers
+                'title'       => $title,
+                'msg'         => $message,
+                'type'        => 'broadcast',
+                'image'       => $imageUrl,
+                'deep_link'   => $deepData['deep_link'],
+                'screen'      => $screen,
+                'screenid'    => $screenId,
+                'msgread'     => 0,
+                'created_at'  => now(),
+                'updated_at'  => now(),
+            ]);
+            $tokens = Customer::whereNotNull('deviceid')
+                ->pluck('deviceid')
+                ->filter()
+                ->unique()
+                ->toArray();
+        }
+
+        $sentCount = 0;
+        if (empty($serverKey)) {
+            Log::info("[MOCK BROADCAST PUSH] To " . count($tokens) . " devices: [{$title}] {$message}", $deepData);
+            return [
+                'success' => true,
+                'sent_count' => count($tokens),
+                'mock' => true,
+            ];
+        }
+
+        $chunks = array_chunk($tokens, 500);
+        foreach ($chunks as $chunk) {
+            if (empty($chunk)) continue;
+            try {
+                $payload = [
+                    'registration_ids' => array_values($chunk),
+                    'notification' => [
+                        'title' => $title,
+                        'body'  => $message,
+                        'image' => $fullImageUrl,
+                        'sound' => 'default',
+                        'android_channel_id' => 'high_importance_channel',
+                    ],
+                    'android' => [
+                        'priority' => 'high',
+                        'notification' => [
+                            'channel_id' => 'high_importance_channel',
+                            'image' => $fullImageUrl,
+                            'sound' => 'default',
+                        ],
+                    ],
+                    'data' => array_merge($deepData, [
+                        'click_action' => 'FLUTTER_NOTIFICATION_CLICK',
+                        'timestamp'    => time(),
+                    ]),
+                    'priority' => 'high',
+                ];
+
+                $response = Http::withHeaders([
+                    'Authorization' => 'key=' . $serverKey,
+                    'Content-Type'  => 'application/json',
+                ])->timeout(10)->post('https://fcm.googleapis.com/fcm/send', $payload);
+
+                if ($response->successful()) {
+                    $sentCount += count($chunk);
+                }
+            } catch (\Exception $e) {
+                Log::error("Broadcast push chunk error: " . $e->getMessage());
+            }
+        }
+
+        return [
+            'success' => true,
+            'sent_count' => $sentCount,
+            'tokens_found' => count($tokens),
+        ];
     }
 
     /**

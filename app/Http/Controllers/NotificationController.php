@@ -198,23 +198,36 @@ class NotificationController extends Controller
         $notifications = DB::table('notifications')
             ->where(function ($q) use ($customerId) {
                 $q->where('customer_id', $customerId)
-                  ->where(function ($sub) {
-                      $sub->whereNull('type')
-                          ->orWhere('type', 'customer');
-                  });
+                  ->orWhereNull('customer_id');
+            })
+            ->where(function ($sub) {
+                $sub->whereNull('type')
+                    ->orWhereIn('type', ['customer', 'broadcast', 'promo', 'order', 'system']);
             })
             ->orderBy('id', 'desc')
+            ->limit(50)
             ->get();
 
         $unreadCount = $notifications->where('msgread', 0)->count();
 
         $formatted = $notifications->map(function ($item) {
             $created = Carbon::parse($item->created_at);
+            $img = null;
+            if (!empty($item->image)) {
+                $img = str_starts_with($item->image, 'http') ? $item->image : url('storage/' . $item->image);
+            }
+
             return [
                 'id'         => $item->id,
+                'customer_id'=> $item->customer_id,
                 'title'      => $item->title ?? 'Order Update',
                 'body'       => $item->msg ?? '',
                 'msg'        => $item->msg ?? '',
+                'type'       => $item->type ?? 'system',
+                'image'      => $img,
+                'deep_link'  => $item->deep_link,
+                'screen'     => $item->screen,
+                'screenid'   => $item->screenid,
                 'msgread'    => (int) $item->msgread,
                 'created_at' => $created->format('Y-m-d H:i:s'),
                 'time_ago'   => $created->diffForHumans(),
