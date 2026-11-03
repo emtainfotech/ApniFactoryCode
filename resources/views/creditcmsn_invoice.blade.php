@@ -168,7 +168,7 @@
             <tr>
                 <!-- Left Column Logo Brand -->
                 <td class="v-top" style="width: 50%;">
-                    <img src="https://panel.apnifactory.co.in/public/img/Apni-Factory-3.png" alt="Logo" width="200px">
+                    <img src="{{ asset('img/Apni-Factory-3.png') }}" alt="Logo" width="200px">
                     <!--<div class="logo-text">🛒 ApniFactory</div>-->
                     <!--<span class="logo-subtext">FACTORY SE DIRECT</span>-->
                 </td>
