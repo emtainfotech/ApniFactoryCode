@@ -19,4 +19,8 @@ yarn-error.log
 github_token.txt
 .git-credentials
 push_to_github.ps1
+setup_local.ps1
+*.docx
+*.sql
+/scratch
 
