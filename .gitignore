@@ -23,4 +23,5 @@ setup_local.ps1
 *.docx
 *.sql
 /scratch
+/public/vendor
 
