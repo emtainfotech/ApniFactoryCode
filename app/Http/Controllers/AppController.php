@@ -218,21 +218,45 @@ class AppController extends Controller
      private function formatProductCollection($collection) {
         if ($collection->isEmpty()) return [];
         $prodIds = $collection->pluck('id')->toArray();
-        $minPrices = DB::table('product_attributes')
-            ->select('product_id', DB::raw('MIN(price) as min_price'), DB::raw('MIN(color) as first_color'))
-            ->whereIn('product_id', $prodIds)
-            ->groupBy('product_id')
-            ->get()
-            ->keyBy('product_id');
+        $rawAttrs = DB::table('product_attributes')
+            ->leftJoin('box_packings', function($join) {
+                $join->on('box_packings.id', '=', DB::raw('CAST(product_attributes.quantity AS UNSIGNED)'));
+            })
+            ->select(
+                'product_attributes.id as attribute_id',
+                'product_attributes.product_id',
+                'product_attributes.color',
+                'box_packings.name as pack_size',
+                DB::raw('CAST(product_attributes.price AS DECIMAL(12,2)) as numeric_price'),
+                DB::raw('CAST(product_attributes.oldprice AS DECIMAL(12,2)) as numeric_oldprice')
+            )
+            ->whereIn('product_attributes.product_id', $prodIds)
+            ->where(function($q) {
+                $q->whereNull('product_attributes.status')
+                  ->orWhereIn('product_attributes.status', ['active', 'Active', '1']);
+            })
+            ->whereRaw('CAST(product_attributes.price AS DECIMAL(12,2)) > 0')
+            ->orderBy('numeric_price', 'asc')
+            ->get();
+
+        $lowestAttrsByProduct = [];
+        foreach ($rawAttrs as $attrRow) {
+            $pid = (int)$attrRow->product_id;
+            if (!isset($lowestAttrsByProduct[$pid])) {
+                $lowestAttrsByProduct[$pid] = $attrRow;
+            }
+        }
 
         $out = [];
         foreach ($collection as $p) {
-            $attr = $minPrices->get($p->id);
-            $price = $attr ? (float)$attr->min_price : 0.0;
+            $attr = isset($lowestAttrsByProduct[$p->id]) ? $lowestAttrsByProduct[$p->id] : null;
+            $price = $attr ? (float)$attr->numeric_price : 0.0;
             if ($price <= 0 && $p->price) {
                 $price = (float)$p->price;
             }
-            $colorId = $attr && $attr->first_color ? (string)$attr->first_color : '0';
+            $oldPrice = ($attr && $attr->numeric_oldprice > 0) ? (float)$attr->numeric_oldprice : ($price > 0 ? round($price * 1.25, 2) : 0.0);
+            $colorId = $attr && $attr->color ? (string)$attr->color : '0';
+            $packSize = $attr && $attr->pack_size ? (string)$attr->pack_size : '';
 
             $out[] = [
                 'id' => $p->id,
@@ -243,8 +267,10 @@ class AppController extends Controller
                 'brand_id' => $p->brand_id ?: 0,
                 'brand_name' => Helper::getbrandname($p->brand_id),
                 'price' => $price,
-                'oldprice' => $price > 0 ? round($price * 1.25, 2) : 0.0,
+                'oldprice' => $oldPrice,
                 'color_id' => $colorId,
+                'pack_size' => $packSize,
+                'attribute_id' => $attr ? (int)$attr->attribute_id : 0,
             ];
         }
         return $out;
@@ -354,8 +380,9 @@ class AppController extends Controller
           if($productlist->isNotEmpty()){
               $pids = $productlist->pluck('id')->toArray();
               $attributes = DB::table('product_attributes')
-                  ->select('product_id', 'color', DB::raw('MIN(price) as min_price'))
+                  ->select('product_id', 'color', DB::raw('MIN(CAST(price AS DECIMAL(12,2))) as min_price'))
                   ->whereIn('product_id', $pids)
+                  ->whereRaw('CAST(price AS DECIMAL(12,2)) > 0')
                   ->groupBy('product_id', 'color')
                   ->get();
 
@@ -470,8 +497,9 @@ class AppController extends Controller
           if($productlist->isNotEmpty()){
               $pids = $productlist->pluck('id')->toArray();
               $attributes = DB::table('product_attributes')
-                  ->select('product_id', 'color', DB::raw('MIN(price) as min_price'))
+                  ->select('product_id', 'color', DB::raw('MIN(CAST(price AS DECIMAL(12,2))) as min_price'))
                   ->whereIn('product_id', $pids)
+                  ->whereRaw('CAST(price AS DECIMAL(12,2)) > 0')
                   ->groupBy('product_id', 'color')
                   ->get();
 
@@ -535,6 +563,25 @@ class AppController extends Controller
                   ];
               }
           }
+
+          if (empty($sbct) && !empty($sid)) {
+              $currentCat = Category::find($sid);
+              if ($currentCat) {
+                  $relatedCats = Category::where('maincategory_id', $currentCat->maincategory_id)
+                      ->whereIn('status', ['Active', 'active', '1'])
+                      ->get();
+                  foreach ($relatedCats as $rc) {
+                      $sbct[] = [
+                          'highlight' => ($rc->id == $sid),
+                          'name' => $rc->name,
+                          'image' => $rc->image,
+                          'cid' => $rc->id,
+                          'bid' => $bid ?: 0,
+                      ];
+                  }
+              }
+          }
+
           $rmn['subcategory'] = $sbct;
           $rmn['bannerimage'] = 'storage/app/public/slider/banner.jpg';
           $rmn['brandname'] = Helper::getbrandname($bid);

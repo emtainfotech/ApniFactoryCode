@@ -14,4 +14,9 @@ class ListProducts extends ListRecords
     {
         return [];
     }
+
+    protected function getTableRecordsPerPage(): int
+    {
+        return 10;
+    }
 }

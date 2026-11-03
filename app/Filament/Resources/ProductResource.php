@@ -180,6 +180,8 @@ protected static ?string $navigationBadgeTooltip = 'Number of pending orders';
                 Tables\Columns\TextColumn::make('name')->sortable()->searchable(),
             ])
             ->defaultSort('id', 'desc')
+            ->defaultPaginationPageOption(10)
+            ->paginationPageOptions([10, 25, 50])
             ->filters([
                 Filters\SelectFilter::make('Company Name')
                 ->options(fn () => \Illuminate\Support\Facades\Cache::remember('filament_companies_pluck', 300, fn () => Company::pluck('name', 'id')))
