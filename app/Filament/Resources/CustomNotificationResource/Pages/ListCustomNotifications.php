@@ -22,3 +22,4 @@ class ListCustomNotifications extends ListRecords
         return 10;
     }
 }
+
