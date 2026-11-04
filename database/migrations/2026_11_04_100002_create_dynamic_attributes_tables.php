@@ -99,3 +99,4 @@ class CreateDynamicAttributesTables extends Migration
         Schema::dropIfExists('attributes');
     }
 }
+

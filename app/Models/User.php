@@ -47,4 +47,14 @@ class User extends Authenticatable
     {
         return $this->hasOne(Company::class); 
     }
+
+    public function isAdmin(): bool
+    {
+        return $this->id === 1 || str_contains(strtolower($this->email), 'admin');
+    }
+
+    public function isSeller(): bool
+    {
+        return $this->company()->exists() || str_contains(strtolower($this->email), 'seller') || !$this->isAdmin();
+    }
 }

@@ -141,15 +141,94 @@ Route::get('seller/paint-pricing/audit/{id}', [PaintPricingController::class, 'a
       $sellers = $altService->getAlternativeSellers((int)$id, 3);
       return response()->json(['status' => true, 'count' => count($sellers), 'data' => $sellers]);
   });
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
+
+/*
+|--------------------------------------------------------------------------
+| APNI FACTORY PHASE-II (v2) CATALOGUE API ROUTES
+| Centralized REST API Layer for Product Hierarchy, Dynamic Attributes,
+| Variants, Seller SKU Listings, Packaging Rules, and Unified Search.
+|--------------------------------------------------------------------------
+*/
+Route::prefix('v2')->group(function () {
+    // 0. Auth
+    Route::post('auth/login', [App\Http\Controllers\Api\V2\AuthController::class, 'login']);
+    Route::middleware('auth:sanctum')->group(function () {
+        Route::get('auth/user', [App\Http\Controllers\Api\V2\AuthController::class, 'user']);
+        Route::post('auth/logout', [App\Http\Controllers\Api\V2\AuthController::class, 'logout']);
+    });
+
+    // 1. Categories & Subcategories (Public)
+    Route::get('categories', [App\Http\Controllers\Api\V2\CategoryController::class, 'index']);
+    Route::get('categories/{id}', [App\Http\Controllers\Api\V2\CategoryController::class, 'show']);
+    Route::get('categories/{id}/subcategories', [App\Http\Controllers\Api\V2\CategoryController::class, 'subcategories']);
+    Route::get('categories/{id}/attributes', [App\Http\Controllers\Api\V2\DynamicAttributeController::class, 'categoryAttributes']);
+
+    // 2. Brands (Public)
+    Route::get('brands', [App\Http\Controllers\Api\V2\BrandController::class, 'index']);
+    Route::get('brands/{id}', [App\Http\Controllers\Api\V2\BrandController::class, 'show']);
+    Route::get('brands/by-category/{categoryId}', [App\Http\Controllers\Api\V2\BrandController::class, 'byCategory']);
+
+    // 3. Products Catalogue (Public)
+    Route::get('products', [App\Http\Controllers\Api\V2\ProductCatalogueController::class, 'index']);
+    Route::get('products/{id}', [App\Http\Controllers\Api\V2\ProductCatalogueController::class, 'show']);
+    Route::get('products/by-category/{categoryId}', [App\Http\Controllers\Api\V2\ProductCatalogueController::class, 'byCategory']);
+    Route::get('products/by-subcategory/{subcategoryId}', [App\Http\Controllers\Api\V2\ProductCatalogueController::class, 'bySubcategory']);
+    Route::get('products/by-brand/{brandId}', [App\Http\Controllers\Api\V2\ProductCatalogueController::class, 'byBrand']);
+    Route::get('products/{id}/attributes', [App\Http\Controllers\Api\V2\DynamicAttributeController::class, 'productAttributes']);
+    Route::get('products/{id}/variants', [App\Http\Controllers\Api\V2\ProductVariantController::class, 'productVariants']);
+    Route::post('products/{id}/variants/find-by-attributes', [App\Http\Controllers\Api\V2\ProductVariantController::class, 'findByAttributes']);
+    Route::get('products/{id}/skus', [App\Http\Controllers\Api\V2\SellerListingController::class, 'productSkus']);
+
+    // 4. Variants & Listings (Public)
+    Route::get('variants/{id}', [App\Http\Controllers\Api\V2\ProductVariantController::class, 'show']);
+    Route::get('variants/{id}/skus', [App\Http\Controllers\Api\V2\SellerListingController::class, 'variantSkus']);
+    Route::get('public/listings/{id}', [App\Http\Controllers\Api\V2\SellerListingController::class, 'publicShow']);
+
+    // 5. Unified Catalogue Search
+    Route::get('catalogue/search', [App\Http\Controllers\Api\V2\ProductCatalogueController::class, 'search']);
+    Route::post('attributes/validate', [App\Http\Controllers\Api\V2\DynamicAttributeController::class, 'validateValues']);
+
+    // 6. Seller SKU & Inventory Management (Authenticated Seller/Admin)
+    Route::middleware('auth:sanctum')->group(function () {
+        Route::get('seller/listings', [App\Http\Controllers\Api\V2\SellerListingController::class, 'sellerListings']);
+        Route::get('seller/listings/{id}', [App\Http\Controllers\Api\V2\SellerListingController::class, 'show']);
+        Route::get('seller/listings/{id}/stock', [App\Http\Controllers\Api\V2\SellerListingController::class, 'stockAvailability']);
+        Route::post('seller/listings', [App\Http\Controllers\Api\V2\SellerListingController::class, 'store']);
+        Route::put('seller/listings/{id}', [App\Http\Controllers\Api\V2\SellerListingController::class, 'update']);
+        Route::patch('seller/listings/{id}/status', [App\Http\Controllers\Api\V2\SellerListingController::class, 'updateStatus']);
+        Route::post('seller/listings/{id}/adjust-stock', [App\Http\Controllers\Api\V2\SellerListingController::class, 'adjustStock']);
+    });
+
+    // 7. Admin Catalogue Management (Authenticated Admin Only)
+    Route::middleware(['auth:sanctum', 'admin.catalogue'])->prefix('admin')->group(function () {
+        // Categories
+        Route::post('categories', [App\Http\Controllers\Api\V2\CategoryController::class, 'store']);
+        Route::put('categories/{id}', [App\Http\Controllers\Api\V2\CategoryController::class, 'update']);
+        Route::patch('categories/{id}/status', [App\Http\Controllers\Api\V2\CategoryController::class, 'updateStatus']);
+
+        // Brands
+        Route::post('brands', [App\Http\Controllers\Api\V2\BrandController::class, 'store']);
+        Route::put('brands/{id}', [App\Http\Controllers\Api\V2\BrandController::class, 'update']);
+        Route::patch('brands/{id}/status', [App\Http\Controllers\Api\V2\BrandController::class, 'updateStatus']);
+
+        // Products
+        Route::post('products', [App\Http\Controllers\Api\V2\ProductCatalogueController::class, 'store']);
+        Route::put('products/{id}', [App\Http\Controllers\Api\V2\ProductCatalogueController::class, 'update']);
+        Route::patch('products/{id}/status', [App\Http\Controllers\Api\V2\ProductCatalogueController::class, 'updateStatus']);
+
+        // Attributes Master & Category Mappings
+        Route::get('attributes', [App\Http\Controllers\Api\V2\DynamicAttributeController::class, 'index']);
+        Route::get('attributes/{id}', [App\Http\Controllers\Api\V2\DynamicAttributeController::class, 'show']);
+        Route::post('attributes', [App\Http\Controllers\Api\V2\DynamicAttributeController::class, 'store']);
+        Route::put('attributes/{id}', [App\Http\Controllers\Api\V2\DynamicAttributeController::class, 'update']);
+        Route::post('attributes/{id}/options', [App\Http\Controllers\Api\V2\DynamicAttributeController::class, 'storeOption']);
+        Route::post('categories/{id}/attributes', [App\Http\Controllers\Api\V2\DynamicAttributeController::class, 'mapToCategory']);
+        Route::delete('categories/{id}/attributes/{attributeId}', [App\Http\Controllers\Api\V2\DynamicAttributeController::class, 'unmapFromCategory']);
+
+        // Variants
+        Route::post('products/{productId}/variants', [App\Http\Controllers\Api\V2\ProductVariantController::class, 'store']);
+        Route::put('variants/{id}', [App\Http\Controllers\Api\V2\ProductVariantController::class, 'update']);
+        Route::patch('variants/{id}/status', [App\Http\Controllers\Api\V2\ProductVariantController::class, 'updateStatus']);
+    });
+});
+

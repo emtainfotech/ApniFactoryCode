@@ -100,3 +100,4 @@ class CreateInventoryAndPackagingRules extends Migration
         }
     }
 }
+

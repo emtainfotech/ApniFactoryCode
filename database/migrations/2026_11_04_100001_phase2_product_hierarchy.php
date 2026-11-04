@@ -68,3 +68,4 @@ class Phase2ProductHierarchy extends Migration
         Schema::dropIfExists('product_variants');
     }
 }
+

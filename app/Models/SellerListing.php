@@ -90,3 +90,4 @@ class SellerListing extends Model
         return max(0, (int)$this->stock_quantity - (int)$this->reserved_stock);
     }
 }
+

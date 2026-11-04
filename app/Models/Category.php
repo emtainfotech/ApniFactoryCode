@@ -23,6 +23,19 @@ class Category extends Model
         return $this->belongsTo(MainCategory::class);
     }
 
+    public function subcategories(){
+        return $this->hasMany(SubCatgory::class, 'cid');
+    }
+
+    public function categoryAttributes(){
+        return $this->hasMany(CategoryAttribute::class, 'category_id');
+    }
+
+    public function attributes(){
+        return $this->belongsToMany(Attribute::class, 'category_attributes', 'category_id', 'attribute_id')
+            ->withPivot(['is_required', 'is_filterable', 'is_searchable', 'is_variant_generating', 'sort_order', 'validation_rules', 'status']);
+    }
+
     public function getStatusAttribute($value)
     {
         if (request() && request()->is('api/*')) {

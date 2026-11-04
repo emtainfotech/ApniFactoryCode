@@ -78,3 +78,4 @@ class ProductAttributeValue extends Model
         return $this->text_value;
     }
 }
+

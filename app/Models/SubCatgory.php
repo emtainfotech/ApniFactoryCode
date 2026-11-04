@@ -17,4 +17,8 @@ class SubCatgory extends Model
         'status',
         'mid','cid'
     ];
+
+    public function category(){
+        return $this->belongsTo(Category::class, 'cid');
+    }
 }

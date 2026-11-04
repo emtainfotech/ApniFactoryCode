@@ -48,3 +48,4 @@ class Attribute extends Model
         return $this->hasMany(ProductAttributeValue::class, 'attribute_id');
     }
 }
+

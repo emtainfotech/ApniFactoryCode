@@ -59,3 +59,4 @@ class ProductVariant extends Model
         return $this->hasMany(ProductAttributeValue::class, 'product_variant_id');
     }
 }
+
