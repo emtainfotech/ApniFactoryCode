@@ -30,6 +30,10 @@ class Company extends Model
         return $this->hasMany(SellerCatalogueExport::class)->orderBy('id', 'desc');
     }
 
+    public function catalogueImports(){
+        return $this->hasMany(SellerCatalogueImport::class)->orderBy('id', 'desc');
+    }
+
     public function bank(){
          return $this->hasMany(BankDetails::class);
     }

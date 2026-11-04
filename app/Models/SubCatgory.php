@@ -15,7 +15,10 @@ class SubCatgory extends Model
         'name',
         'image',
         'status',
-        'mid','cid'
+        'mid',
+        'cid',
+        'category_id',
+        'maincategory_id',
     ];
 
     public function category(){

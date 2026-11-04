@@ -252,4 +252,12 @@ Route::prefix('v2/seller')->middleware('auth:sanctum')->group(function () {
     Route::post('catalogue/export',              [\App\Http\Controllers\Api\SellerCatalogueExportApiController::class, 'store']);
     Route::get('catalogue/exports/{id}',         [\App\Http\Controllers\Api\SellerCatalogueExportApiController::class, 'show']);
     Route::get('catalogue/exports/{id}/download',[\App\Http\Controllers\Api\SellerCatalogueExportApiController::class, 'download']);
+
+    // Phase 2.3: Seller Catalogue Excel Import APIs
+    Route::get('catalogue/import/template',       [\App\Http\Controllers\Api\SellerCatalogueImportApiController::class, 'template']);
+    Route::post('catalogue/import/validate',      [\App\Http\Controllers\Api\SellerCatalogueImportApiController::class, 'validateUpload']);
+    Route::post('catalogue/import/{id}/confirm',  [\App\Http\Controllers\Api\SellerCatalogueImportApiController::class, 'confirm'])->whereNumber('id');
+    Route::get('catalogue/import/{id}',          [\App\Http\Controllers\Api\SellerCatalogueImportApiController::class, 'show'])->whereNumber('id');
+    Route::get('catalogue/imports',              [\App\Http\Controllers\Api\SellerCatalogueImportApiController::class, 'index']);
+    Route::get('catalogue/imports/{id}/errors',  [\App\Http\Controllers\Api\SellerCatalogueImportApiController::class, 'errors'])->whereNumber('id');
 });
