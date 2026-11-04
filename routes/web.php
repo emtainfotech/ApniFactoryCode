@@ -38,6 +38,25 @@ Route::get('/run-process-seller', function () {
     return "The credit script has run successfully! Check your database or logs.";
 });
 ///end testing
+Route::get('/storage/app/public/{path}', function ($path) {
+    $filePath = storage_path('app/public/' . $path);
+    if (file_exists($filePath) && is_file($filePath)) {
+        return response()->file($filePath);
+    }
+    abort(404);
+})->where('path', '.*');
+
+Route::get('/storage/{path}', function ($path) {
+    if (str_starts_with($path, 'app/public/')) {
+        $path = substr($path, strlen('app/public/'));
+    }
+    $filePath = storage_path('app/public/' . $path);
+    if (file_exists($filePath) && is_file($filePath)) {
+        return response()->file($filePath);
+    }
+    abort(404);
+})->where('path', '.*');
+
 Route::post('/seller/getmidcidbybid', [Helper::class,"getmidcidbybid"]);
 Route::get('/', function () {
     return view('welcome');

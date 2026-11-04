@@ -1,0 +1,47 @@
+BEGIN:VCALENDAR
+PRODID:-//Google Inc//Google Calendar 70.9054//EN
+VERSION:2.0
+CALSCALE:GREGORIAN
+METHOD:REQUEST
+BEGIN:VTIMEZONE
+TZID:Asia/Kolkata
+X-LIC-LOCATION:Asia/Kolkata
+BEGIN:STANDARD
+TZOFFSETFROM:+0530
+TZOFFSETTO:+0530
+TZNAME:GMT+5:30
+DTSTART:19700101T000000
+END:STANDARD
+END:VTIMEZONE
+BEGIN:VEVENT
+DTSTART;TZID=Asia/Kolkata:20240920T184500
+DTEND;TZID=Asia/Kolkata:20240920T193000
+DTSTAMP:20240919T055741Z
+ORGANIZER;CN=Khushi Shrivastava:mailto:khushi.jobaaj@gmail.com
+UID:4fcg96nv56al1tvaf0encp64lm@google.com
+ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;RSVP=
+ TRUE;CN=ersaketmodi@gmail.com;X-NUM-GUESTS=0:mailto:ersaketmodi@gmail.com
+ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;RSVP=
+ TRUE;CN=bhawna.jobaaj@gmail.com;X-NUM-GUESTS=0:mailto:bhawna.jobaaj@gmail.c
+ om
+ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=ACCEPTED;RSVP=TRUE
+ ;CN=Khushi Shrivastava;X-NUM-GUESTS=0:mailto:khushi.jobaaj@gmail.com
+ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;RSVP=
+ TRUE;CN=saxena.surbhiverma@gmail.com;X-NUM-GUESTS=0:mailto:saxena.surbhiver
+ ma@gmail.com
+X-GOOGLE-CONFERENCE:https://meet.google.com/tyg-vgwx-bft
+X-MICROSOFT-CDO-OWNERAPPTID:-171535537
+CREATED:20240919T055739Z
+DESCRIPTION:-::~:~::~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~
+ :~:~:~:~:~:~:~:~::~:~::-\nJoin with Google Meet: https://meet.google.com/ty
+ g-vgwx-bft\n\nLearn more about Meet at: https://support.google.com/a/users/
+ answer/9282720\n\nPlease do not edit this section.\n-::~:~::~:~:~:~:~:~:~:~
+ :~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~::~:~::-
+LAST-MODIFIED:20240919T055739Z
+LOCATION:
+SEQUENCE:0
+STATUS:CONFIRMED
+SUMMARY:Discussion with Surbhi || PHP Developer || Mac & Ross - Jaipur
+TRANSP:OPAQUE
+END:VEVENT
+END:VCALENDAR
