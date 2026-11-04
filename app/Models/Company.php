@@ -34,6 +34,10 @@ class Company extends Model
         return $this->hasMany(SellerCatalogueImport::class)->orderBy('id', 'desc');
     }
 
+    public function bulkOperations(){
+        return $this->hasMany(SellerCatalogueBulkOperation::class)->orderBy('id', 'desc');
+    }
+
     public function bank(){
          return $this->hasMany(BankDetails::class);
     }

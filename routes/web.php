@@ -193,10 +193,16 @@ Route::delete('/product/filter/{id}', [ProductController::class, 'destroyFilter'
         Route::get('/seller/catalogue/import/template', [\App\Http\Controllers\SellerCatalogueImportWebController::class, 'template'])->name('seller.catalogue.import.template');
         Route::get('/seller/catalogue/import', [\App\Http\Controllers\SellerCatalogueImportWebController::class, 'index'])->name('seller.catalogue.import');
         Route::post('/seller/catalogue/import/validate', [\App\Http\Controllers\SellerCatalogueImportWebController::class, 'validateUpload'])->name('seller.catalogue.import.validate');
-        Route::get('/seller/catalogue/import/{id}/preview', [\App\Http\Controllers\SellerCatalogueImportWebController::class, 'preview'])->name('seller.catalogue.import.preview')->whereNumber('id');
-        Route::post('/seller/catalogue/import/{id}/confirm', [\App\Http\Controllers\SellerCatalogueImportWebController::class, 'confirm'])->name('seller.catalogue.import.confirm')->whereNumber('id');
+        Route::get('/seller/catalogue/import/{id}/preview', [\App\Http\Controllers\SellerCatalogueImportWebController::class, 'preview'])->name('seller.catalogue.import.preview');
+        Route::post('/seller/catalogue/import/{id}/confirm', [\App\Http\Controllers\SellerCatalogueImportWebController::class, 'confirm'])->name('seller.catalogue.import.confirm');
         Route::get('/seller/catalogue/import/history', [\App\Http\Controllers\SellerCatalogueImportWebController::class, 'history'])->name('seller.catalogue.import.history');
-        Route::get('/seller/catalogue/import/{id}/errors', [\App\Http\Controllers\SellerCatalogueImportWebController::class, 'errors'])->name('seller.catalogue.import.errors')->whereNumber('id');
+        Route::get('/seller/catalogue/import/{id}/errors', [\App\Http\Controllers\SellerCatalogueImportWebController::class, 'errors'])->name('seller.catalogue.import.errors');
+
+        // --- Seller Catalogue Bulk Management (Phase 2.4) ---
+        Route::get('/seller/catalogue/bulk', [\App\Http\Controllers\SellerCatalogueBulkWebController::class, 'index'])->name('seller.catalogue.bulk');
+        Route::post('/seller/catalogue/bulk/preview', [\App\Http\Controllers\SellerCatalogueBulkWebController::class, 'preview'])->name('seller.catalogue.bulk.preview');
+        Route::post('/seller/catalogue/bulk/{id}/confirm', [\App\Http\Controllers\SellerCatalogueBulkWebController::class, 'confirm'])->name('seller.catalogue.bulk.confirm')->whereNumber('id');
+        Route::get('/seller/catalogue/bulk/history', [\App\Http\Controllers\SellerCatalogueBulkWebController::class, 'history'])->name('seller.catalogue.bulk.history');
 
 });
 

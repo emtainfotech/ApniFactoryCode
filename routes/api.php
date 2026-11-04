@@ -256,8 +256,18 @@ Route::prefix('v2/seller')->middleware('auth:sanctum')->group(function () {
     // Phase 2.3: Seller Catalogue Excel Import APIs
     Route::get('catalogue/import/template',       [\App\Http\Controllers\Api\SellerCatalogueImportApiController::class, 'template']);
     Route::post('catalogue/import/validate',      [\App\Http\Controllers\Api\SellerCatalogueImportApiController::class, 'validateUpload']);
-    Route::post('catalogue/import/{id}/confirm',  [\App\Http\Controllers\Api\SellerCatalogueImportApiController::class, 'confirm'])->whereNumber('id');
-    Route::get('catalogue/import/{id}',          [\App\Http\Controllers\Api\SellerCatalogueImportApiController::class, 'show'])->whereNumber('id');
+    Route::post('catalogue/import/{id}/confirm',  [\App\Http\Controllers\Api\SellerCatalogueImportApiController::class, 'confirm']);
+    Route::get('catalogue/import/{id}',          [\App\Http\Controllers\Api\SellerCatalogueImportApiController::class, 'show']);
     Route::get('catalogue/imports',              [\App\Http\Controllers\Api\SellerCatalogueImportApiController::class, 'index']);
-    Route::get('catalogue/imports/{id}/errors',  [\App\Http\Controllers\Api\SellerCatalogueImportApiController::class, 'errors'])->whereNumber('id');
+    Route::get('catalogue/imports/{id}/errors',  [\App\Http\Controllers\Api\SellerCatalogueImportApiController::class, 'errors']);
+
+    // Phase 2.4: Seller Catalogue Bulk Management APIs
+    Route::post('catalogue/bulk/preview',       [\App\Http\Controllers\Api\SellerCatalogueBulkApiController::class, 'preview']);
+    Route::post('catalogue/bulk/{id}/confirm',  [\App\Http\Controllers\Api\SellerCatalogueBulkApiController::class, 'confirm'])->whereNumber('id');
+    Route::post('catalogue/bulk/status',        [\App\Http\Controllers\Api\SellerCatalogueBulkApiController::class, 'statusUpdate']);
+    Route::post('catalogue/bulk/fields',        [\App\Http\Controllers\Api\SellerCatalogueBulkApiController::class, 'fieldUpdate']);
+    Route::post('catalogue/bulk/archive',       [\App\Http\Controllers\Api\SellerCatalogueBulkApiController::class, 'archive']);
+    Route::post('catalogue/bulk/restore',       [\App\Http\Controllers\Api\SellerCatalogueBulkApiController::class, 'restore']);
+    Route::get('catalogue/bulk/history',        [\App\Http\Controllers\Api\SellerCatalogueBulkApiController::class, 'history']);
+    Route::get('catalogue/bulk/{id}',           [\App\Http\Controllers\Api\SellerCatalogueBulkApiController::class, 'show'])->whereNumber('id');
 });
