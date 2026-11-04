@@ -175,3 +175,4 @@ class BrandController extends BaseApiController
         return $this->sendResponse(new BrandResource($brand), "Brand status updated to {$status}.");
     }
 }
+

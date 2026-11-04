@@ -26,3 +26,4 @@ class AttributeOptionResource extends JsonResource
         ];
     }
 }
+

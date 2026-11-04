@@ -33,7 +33,9 @@ class ProductResource extends Resource
     protected static ?string $model = Product::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-collection';
-protected static ?string $navigationBadgeTooltip = 'Number of pending orders';
+    protected static ?string $navigationGroup = 'Catalogue Management';
+    protected static ?int $navigationSort = 1;
+    protected static ?string $navigationBadgeTooltip = 'Number of pending orders';
 
     public static function getNavigationBadge(): ?string
     {
@@ -160,7 +162,8 @@ protected static ?string $navigationBadgeTooltip = 'Number of pending orders';
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()
-            ->with(['brand', 'category', 'user.company']);
+            ->with(['brand', 'category', 'user.company'])
+            ->withCount(['variants', 'listings']);
     }
 
     public static function table(Table $table): Table
@@ -168,20 +171,24 @@ protected static ?string $navigationBadgeTooltip = 'Number of pending orders';
         return $table
             ->columns([
                 Tables\Columns\ImageColumn::make('image')->square(),
+                Tables\Columns\TextColumn::make('name')->sortable()->searchable()->weight('bold'),
                 Tables\Columns\TextColumn::make('brand.name')->sortable()->searchable(),
                 Tables\Columns\TextColumn::make('category.name')->sortable()->searchable(),
-                Tables\Columns\TextColumn::make('user.company.name')->sortable()->searchable(),
-                Tables\Columns\TextColumn::make('created_at')->date(),
+                Tables\Columns\BadgeColumn::make('variants_count')
+                    ->label('Variants')
+                    ->colors(['primary']),
+                Tables\Columns\BadgeColumn::make('listings_count')
+                    ->label('Seller SKUs')
+                    ->colors(['success']),
                 Tables\Columns\BadgeColumn::make('status')
                     ->colors([
                         'success' => fn ($state): bool => in_array(strtolower((string)$state), ['active', '1']),
                         'danger'  => fn ($state): bool => !in_array(strtolower((string)$state), ['active', '1']),
                     ]),
-                Tables\Columns\TextColumn::make('name')->sortable()->searchable(),
+                Tables\Columns\TextColumn::make('user.company.name')->label('Owner Company')->sortable()->searchable(),
+                Tables\Columns\TextColumn::make('updated_at')->dateTime()->label('Updated'),
             ])
             ->defaultSort('id', 'desc')
-            ->defaultPaginationPageOption(10)
-            ->paginationPageOptions([10, 25, 50])
             ->filters([
                 Filters\SelectFilter::make('Company Name')
                 ->options(fn () => \Illuminate\Support\Facades\Cache::remember('filament_companies_pluck', 300, fn () => Company::pluck('name', 'id')))
@@ -230,14 +237,14 @@ protected static ?string $navigationBadgeTooltip = 'Number of pending orders';
     public static function getRelations(): array
     {
         return [
-            //
+            RelationManagers\VariantsRelationManager::class,
+            RelationManagers\SellerListingsRelationManager::class,
         ];
     }
    
     public static function canCreate(): bool
     {
-        // Logic to determine if the create button should be shown
-        return false; // Change this to your actual logic
+        return true;
     }
     public static function getPages(): array
     {

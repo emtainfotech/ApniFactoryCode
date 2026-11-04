@@ -26,6 +26,8 @@ class CategoryResource extends Resource
     protected static ?string $model = Category::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-collection';
+    protected static ?string $navigationGroup = 'Catalogue Management';
+    protected static ?int $navigationSort = 0;
     protected static ?string $navigationBadgeTooltip = 'Number of pending orders';
 
     public static function getNavigationBadge(): ?string
@@ -125,7 +127,7 @@ class CategoryResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+            RelationManagers\SubcategoriesRelationManager::class,
         ];
     }
     

@@ -238,3 +238,4 @@ class Phase1_4_ProductCatalogueApiTest extends TestCase
             ->assertJsonPath('status', true);
     }
 }
+

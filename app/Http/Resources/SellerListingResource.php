@@ -47,3 +47,4 @@ class SellerListingResource extends JsonResource
         ];
     }
 }
+

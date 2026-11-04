@@ -34,11 +34,12 @@ class Phase2ProductHierarchyAndInventoryTest extends TestCase
      */
     public function test_product_hierarchy_relationships()
     {
-        $product = Product::has('variants')->first();
-        $this->assertNotNull($product, 'At least one product with variants must exist.');
+        $variant = ProductVariant::has('listings')->first();
+        $this->assertNotNull($variant, 'At least one variant with listings must exist.');
+        $product = $variant->product;
+        $this->assertInstanceOf(Product::class, $product);
 
         $this->assertTrue($product->variants()->count() > 0);
-        $variant = $product->variants()->first();
         $this->assertInstanceOf(ProductVariant::class, $variant);
         $this->assertEquals($product->id, $variant->product_id);
 

@@ -35,3 +35,4 @@ class ProductVariantResource extends JsonResource
         ];
     }
 }
+

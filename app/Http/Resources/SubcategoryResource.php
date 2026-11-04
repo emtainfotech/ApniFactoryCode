@@ -25,3 +25,4 @@ class SubcategoryResource extends JsonResource
         ];
     }
 }
+

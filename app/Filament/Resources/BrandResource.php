@@ -31,7 +31,9 @@ class BrandResource extends Resource
 {
     protected static ?string $model = Brand::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-collection';      
+    protected static ?string $navigationIcon = 'heroicon-o-collection';
+    protected static ?string $navigationGroup = 'Catalogue Management';
+    protected static ?int $navigationSort = 2;
     protected static ?string $navigationBadgeTooltip = 'Number of pending orders';
 
     public static function getNavigationBadge(): ?string

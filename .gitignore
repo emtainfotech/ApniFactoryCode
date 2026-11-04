@@ -23,5 +23,6 @@ setup_local.ps1
 *.docx
 *.sql
 /scratch
-/public/vendor
+/public/vendor/*
+!/public/vendor/livewire
 

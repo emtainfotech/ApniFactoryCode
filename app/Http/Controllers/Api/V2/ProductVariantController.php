@@ -222,3 +222,4 @@ class ProductVariantController extends BaseApiController
         return $this->sendResponse(new ProductVariantResource($variant), "Variant status updated to {$variant->status}.");
     }
 }
+

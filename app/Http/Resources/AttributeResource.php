@@ -28,3 +28,4 @@ class AttributeResource extends JsonResource
         ];
     }
 }
+

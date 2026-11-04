@@ -26,3 +26,4 @@ class ProductAttributeValueResource extends JsonResource
         ];
     }
 }
+

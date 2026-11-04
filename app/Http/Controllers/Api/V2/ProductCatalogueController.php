@@ -326,3 +326,4 @@ class ProductCatalogueController extends BaseApiController
         return $this->sendResponse(new ProductResource($product), "Product status updated to {$status}.");
     }
 }
+

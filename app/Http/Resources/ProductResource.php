@@ -41,3 +41,4 @@ class ProductResource extends JsonResource
         ];
     }
 }
+

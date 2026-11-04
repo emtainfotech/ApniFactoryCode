@@ -29,3 +29,4 @@ class EnsureCatalogueAdmin
         return $next($request);
     }
 }
+

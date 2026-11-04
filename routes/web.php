@@ -38,6 +38,16 @@ Route::get('/run-process-seller', function () {
     return "The credit script has run successfully! Check your database or logs.";
 });
 ///end testing
+Route::get('/livewire/livewire.js', function () {
+    $path = public_path('vendor/livewire/livewire.js');
+    if (file_exists($path)) {
+        return response()->file($path, [
+            'Content-Type' => 'application/javascript; charset=utf-8',
+        ]);
+    }
+    return (new \Livewire\Controllers\LivewireJavaScriptAssets)->source();
+});
+
 Route::get('/storage/app/public/{path}', function ($path) {
     $filePath = storage_path('app/public/' . $path);
     if (file_exists($filePath) && is_file($filePath)) {

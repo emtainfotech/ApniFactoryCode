@@ -83,3 +83,4 @@ class AuthController extends BaseApiController
         return $this->sendResponse([], 'Logged out successfully.');
     }
 }
+

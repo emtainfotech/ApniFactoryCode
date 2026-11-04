@@ -349,3 +349,4 @@ class SellerListingController extends BaseApiController
         return $this->sendResponse(new SellerListingResource($updatedListing), 'Inventory adjusted successfully.');
     }
 }
+
