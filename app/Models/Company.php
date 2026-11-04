@@ -38,6 +38,14 @@ class Company extends Model
         return $this->hasMany(SellerCatalogueBulkOperation::class)->orderBy('id', 'desc');
     }
 
+    public function validationResults(){
+        return $this->hasMany(ProductValidationResult::class)->orderBy('id', 'desc');
+    }
+
+    public function reviewHistories(){
+        return $this->hasMany(ProductReviewHistory::class)->orderBy('id', 'desc');
+    }
+
     public function bank(){
          return $this->hasMany(BankDetails::class);
     }

@@ -75,3 +75,4 @@ class SellerCatalogueBulkOperation extends Model
         return $this->status === 'previewed' && $this->eligible_count > 0;
     }
 }
+

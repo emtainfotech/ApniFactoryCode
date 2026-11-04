@@ -229,6 +229,14 @@ Route::prefix('v2')->group(function () {
         Route::post('products/{productId}/variants', [App\Http\Controllers\Api\V2\ProductVariantController::class, 'store']);
         Route::put('variants/{id}', [App\Http\Controllers\Api\V2\ProductVariantController::class, 'update']);
         Route::patch('variants/{id}/status', [App\Http\Controllers\Api\V2\ProductVariantController::class, 'updateStatus']);
+
+        // Phase 2.5: Admin Catalogue Review APIs
+        Route::get('catalogue/review-queue',                     [\App\Http\Controllers\Api\AdminCatalogueReviewApiController::class, 'queue']);
+        Route::get('catalogue/review/{id}',                      [\App\Http\Controllers\Api\AdminCatalogueReviewApiController::class, 'show'])->whereNumber('id');
+        Route::post('catalogue/review/{id}/approve',             [\App\Http\Controllers\Api\AdminCatalogueReviewApiController::class, 'approve'])->whereNumber('id');
+        Route::post('catalogue/review/{id}/reject',              [\App\Http\Controllers\Api\AdminCatalogueReviewApiController::class, 'reject'])->whereNumber('id');
+        Route::post('catalogue/review/{id}/request-corrections', [\App\Http\Controllers\Api\AdminCatalogueReviewApiController::class, 'requestCorrections'])->whereNumber('id');
+        Route::get('catalogue/review/{id}/history',              [\App\Http\Controllers\Api\AdminCatalogueReviewApiController::class, 'history'])->whereNumber('id');
     });
 });
 
@@ -270,4 +278,12 @@ Route::prefix('v2/seller')->middleware('auth:sanctum')->group(function () {
     Route::post('catalogue/bulk/restore',       [\App\Http\Controllers\Api\SellerCatalogueBulkApiController::class, 'restore']);
     Route::get('catalogue/bulk/history',        [\App\Http\Controllers\Api\SellerCatalogueBulkApiController::class, 'history']);
     Route::get('catalogue/bulk/{id}',           [\App\Http\Controllers\Api\SellerCatalogueBulkApiController::class, 'show'])->whereNumber('id');
+
+    // Phase 2.5: Seller Catalogue Approval Workflow APIs
+    Route::post('catalogue/products/{id}/validate',          [\App\Http\Controllers\Api\SellerCatalogueApprovalApiController::class, 'validateProduct'])->whereNumber('id');
+    Route::post('catalogue/products/{id}/submit',            [\App\Http\Controllers\Api\SellerCatalogueApprovalApiController::class, 'submit'])->whereNumber('id');
+    Route::get('catalogue/products/{id}/submission-status',   [\App\Http\Controllers\Api\SellerCatalogueApprovalApiController::class, 'submissionStatus'])->whereNumber('id');
+    Route::get('catalogue/products/{id}/review-feedback',    [\App\Http\Controllers\Api\SellerCatalogueApprovalApiController::class, 'reviewFeedback'])->whereNumber('id');
+    Route::post('catalogue/products/{id}/resubmit',          [\App\Http\Controllers\Api\SellerCatalogueApprovalApiController::class, 'resubmit'])->whereNumber('id');
+    Route::get('catalogue/products/{id}/review-history',     [\App\Http\Controllers\Api\SellerCatalogueApprovalApiController::class, 'reviewHistory'])->whereNumber('id');
 });

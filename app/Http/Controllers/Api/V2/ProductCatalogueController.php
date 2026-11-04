@@ -26,8 +26,16 @@ class ProductCatalogueController extends BaseApiController
         if ($request->filled('status')) {
             $query->where('status', $request->status);
         } else {
-            $query->whereIn('status', ['Active', 'active', '1']);
+            $query->whereIn('status', ['Active', 'active', '1'])
+              ->where(function ($q) {
+                  $q->whereNull('approval_status')->orWhere('approval_status', 'approved');
+              });
         }
+
+        // Marketplace publication rule: Only approved products are publicly visible
+        $query->where(function ($q) {
+            $q->whereNull('approval_status')->orWhere('approval_status', 'approved');
+        });
 
         // Hierarchy Filters
         if ($request->filled('category_id')) {
@@ -88,6 +96,14 @@ class ProductCatalogueController extends BaseApiController
             return $this->sendError('Product not found.', [], 404);
         }
 
+        // Visibility guard: unapproved products can only be viewed by owner or admin
+        $user = auth('sanctum')->user();
+        if ($product->approval_status && $product->approval_status !== 'approved') {
+            if (!$user || (!$user->isAdmin() && $user->id !== $product->user_id)) {
+                return $this->sendError('Product not found or pending catalogue approval.', [], 404);
+            }
+        }
+
         return $this->sendResponse(new ProductDetailResource($product), 'Product details retrieved successfully.');
     }
 
@@ -128,7 +144,10 @@ class ProductCatalogueController extends BaseApiController
             $q->where('status', 'Active')->orderBy('selling_price', 'asc');
         }])->withCount('variants');
 
-        $query->whereIn('status', ['Active', 'active', '1']);
+        $query->whereIn('status', ['Active', 'active', '1'])
+              ->where(function ($q) {
+                  $q->whereNull('approval_status')->orWhere('approval_status', 'approved');
+              });
 
         // Keyword Search across Product name, brand name, variant SKU
         if ($request->filled('q')) {
@@ -276,6 +295,14 @@ class ProductCatalogueController extends BaseApiController
             return $this->sendError('Product not found.', [], 404);
         }
 
+        // Visibility guard: unapproved products can only be viewed by owner or admin
+        $user = auth('sanctum')->user();
+        if ($product->approval_status && $product->approval_status !== 'approved') {
+            if (!$user || (!$user->isAdmin() && $user->id !== $product->user_id)) {
+                return $this->sendError('Product not found or pending catalogue approval.', [], 404);
+            }
+        }
+
         $validator = Validator::make($request->all(), [
             'name' => 'sometimes|required|string|max:255',
             'title' => 'nullable|string|max:255',
@@ -309,6 +336,14 @@ class ProductCatalogueController extends BaseApiController
         $product = Product::find($id);
         if (!$product) {
             return $this->sendError('Product not found.', [], 404);
+        }
+
+        // Visibility guard: unapproved products can only be viewed by owner or admin
+        $user = auth('sanctum')->user();
+        if ($product->approval_status && $product->approval_status !== 'approved') {
+            if (!$user || (!$user->isAdmin() && $user->id !== $product->user_id)) {
+                return $this->sendError('Product not found or pending catalogue approval.', [], 404);
+            }
         }
 
         $validator = Validator::make($request->all(), [

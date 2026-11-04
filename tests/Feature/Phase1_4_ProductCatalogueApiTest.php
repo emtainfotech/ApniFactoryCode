@@ -25,8 +25,14 @@ class Phase1_4_ProductCatalogueApiTest extends TestCase
     {
         parent::setUp();
 
-        $this->adminUser = User::where('email', 'admin@apnifactory.local')->first() ?: User::first();
-        $this->sellerUser = User::where('email', 'seller@apnifactory.local')->first() ?: User::first();
+        $this->adminUser = User::firstOrCreate(
+            ['email' => 'admin@apnifactory.local'],
+            ['name' => 'Admin User', 'password' => bcrypt('password')]
+        );
+        $this->sellerUser = User::firstOrCreate(
+            ['email' => 'seller@apnifactory.local'],
+            ['name' => 'Seller User', 'password' => bcrypt('password')]
+        );
 
         $this->adminToken = $this->adminUser->createToken('test-admin-token')->plainTextToken;
         $this->sellerToken = $this->sellerUser->createToken('test-seller-token')->plainTextToken;

@@ -19,11 +19,14 @@ class EnsureCatalogueAdmin
         $user = $request->user();
 
         if (!$user || !$user->isAdmin()) {
-            return response()->json([
-                'status' => false,
-                'code' => 403,
-                'message' => 'Forbidden: Administrator privileges required for this action.',
-            ], 403);
+            if ($request->expectsJson() || $request->is('api/*')) {
+                return response()->json([
+                    'status' => false,
+                    'code' => 403,
+                    'message' => 'Forbidden: Administrator privileges required for this action.',
+                ], 403);
+            }
+            abort(403, 'Forbidden: Administrator privileges required for this action.');
         }
 
         return $next($request);

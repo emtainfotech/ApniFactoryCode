@@ -151,3 +151,4 @@ class SellerCatalogueBulkWebController extends Controller
         return view('seller.catalogue.bulk-history', compact('company', 'operations'));
     }
 }
+

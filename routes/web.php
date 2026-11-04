@@ -204,6 +204,20 @@ Route::delete('/product/filter/{id}', [ProductController::class, 'destroyFilter'
         Route::post('/seller/catalogue/bulk/{id}/confirm', [\App\Http\Controllers\SellerCatalogueBulkWebController::class, 'confirm'])->name('seller.catalogue.bulk.confirm')->whereNumber('id');
         Route::get('/seller/catalogue/bulk/history', [\App\Http\Controllers\SellerCatalogueBulkWebController::class, 'history'])->name('seller.catalogue.bulk.history');
 
+        // --- Seller Catalogue Approval Workflow (Phase 2.5) ---
+        Route::get('/seller/catalogue/submissions', [\App\Http\Controllers\SellerCatalogueApprovalWebController::class, 'index'])->name('seller.catalogue.submissions');
+        Route::get('/seller/catalogue/submissions/{id}', [\App\Http\Controllers\SellerCatalogueApprovalWebController::class, 'show'])->name('seller.catalogue.submissions.show')->whereNumber('id');
+        Route::post('/seller/catalogue/submissions/{id}/validate', [\App\Http\Controllers\SellerCatalogueApprovalWebController::class, 'validateProduct'])->name('seller.catalogue.submissions.validate')->whereNumber('id');
+        Route::post('/seller/catalogue/submissions/{id}/submit', [\App\Http\Controllers\SellerCatalogueApprovalWebController::class, 'submit'])->name('seller.catalogue.submissions.submit')->whereNumber('id');
+        Route::post('/seller/catalogue/submissions/{id}/resubmit', [\App\Http\Controllers\SellerCatalogueApprovalWebController::class, 'resubmit'])->name('seller.catalogue.submissions.resubmit')->whereNumber('id');
+
+        // --- Admin Catalogue Review Queue (Phase 2.5) ---
+        Route::get('/admin/catalogue/reviews', [\App\Http\Controllers\AdminCatalogueReviewWebController::class, 'queue'])->name('admin.catalogue.reviews');
+        Route::get('/admin/catalogue/reviews/{id}', [\App\Http\Controllers\AdminCatalogueReviewWebController::class, 'show'])->name('admin.catalogue.reviews.show')->whereNumber('id');
+        Route::post('/admin/catalogue/reviews/{id}/approve', [\App\Http\Controllers\AdminCatalogueReviewWebController::class, 'approve'])->name('admin.catalogue.reviews.approve')->whereNumber('id');
+        Route::post('/admin/catalogue/reviews/{id}/reject', [\App\Http\Controllers\AdminCatalogueReviewWebController::class, 'reject'])->name('admin.catalogue.reviews.reject')->whereNumber('id');
+        Route::post('/admin/catalogue/reviews/{id}/request-corrections', [\App\Http\Controllers\AdminCatalogueReviewWebController::class, 'requestCorrections'])->name('admin.catalogue.reviews.request-corrections')->whereNumber('id');
+
 });
 
 // Customer Mobile App Simulator & Experience Preview

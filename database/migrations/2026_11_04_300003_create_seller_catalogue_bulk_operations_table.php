@@ -53,3 +53,4 @@ return new class extends Migration
         Schema::dropIfExists('seller_catalogue_bulk_operations');
     }
 };
+

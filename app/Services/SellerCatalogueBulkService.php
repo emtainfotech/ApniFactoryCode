@@ -117,7 +117,7 @@ class SellerCatalogueBulkService
     protected array $forbiddenFields = [
         'id', 'product_id', 'company_id', 'seller_user_id', 'product_variant_id',
         'created_at', 'updated_at', 'deleted_at', 'slug', 'category_id',
-        'subcategory_id', 'brand_id', 'tax', 'hsncode', 'adminstatus',
+        'subcategory_id', 'brand_id', 'tax', 'hsncode', 'adminstatus', 'approval_status',
     ];
 
     /**
@@ -698,6 +698,12 @@ class SellerCatalogueBulkService
                             return [
                                 'is_eligible' => false,
                                 'reason'      => 'Listing cannot be activated because parent product [' . ($item->product->name ?? 'Product') . '] is deactivated by administration.',
+                            ];
+                        }
+                        if (!empty($item->product->approval_status) && $item->product->approval_status !== 'approved') {
+                            return [
+                                'is_eligible' => false,
+                                'reason'      => 'Listing cannot be activated because parent product [' . ($item->product->name ?? 'Product') . '] is not approved (current status: ' . $item->product->approval_status . ').',
                             ];
                         }
                     }

@@ -39,3 +39,4 @@ class ProcessSellerCatalogueBulkOperation implements ShouldQueue
         }
     }
 }
+
