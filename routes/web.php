@@ -211,6 +211,9 @@ Route::delete('/product/filter/{id}', [ProductController::class, 'destroyFilter'
         Route::post('/seller/catalogue/submissions/{id}/submit', [\App\Http\Controllers\SellerCatalogueApprovalWebController::class, 'submit'])->name('seller.catalogue.submissions.submit')->whereNumber('id');
         Route::post('/seller/catalogue/submissions/{id}/resubmit', [\App\Http\Controllers\SellerCatalogueApprovalWebController::class, 'resubmit'])->name('seller.catalogue.submissions.resubmit')->whereNumber('id');
 
+        // --- Seller Catalogue Dashboard & Performance Analytics (Phase 2.6) ---
+        Route::get('/seller/catalogue/analytics', [\App\Http\Controllers\SellerCatalogueAnalyticsWebController::class, 'index'])->name('seller.catalogue.analytics');
+
         // --- Admin Catalogue Review Queue (Phase 2.5) ---
         Route::get('/admin/catalogue/reviews', [\App\Http\Controllers\AdminCatalogueReviewWebController::class, 'queue'])->name('admin.catalogue.reviews');
         Route::get('/admin/catalogue/reviews/{id}', [\App\Http\Controllers\AdminCatalogueReviewWebController::class, 'show'])->name('admin.catalogue.reviews.show')->whereNumber('id');

@@ -47,6 +47,7 @@
                 <li><a href="{{route('seller.catalogue.import')}}"><i class="fa-solid fa-file-arrow-up me-2 text-warning"></i>Import Catalogue (Excel)</a></li>
                 <li><a href="{{route('seller.catalogue.bulk')}}"><i class="fa-solid fa-list-check me-2 text-info"></i>Bulk Catalogue Manager</a></li>
                 <li><a href="{{route('seller.catalogue.submissions')}}"><i class="fa-solid fa-clipboard-check me-2" style="color: #6f42c1;"></i>Approval Submissions</a></li>
+                <li><a href="{{route('seller.catalogue.analytics')}}"><i class="fa-solid fa-chart-line me-2 text-primary"></i>Catalogue Analytics</a></li>
                 <li><a href="{{url('seller/product')}}"><i class="fa-solid fa-list-ul me-2"></i>List All</a></li>
                 <li><a href="{{route('seller.paint-pricing.index')}}"><i class="fa-solid fa-paint-roller me-2" style="color: #6f42c1;"></i>Paint Pricing Manager</a></li>
             </ul>

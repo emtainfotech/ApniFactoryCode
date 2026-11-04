@@ -286,4 +286,13 @@ Route::prefix('v2/seller')->middleware('auth:sanctum')->group(function () {
     Route::get('catalogue/products/{id}/review-feedback',    [\App\Http\Controllers\Api\SellerCatalogueApprovalApiController::class, 'reviewFeedback'])->whereNumber('id');
     Route::post('catalogue/products/{id}/resubmit',          [\App\Http\Controllers\Api\SellerCatalogueApprovalApiController::class, 'resubmit'])->whereNumber('id');
     Route::get('catalogue/products/{id}/review-history',     [\App\Http\Controllers\Api\SellerCatalogueApprovalApiController::class, 'reviewHistory'])->whereNumber('id');
+
+    // Phase 2.6: Seller Catalogue Dashboard & Performance Analytics APIs
+    Route::get('catalogue/analytics/dashboard',              [\App\Http\Controllers\Api\SellerCatalogueAnalyticsApiController::class, 'dashboard']);
+    Route::get('catalogue/analytics/summary',                [\App\Http\Controllers\Api\SellerCatalogueAnalyticsApiController::class, 'summary']);
+    Route::get('catalogue/analytics/status-distribution',    [\App\Http\Controllers\Api\SellerCatalogueAnalyticsApiController::class, 'statusDistribution']);
+    Route::get('catalogue/analytics/health',                 [\App\Http\Controllers\Api\SellerCatalogueAnalyticsApiController::class, 'health']);
+    Route::get('catalogue/analytics/approval-performance',   [\App\Http\Controllers\Api\SellerCatalogueAnalyticsApiController::class, 'approvalPerformance']);
+    Route::get('catalogue/analytics/product-performance',    [\App\Http\Controllers\Api\SellerCatalogueAnalyticsApiController::class, 'productPerformance']);
+    Route::get('catalogue/analytics/categories-brands',      [\App\Http\Controllers\Api\SellerCatalogueAnalyticsApiController::class, 'categoryBrandInsights']);
 });
