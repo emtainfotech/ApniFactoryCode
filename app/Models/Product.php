@@ -47,6 +47,24 @@ class Product extends Model
     public function attributes(){
         return $this->hasMany(ProductAttributes::class);
     }
+
+    /**
+     * Phase-II Hierarchy & Dynamic Attributes
+     */
+    public function variants()
+    {
+        return $this->hasMany(ProductVariant::class);
+    }
+
+    public function listings()
+    {
+        return $this->hasMany(SellerListing::class);
+    }
+
+    public function attributeValues()
+    {
+        return $this->hasMany(ProductAttributeValue::class);
+    }
     
       protected $casts = [
         'shadecard' => 'array'
