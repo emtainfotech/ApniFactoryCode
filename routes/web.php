@@ -183,6 +183,12 @@ Route::delete('/product/filter/{id}', [ProductController::class, 'destroyFilter'
         Route::patch('/seller/staff/{id}/activate', [\App\Http\Controllers\SellerStaffWebController::class, 'activate'])->name('seller.staff.activate');
         Route::get('/seller/staff/{id}/activity', [\App\Http\Controllers\SellerStaffWebController::class, 'activity'])->name('seller.staff.activity');
 
+        // --- Seller Catalogue Excel Export (Phase 2.2) ---
+        Route::get('/seller/catalogue/export', [\App\Http\Controllers\SellerCatalogueExportWebController::class, 'index'])->name('seller.catalogue.export');
+        Route::post('/seller/catalogue/export', [\App\Http\Controllers\SellerCatalogueExportWebController::class, 'export'])->name('seller.catalogue.export.process');
+        Route::get('/seller/catalogue/export/history', [\App\Http\Controllers\SellerCatalogueExportWebController::class, 'history'])->name('seller.catalogue.export.history');
+        Route::get('/seller/catalogue/export/{id}/download', [\App\Http\Controllers\SellerCatalogueExportWebController::class, 'download'])->name('seller.catalogue.export.download');
+
 });
 
 // Customer Mobile App Simulator & Experience Preview

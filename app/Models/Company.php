@@ -26,6 +26,10 @@ class Company extends Model
         return $this->hasMany(SellerPermissionAuditLog::class)->orderBy('id', 'desc');
     }
 
+    public function catalogueExports(){
+        return $this->hasMany(SellerCatalogueExport::class)->orderBy('id', 'desc');
+    }
+
     public function bank(){
          return $this->hasMany(BankDetails::class);
     }

@@ -246,4 +246,10 @@ Route::prefix('v2/seller')->middleware('auth:sanctum')->group(function () {
     Route::get('staff/{id}/activity',       [\App\Http\Controllers\Api\SellerStaffController::class, 'activity']);
     Route::get('permissions/matrix',        [\App\Http\Controllers\Api\SellerStaffController::class, 'permissionMatrix']);
     Route::get('roles',                     [\App\Http\Controllers\Api\SellerStaffController::class, 'roles']);
+
+    // Phase 2.2: Seller Catalogue Excel Export APIs
+    Route::get('catalogue/exports',              [\App\Http\Controllers\Api\SellerCatalogueExportApiController::class, 'index']);
+    Route::post('catalogue/export',              [\App\Http\Controllers\Api\SellerCatalogueExportApiController::class, 'store']);
+    Route::get('catalogue/exports/{id}',         [\App\Http\Controllers\Api\SellerCatalogueExportApiController::class, 'show']);
+    Route::get('catalogue/exports/{id}/download',[\App\Http\Controllers\Api\SellerCatalogueExportApiController::class, 'download']);
 });
