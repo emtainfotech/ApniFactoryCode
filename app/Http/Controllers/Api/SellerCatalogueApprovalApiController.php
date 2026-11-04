@@ -233,3 +233,4 @@ class SellerCatalogueApprovalApiController extends Controller
         ], 200);
     }
 }
+

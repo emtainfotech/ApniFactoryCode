@@ -55,3 +55,4 @@ class ProductReviewHistory extends Model
         return $this->belongsTo(ProductValidationResult::class, 'validation_result_id');
     }
 }
+

@@ -58,3 +58,4 @@ class ProductValidationResult extends Model
         return $this->status === 'failed' || $this->error_count > 0;
     }
 }
+
