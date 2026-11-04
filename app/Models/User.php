@@ -43,20 +43,69 @@ class User extends Authenticatable implements FilamentUser
         'email_verified_at' => 'datetime',
     ];
     
-    
-      public function company()
+    public function company()
     {
         return $this->hasOne(Company::class); 
     }
 
+    /**
+     * Staff record if this user is a staff member of a seller company.
+     */
+    public function sellerStaff()
+    {
+        return $this->hasOne(SellerStaff::class);
+    }
+
     public function isAdmin(): bool
     {
-        return $this->id === 1 || str_contains(strtolower($this->email), 'admin');
+        return $this->id === 1 || str_contains(strtolower($this->email ?? ''), 'admin');
     }
 
     public function isSeller(): bool
     {
-        return $this->company()->exists() || str_contains(strtolower($this->email), 'seller') || !$this->isAdmin();
+        return $this->company()->exists() 
+            || $this->sellerStaff()->exists()
+            || str_contains(strtolower($this->email ?? ''), 'seller') 
+            || !$this->isAdmin();
+    }
+
+    /**
+     * Check if the user is a seller owner (owns a company).
+     */
+    public function isSellerOwner(): bool
+    {
+        return $this->company()->exists();
+    }
+
+    /**
+     * Get the company this user belongs to (either as owner or staff).
+     */
+    public function resolveSellerCompany(): ?Company
+    {
+        if ($this->company) {
+            return $this->company;
+        }
+
+        $staff = $this->sellerStaff()->with('company')->first();
+        return $staff?->company;
+    }
+
+    /**
+     * Check if user has a seller permission (works for owner, staff, and admin).
+     */
+    public function hasSellerPermission(string $permission): bool
+    {
+        if ($this->isAdmin()) {
+            return true;
+        }
+
+        // Seller owners have all permissions
+        if ($this->isSellerOwner()) {
+            return true;
+        }
+
+        $staff = $this->sellerStaff()->with(['role.permissions', 'overridePermissions.permission'])->first();
+        return $staff ? $staff->hasPermission($permission) : false;
     }
 
     public function canAccessFilament(): bool

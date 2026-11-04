@@ -9,3 +9,4 @@ class CreateProductVariant extends CreateRecord
 {
     protected static string $resource = ProductVariantResource::class;
 }
+

@@ -9,3 +9,4 @@ class CreateSellerListing extends CreateRecord
 {
     protected static string $resource = SellerListingResource::class;
 }
+

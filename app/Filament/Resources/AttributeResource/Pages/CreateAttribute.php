@@ -9,3 +9,4 @@ class CreateAttribute extends CreateRecord
 {
     protected static string $resource = AttributeResource::class;
 }
+

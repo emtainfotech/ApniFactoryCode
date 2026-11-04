@@ -139,3 +139,4 @@ class AttributeResource extends Resource
         ];
     }
 }
+

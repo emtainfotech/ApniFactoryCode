@@ -8,11 +8,24 @@ use Illuminate\Database\Eloquent\Model;
 class Company extends Model
 {
     use HasFactory;
-      protected $fillable = ['name', 'status',  'user_id', 'email', 'mobile', 'maincategory_id', 'gst', 'crn', 'minordervalue', 'photo', 'city','state','pincode','comission'
+
+    protected $fillable = [
+        'name', 'status', 'user_id', 'email', 'mobile', 'maincategory_id',
+        'gst', 'crn', 'minordervalue', 'photo', 'city', 'state', 'pincode', 'comission'
     ];
+
     public function user(){
         return $this->belongsTo(User::class);
     }
+
+    public function staff(){
+        return $this->hasMany(SellerStaff::class);
+    }
+
+    public function permissionAuditLogs(){
+        return $this->hasMany(SellerPermissionAuditLog::class)->orderBy('id', 'desc');
+    }
+
     public function bank(){
          return $this->hasMany(BankDetails::class);
     }

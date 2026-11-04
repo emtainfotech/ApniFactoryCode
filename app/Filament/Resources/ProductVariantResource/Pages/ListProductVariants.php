@@ -17,3 +17,4 @@ class ListProductVariants extends ListRecords
         ];
     }
 }
+

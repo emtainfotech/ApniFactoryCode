@@ -17,3 +17,4 @@ class EditSellerListing extends EditRecord
         ];
     }
 }
+

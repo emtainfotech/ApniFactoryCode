@@ -61,3 +61,4 @@ class SubcategoriesRelationManager extends RelationManager
             ]);
     }
 }
+

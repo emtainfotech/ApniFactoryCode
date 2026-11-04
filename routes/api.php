@@ -232,3 +232,18 @@ Route::prefix('v2')->group(function () {
     });
 });
 
+
+
+// Phase 2.1: Seller Staff & Permission Management API (v2)
+Route::prefix('v2/seller')->middleware('auth:sanctum')->group(function () {
+    Route::get('staff',                     [\App\Http\Controllers\Api\SellerStaffController::class, 'index']);
+    Route::post('staff/invite',             [\App\Http\Controllers\Api\SellerStaffController::class, 'invite']);
+    Route::get('staff/{id}',                [\App\Http\Controllers\Api\SellerStaffController::class, 'show']);
+    Route::patch('staff/{id}/role',         [\App\Http\Controllers\Api\SellerStaffController::class, 'assignRole']);
+    Route::patch('staff/{id}/permissions',  [\App\Http\Controllers\Api\SellerStaffController::class, 'updatePermissions']);
+    Route::delete('staff/{id}',             [\App\Http\Controllers\Api\SellerStaffController::class, 'deactivate']);
+    Route::patch('staff/{id}/activate',     [\App\Http\Controllers\Api\SellerStaffController::class, 'activate']);
+    Route::get('staff/{id}/activity',       [\App\Http\Controllers\Api\SellerStaffController::class, 'activity']);
+    Route::get('permissions/matrix',        [\App\Http\Controllers\Api\SellerStaffController::class, 'permissionMatrix']);
+    Route::get('roles',                     [\App\Http\Controllers\Api\SellerStaffController::class, 'roles']);
+});

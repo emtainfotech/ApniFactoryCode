@@ -266,3 +266,4 @@ class SellerListingResource extends Resource
         ];
     }
 }
+

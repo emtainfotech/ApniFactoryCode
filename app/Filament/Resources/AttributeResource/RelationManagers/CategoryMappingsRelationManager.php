@@ -77,3 +77,4 @@ class CategoryMappingsRelationManager extends RelationManager
             ]);
     }
 }
+

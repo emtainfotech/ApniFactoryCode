@@ -60,3 +60,4 @@ class CatalogueOverviewWidget extends BaseWidget
         ];
     }
 }
+

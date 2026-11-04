@@ -141,6 +141,14 @@
                 <div class="menu-title">Help</div>
             </a>
         </li>
+        @if(auth()->check() && (auth()->user()->isSellerOwner() || auth()->user()->hasSellerPermission('staff.view')))
+        <li>
+            <a href="{{ route('seller.staff.index') }}">
+                <div class="parent-icon i-users"><i class="fa-solid fa-users-gear text-primary"></i></div>
+                <div class="menu-title">Staff Management</div>
+            </a>
+        </li>
+        @endif
         
     </ul>
 </div>

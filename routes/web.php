@@ -172,6 +172,17 @@ Route::delete('/product/filter/{id}', [ProductController::class, 'destroyFilter'
         Route::post('/seller/notifications/mark-read/{id}', [\App\Http\Controllers\NotificationController::class, 'markSellerAsRead'])->name('seller.notifications.mark-read');
         Route::post('/seller/notifications/mark-all-read', [\App\Http\Controllers\NotificationController::class, 'markAllSellerAsRead'])->name('seller.notifications.mark-all-read');
 
+        // --- Seller Staff Management (Phase 2.1) ---
+        Route::get('/seller/staff', [\App\Http\Controllers\SellerStaffWebController::class, 'index'])->name('seller.staff.index');
+        Route::get('/seller/staff/create', [\App\Http\Controllers\SellerStaffWebController::class, 'create'])->name('seller.staff.create');
+        Route::post('/seller/staff', [\App\Http\Controllers\SellerStaffWebController::class, 'store'])->name('seller.staff.store');
+        Route::get('/seller/staff/{id}', [\App\Http\Controllers\SellerStaffWebController::class, 'show'])->name('seller.staff.show');
+        Route::patch('/seller/staff/{id}/role', [\App\Http\Controllers\SellerStaffWebController::class, 'assignRole'])->name('seller.staff.assign-role');
+        Route::patch('/seller/staff/{id}/permissions', [\App\Http\Controllers\SellerStaffWebController::class, 'updatePermissions'])->name('seller.staff.update-permissions');
+        Route::patch('/seller/staff/{id}/deactivate', [\App\Http\Controllers\SellerStaffWebController::class, 'deactivate'])->name('seller.staff.deactivate');
+        Route::patch('/seller/staff/{id}/activate', [\App\Http\Controllers\SellerStaffWebController::class, 'activate'])->name('seller.staff.activate');
+        Route::get('/seller/staff/{id}/activity', [\App\Http\Controllers\SellerStaffWebController::class, 'activity'])->name('seller.staff.activity');
+
 });
 
 // Customer Mobile App Simulator & Experience Preview
