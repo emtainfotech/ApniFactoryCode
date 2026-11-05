@@ -345,13 +345,30 @@ Route::prefix('v2/seller')->middleware('auth:sanctum')->group(function () {
     Route::post('fulfilment/{orderId}/upload-lr',             [\App\Http\Controllers\Api\SellerFulfilmentApiController::class, 'uploadLr'])->whereNumber('orderId');
     Route::post('fulfilment/{orderId}/dispatch',              [\App\Http\Controllers\Api\SellerFulfilmentApiController::class, 'dispatchOrder'])->whereNumber('orderId');
     Route::post('fulfilment/{orderId}/status',                [\App\Http\Controllers\Api\SellerFulfilmentApiController::class, 'updateStatus'])->whereNumber('orderId');
+
+    // Phase 5.2: Seller Consignment Claims & Dispute Response APIs
+    Route::get('claims',                                      [\App\Http\Controllers\Api\SellerClaimApiController::class, 'index']);
+    Route::get('claims/{id}',                                 [\App\Http\Controllers\Api\SellerClaimApiController::class, 'show'])->whereNumber('id');
+    Route::post('claims/{id}/respond',                        [\App\Http\Controllers\Api\SellerClaimApiController::class, 'respond'])->whereNumber('id');
 });
 
-// Phase 5.1: Buyer Tracking, Logistics & Handover Acknowledgement APIs (v2)
+// Phase 5.1 & Phase 5.2: Buyer Tracking, Acknowledgement & Dispute Claim APIs (v2)
 Route::prefix('v2/buyer')->middleware('auth:sanctum')->group(function () {
     Route::get('orders/{orderId}/tracking',                   [\App\Http\Controllers\Api\BuyerTrackingApiController::class, 'tracking'])->whereNumber('orderId');
     Route::post('fulfilment/{fulfilmentId}/acknowledge',      [\App\Http\Controllers\Api\BuyerTrackingApiController::class, 'acknowledge'])->whereNumber('fulfilmentId');
     Route::post('fulfilment/{fulfilmentId}/dispute',          [\App\Http\Controllers\Api\BuyerTrackingApiController::class, 'reportDispute'])->whereNumber('fulfilmentId');
+
+    // Phase 5.2: Detailed Claims & Evidence
+    Route::get('claims',                                      [\App\Http\Controllers\Api\BuyerClaimApiController::class, 'index']);
+    Route::get('claims/{id}',                                 [\App\Http\Controllers\Api\BuyerClaimApiController::class, 'show'])->whereNumber('id');
+    Route::post('fulfilment/{fulfilmentId}/claim',            [\App\Http\Controllers\Api\BuyerClaimApiController::class, 'store'])->whereNumber('fulfilmentId');
+});
+
+// Phase 5.2: Admin Central Claims & Dispute Adjudication APIs (v2)
+Route::prefix('v2/admin')->middleware('auth:sanctum')->group(function () {
+    Route::get('claims',                                      [\App\Http\Controllers\Api\AdminClaimApiController::class, 'index']);
+    Route::get('claims/{id}',                                 [\App\Http\Controllers\Api\AdminClaimApiController::class, 'show'])->whereNumber('id');
+    Route::post('claims/{id}/status',                         [\App\Http\Controllers\Api\AdminClaimApiController::class, 'updateStatus'])->whereNumber('id');
 });
 
 // Phase 4.3: Payment Gateway Integration, Verified Callbacks & Reconciliation APIs (v2)

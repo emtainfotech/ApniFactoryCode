@@ -280,6 +280,16 @@ Route::delete('/product/filter/{id}', [ProductController::class, 'destroyFilter'
         Route::get('/admin/logistics/fulfilments',              [\App\Http\Controllers\AdminLogisticsWebController::class, 'index'])->name('admin.logistics.index');
         Route::get('/admin/logistics/fulfilments/{id}',         [\App\Http\Controllers\AdminLogisticsWebController::class, 'show'])->name('admin.logistics.show')->whereNumber('id');
 
+        // --- Phase 5.2: Seller Consignment Claims & Disputes ---
+        Route::get('/seller/claims',                            [\App\Http\Controllers\SellerClaimWebController::class, 'index'])->name('seller.claims.index');
+        Route::get('/seller/claims/{id}',                       [\App\Http\Controllers\SellerClaimWebController::class, 'show'])->name('seller.claims.show')->whereNumber('id');
+        Route::post('/seller/claims/{id}/respond',              [\App\Http\Controllers\SellerClaimWebController::class, 'submitResponse'])->name('seller.claims.respond')->whereNumber('id');
+
+        // --- Phase 5.2: Admin Central Claims & Dispute Adjudication ---
+        Route::get('/admin/claims',                             [\App\Http\Controllers\AdminClaimWebController::class, 'index'])->name('admin.claims.index');
+        Route::get('/admin/claims/{id}',                        [\App\Http\Controllers\AdminClaimWebController::class, 'show'])->name('admin.claims.show')->whereNumber('id');
+        Route::post('/admin/claims/{id}/status',                [\App\Http\Controllers\AdminClaimWebController::class, 'updateStatus'])->name('admin.claims.status.update')->whereNumber('id');
+
 });
 
 // Customer Mobile App Simulator & Experience Preview

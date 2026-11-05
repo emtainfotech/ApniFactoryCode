@@ -123,6 +123,16 @@ class SellerFulfilment extends Model
         return $this->hasMany(SellerFulfilmentHistory::class, 'seller_fulfilment_id')->orderBy('id', 'desc');
     }
 
+    public function claims(): HasMany
+    {
+        return $this->hasMany(FulfilmentClaim::class, 'seller_fulfilment_id');
+    }
+
+    public function activeClaim(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(FulfilmentClaim::class, 'seller_fulfilment_id')->latestOfMany();
+    }
+
     public function isAccepted(): bool
     {
         return in_array($this->fulfilment_status, [
@@ -175,3 +185,4 @@ class SellerFulfilment extends Model
         return in_array($targetStatus, $allowed[$this->fulfilment_status] ?? []);
     }
 }
+

@@ -87,6 +87,11 @@ class Order extends Model
         return $this->hasOne(SellerSettlement::class, 'order_id');
     }
 
+    public function claims()
+    {
+        return $this->hasMany(FulfilmentClaim::class, 'order_id');
+    }
+
     public function ledgerEntries()
     {
         return $this->hasMany(FinancialLedger::class, 'order_id');
