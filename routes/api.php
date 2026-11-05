@@ -332,6 +332,20 @@ Route::prefix('v2/seller')->middleware('auth:sanctum')->group(function () {
     Route::put('mov',                                         [\App\Http\Controllers\Api\SellerMovApiController::class, 'update']);
 });
 
+// Phase 4.3: Payment Gateway Integration, Verified Callbacks & Reconciliation APIs (v2)
+Route::prefix('v2/payments')->group(function () {
+    Route::post('initiate',                          [\App\Http\Controllers\Api\PaymentApiController::class, 'initiate']);
+    Route::get('{paymentRef}/status',                 [\App\Http\Controllers\Api\PaymentApiController::class, 'status']);
+    Route::post('verify-client',                      [\App\Http\Controllers\Api\PaymentApiController::class, 'verifyClient']);
+    Route::post('webhook/{gateway}',                  [\App\Http\Controllers\Api\PaymentApiController::class, 'webhook']);
+});
+
+Route::prefix('v2/finance')->group(function () {
+    Route::get('payments',                             [\App\Http\Controllers\Api\FinanceReconciliationApiController::class, 'index']);
+    Route::get('payments/{id}',                        [\App\Http\Controllers\Api\FinanceReconciliationApiController::class, 'show'])->whereNumber('id');
+    Route::post('payments/{id}/reconcile',              [\App\Http\Controllers\Api\FinanceReconciliationApiController::class, 'reconcile'])->whereNumber('id');
+});
+
 // Phase 4.1: Modern Buyer Cart, Seller Grouping & Bulk Matrix APIs (v2)
 Route::prefix('v2/cart')->group(function () {
     Route::get('/',                                           [\App\Http\Controllers\Api\BuyerCartApiController::class, 'index']);

@@ -253,6 +253,11 @@ Route::delete('/product/filter/{id}', [ProductController::class, 'destroyFilter'
         Route::post('/admin/commissions/rules/{id}/deactivate', [\App\Http\Controllers\AdminCommissionRuleWebController::class, 'deactivate'])->name('admin.commissions.rules.deactivate')->whereNumber('id');
         Route::get('/admin/commissions/orders/{id}',     [\App\Http\Controllers\AdminCommissionRuleWebController::class, 'orderBreakdown'])->name('admin.commissions.orders.show')->whereNumber('id');
 
+        // --- Phase 4.3: Finance Payment Reconciliation ---
+        Route::get('/admin/finance/payments',           [\App\Http\Controllers\FinancePaymentWebController::class, 'index'])->name('admin.finance.payments.index');
+        Route::get('/admin/finance/payments/{id}',      [\App\Http\Controllers\FinancePaymentWebController::class, 'show'])->name('admin.finance.payments.show')->whereNumber('id');
+        Route::post('/admin/finance/payments/{id}/reconcile', [\App\Http\Controllers\FinancePaymentWebController::class, 'reconcile'])->name('admin.finance.payments.reconcile')->whereNumber('id');
+
 });
 
 // Customer Mobile App Simulator & Experience Preview
