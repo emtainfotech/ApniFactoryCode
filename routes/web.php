@@ -272,6 +272,14 @@ Route::delete('/product/filter/{id}', [ProductController::class, 'destroyFilter'
         // --- Phase 4.4: Seller Settlements Portal ---
         Route::get('/seller/finance/settlements',               [\App\Http\Controllers\FinancialSettlementWebController::class, 'sellerSettlements'])->name('seller.finance.settlements');
 
+        // --- Phase 5.1: Multi-Seller Dispatch, Logistics & To-Pay Freight ---
+        Route::get('/seller/orders/{order}/dispatch',           [\App\Http\Controllers\SellerDispatchWebController::class, 'dispatchForm'])->name('seller.orders.dispatch')->whereNumber('order');
+        Route::post('/seller/orders/{order}/dispatch',          [\App\Http\Controllers\SellerDispatchWebController::class, 'submitDispatch'])->name('seller.orders.dispatch.submit')->whereNumber('order');
+        Route::post('/seller/orders/{order}/lr-upload',         [\App\Http\Controllers\SellerDispatchWebController::class, 'uploadLr'])->name('seller.orders.dispatch.upload-lr')->whereNumber('order');
+
+        Route::get('/admin/logistics/fulfilments',              [\App\Http\Controllers\AdminLogisticsWebController::class, 'index'])->name('admin.logistics.index');
+        Route::get('/admin/logistics/fulfilments/{id}',         [\App\Http\Controllers\AdminLogisticsWebController::class, 'show'])->name('admin.logistics.show')->whereNumber('id');
+
 });
 
 // Customer Mobile App Simulator & Experience Preview

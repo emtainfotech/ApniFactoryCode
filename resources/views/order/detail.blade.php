@@ -413,10 +413,7 @@
   @endphp
 
   <div class="od-card">
-    <div class="od-card-header">
-      <span class="icon-badge" style="background:#dcfce7;color:#166534"><i class="bi bi-truck"></i></span>
-      Tracking Details
-    </div>
+    <div class="od-card-header" style="display:flex;justify-content:space-between;align-items:center;"><div><span class="icon-badge" style="background:#dcfce7;color:#166534"><i class="bi bi-truck"></i></span> Tracking Details (To-Pay Freight)</div><a href="{{ route('seller.orders.dispatch', $order->id) }}" class="btn btn-sm btn-primary" style="padding:4px 12px;font-size:0.85rem;"><i class="bi bi-box-seam me-1"></i> Multi-Seller Dispatch Hub</a></div>
     <div class="od-card-body">
 
       @foreach($errors->all() as $error)

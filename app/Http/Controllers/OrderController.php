@@ -468,6 +468,29 @@ class OrderController extends Controller
             $data['alternative_sellers'] = [];
         }
 
+        // Phase 5.1: Enrich with SellerFulfilment & multi-seller logistics summary
+        $fulfilment = \App\Models\SellerFulfilment::where("order_id", $order->id)->first();
+        if (empty($data['track']) && $fulfilment) {
+            $data['track'] = (object)[
+                'id'           => $fulfilment->id,
+                'order_id'     => $order->id,
+                'transname'    => $fulfilment->transporter_name,
+                'transcontact' => $fulfilment->transporter_contact,
+                'lrno'         => $fulfilment->lr_number,
+                'billty'       => $fulfilment->lr_document_path,
+                'status'       => $fulfilment->fulfilment_status === 'dispatched' ? 1 : 0,
+                'orderno'      => $orderno,
+                'text'         => $fulfilment->freight_terms,
+            ];
+        }
+        $data['seller_fulfilment'] = $fulfilment;
+        $data['freight_terms'] = $fulfilment?->freight_terms ?? 'To-Pay (Buyer-Paid Freight)';
+        try {
+            $data['logistics_summary'] = app(\App\Services\SellerFulfilmentService::class)->getParentOrderLogisticsSummary($order);
+        } catch (\Throwable $e) {
+            $data['logistics_summary'] = null;
+        }
+
         if(!empty($data['track'])){
             if($data['track']->lrno!='' && $data['track']->lrno!='NA'){
                 $data['invoiceurl'] = getenv('APP_URL').'/invoice/order/'.$orderno;

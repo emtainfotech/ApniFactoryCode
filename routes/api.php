@@ -336,6 +336,22 @@ Route::prefix('v2/seller')->middleware('auth:sanctum')->group(function () {
     Route::get('finance/settlements',                         [\App\Http\Controllers\Api\FinancialSettlementApiController::class, 'sellerSettlements']);
     Route::get('ledger',                                      [\App\Http\Controllers\Api\FinancialSettlementApiController::class, 'sellerLedger']);
     Route::get('settlements',                                 [\App\Http\Controllers\Api\FinancialSettlementApiController::class, 'sellerSettlements']);
+
+    // Phase 5.1: Seller Dispatch, Logistics & To-Pay Freight Management APIs
+    Route::get('fulfilment/{orderId}',                        [\App\Http\Controllers\Api\SellerFulfilmentApiController::class, 'show'])->whereNumber('orderId');
+    Route::post('fulfilment/{orderId}/origin',                [\App\Http\Controllers\Api\SellerFulfilmentApiController::class, 'updateOrigin'])->whereNumber('orderId');
+    Route::post('fulfilment/{orderId}/handover',              [\App\Http\Controllers\Api\SellerFulfilmentApiController::class, 'updateHandover'])->whereNumber('orderId');
+    Route::post('fulfilment/{orderId}/transporter',           [\App\Http\Controllers\Api\SellerFulfilmentApiController::class, 'updateTransporter'])->whereNumber('orderId');
+    Route::post('fulfilment/{orderId}/upload-lr',             [\App\Http\Controllers\Api\SellerFulfilmentApiController::class, 'uploadLr'])->whereNumber('orderId');
+    Route::post('fulfilment/{orderId}/dispatch',              [\App\Http\Controllers\Api\SellerFulfilmentApiController::class, 'dispatchOrder'])->whereNumber('orderId');
+    Route::post('fulfilment/{orderId}/status',                [\App\Http\Controllers\Api\SellerFulfilmentApiController::class, 'updateStatus'])->whereNumber('orderId');
+});
+
+// Phase 5.1: Buyer Tracking, Logistics & Handover Acknowledgement APIs (v2)
+Route::prefix('v2/buyer')->middleware('auth:sanctum')->group(function () {
+    Route::get('orders/{orderId}/tracking',                   [\App\Http\Controllers\Api\BuyerTrackingApiController::class, 'tracking'])->whereNumber('orderId');
+    Route::post('fulfilment/{fulfilmentId}/acknowledge',      [\App\Http\Controllers\Api\BuyerTrackingApiController::class, 'acknowledge'])->whereNumber('fulfilmentId');
+    Route::post('fulfilment/{fulfilmentId}/dispute',          [\App\Http\Controllers\Api\BuyerTrackingApiController::class, 'reportDispute'])->whereNumber('fulfilmentId');
 });
 
 // Phase 4.3: Payment Gateway Integration, Verified Callbacks & Reconciliation APIs (v2)

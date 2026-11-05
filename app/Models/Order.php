@@ -52,6 +52,26 @@ class Order extends Model
         return $this->hasMany(Order::class, 'parent_order_id');
     }
 
+    public function fulfilment()
+    {
+        return $this->hasOne(SellerFulfilment::class, 'order_id');
+    }
+
+    public function sellerFulfilment()
+    {
+        return $this->hasOne(SellerFulfilment::class, 'order_id');
+    }
+
+    public function orderdetails()
+    {
+        return $this->hasMany(OrderDetail::class, 'order_id');
+    }
+
+    public function childFulfilments()
+    {
+        return $this->hasMany(SellerFulfilment::class, 'parent_order_id');
+    }
+
     public function taxSnapshots()
     {
         return $this->hasMany(OrderTaxSnapshot::class, 'order_id');
