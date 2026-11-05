@@ -239,6 +239,10 @@ Route::delete('/product/filter/{id}', [ProductController::class, 'destroyFilter'
         Route::get('/seller/commissions/agreements',     [\App\Http\Controllers\SellerCommissionWebController::class, 'agreements'])->name('seller.commissions.agreements');
         Route::get('/seller/commissions/orders/{id}',    [\App\Http\Controllers\SellerCommissionWebController::class, 'orderSnapshot'])->name('seller.commissions.orders.show')->whereNumber('id');
 
+        // --- Phase 4.1: Seller Minimum Order Value (MOV) Configuration ---
+        Route::get('/seller/settings/mov',               [\App\Http\Controllers\SellerMovWebController::class, 'index'])->name('seller.settings.mov.index');
+        Route::post('/seller/settings/mov',              [\App\Http\Controllers\SellerMovWebController::class, 'update'])->name('seller.settings.mov.update');
+
         // --- Phase 3.2: Admin Commission & Platform Fee Engine ---
         Route::get('/admin/commissions/rules',           [\App\Http\Controllers\AdminCommissionRuleWebController::class, 'index'])->name('admin.commissions.rules.index');
         Route::get('/admin/commissions/rules/create',    [\App\Http\Controllers\AdminCommissionRuleWebController::class, 'create'])->name('admin.commissions.rules.create');

@@ -326,4 +326,20 @@ Route::prefix('v2/seller')->middleware('auth:sanctum')->group(function () {
     Route::get('commissions/agreements',                     [\App\Http\Controllers\Api\SellerCommissionApiController::class, 'agreements']);
     Route::get('commissions/orders/{orderId}/snapshot',       [\App\Http\Controllers\Api\SellerCommissionApiController::class, 'orderSnapshot'])->whereNumber('orderId');
     Route::get('commissions/skus/{skuId}/applicable-rule',    [\App\Http\Controllers\Api\SellerCommissionApiController::class, 'skuApplicableRule'])->whereNumber('skuId');
+
+    // Phase 4.1: Seller Minimum Order Value (MOV) Configuration API
+    Route::get('mov',                                         [\App\Http\Controllers\Api\SellerMovApiController::class, 'show']);
+    Route::put('mov',                                         [\App\Http\Controllers\Api\SellerMovApiController::class, 'update']);
+});
+
+// Phase 4.1: Modern Buyer Cart, Seller Grouping & Bulk Matrix APIs (v2)
+Route::prefix('v2/cart')->group(function () {
+    Route::get('/',                                           [\App\Http\Controllers\Api\BuyerCartApiController::class, 'index']);
+    Route::post('/items',                                     [\App\Http\Controllers\Api\BuyerCartApiController::class, 'addItem']);
+    Route::put('/items/{itemId}',                             [\App\Http\Controllers\Api\BuyerCartApiController::class, 'updateItem'])->whereNumber('itemId');
+    Route::delete('/items/{itemId}',                          [\App\Http\Controllers\Api\BuyerCartApiController::class, 'removeItem'])->whereNumber('itemId');
+    Route::delete('/',                                        [\App\Http\Controllers\Api\BuyerCartApiController::class, 'clearCart']);
+    Route::post('/revalidate',                                [\App\Http\Controllers\Api\BuyerCartApiController::class, 'revalidate']);
+    Route::get('/products/{productId}/variant-matrix',         [\App\Http\Controllers\Api\BuyerCartApiController::class, 'getVariantMatrix'])->whereNumber('productId');
+    Route::post('/bulk-matrix',                               [\App\Http\Controllers\Api\BuyerCartApiController::class, 'submitBulkMatrix']);
 });

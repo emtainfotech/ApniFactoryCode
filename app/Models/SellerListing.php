@@ -89,5 +89,73 @@ class SellerListing extends Model
     {
         return max(0, (int)$this->stock_quantity - (int)$this->reserved_stock);
     }
+
+    /**
+     * Calculate the effective packaging order multiple
+     */
+    public function getEffectiveOrderMultiple(): int
+    {
+        $multiple = max(1, (int)$this->order_multiple);
+        if (!$this->allow_unit_orders && (int)$this->case_pack_quantity > 1) {
+            $multiple = max($multiple, (int)$this->case_pack_quantity);
+        }
+        return $multiple;
+    }
+
+    /**
+     * Compute next valid order quantity satisfying both MOQ and packaging multiple
+     */
+    public function getNextValidQuantity(int $quantity = 1): int
+    {
+        $moq = max(1, (int)$this->min_order_quantity);
+        $multiple = $this->getEffectiveOrderMultiple();
+        $target = max(1, $quantity);
+
+        return (int)(ceil(max($target, $moq) / $multiple) * $multiple);
+    }
+
+    /**
+     * Validate an order quantity against status, stock, MOQ, and packaging rules
+     */
+    public function validateOrderQuantity(int $quantity): array
+    {
+        $errors = [];
+        $moq = max(1, (int)$this->min_order_quantity);
+        $multiple = $this->getEffectiveOrderMultiple();
+        $nextValid = $this->getNextValidQuantity($quantity);
+
+        if ($quantity <= 0) {
+            $errors[] = "Quantity must be greater than zero. Minimum valid quantity is {$nextValid}.";
+            return [
+                'valid' => false,
+                'errors' => $errors,
+                'next_valid_quantity' => $nextValid,
+                'moq' => $moq,
+                'order_multiple' => $multiple,
+                'available_stock' => $this->available_stock,
+            ];
+        }
+
+        if ($quantity < $moq) {
+            $errors[] = "Minimum order quantity for SKU {$this->seller_sku} is {$moq} {$this->unit_of_measurement}(s).";
+        }
+
+        if ($multiple > 1 && ($quantity % $multiple) !== 0) {
+            $errors[] = "Quantity ({$quantity}) must be a multiple of {$multiple} (Packaging multiple: {$this->case_pack_quantity} units/box). Next valid quantity is {$nextValid}.";
+        }
+
+        if ($quantity > $this->available_stock) {
+            $errors[] = "Requested quantity ({$quantity}) exceeds available stock ({$this->available_stock} {$this->unit_of_measurement}s).";
+        }
+
+        return [
+            'valid' => empty($errors),
+            'errors' => $errors,
+            'next_valid_quantity' => $nextValid,
+            'moq' => $moq,
+            'order_multiple' => $multiple,
+            'available_stock' => $this->available_stock,
+        ];
+    }
 }
 

@@ -85,18 +85,9 @@ class CartController extends Controller
          return response()->json(["status"=>true,"code"=>100,"msg"=>"Successfully Show","grandtotal"=>$totalprice]);
      }
      public function checkcartconditions($customerid,$bid,$pid){
-         $check = DB::table("cart")->where("customer_id",$customerid)->first();////phele se konsa Producth
-         if(empty($check)){return true;}
-         $prod = Product::where("id",$pid)->first();///current jo add kr rha ho
-         $current_cmp = $prod->user_id;
-         
-         $prod2 = Product::where("id",$check->product_id)->first();
-         $old_cmp = $prod2->user_id;
-         if($old_cmp!=$current_cmp){
-             return false;
-                  }
-                  else{return true;}
-         
+         // In Phase II (Milestone M4 Phase 4.1), multi-seller carts are natively supported.
+         // Products from multiple sellers/companies are grouped by seller with independent MOV.
+         return true;
      }
        public function addtocart(Request $request){ 
          $attribute=$rt=array();$granttotal=0;$cnt=0;
@@ -297,7 +288,24 @@ class CartController extends Controller
           $granttotal = $granttotal + $tax;   
         //  $queries = DB::getQueryLog(); dd($queries);
           
-         return response()->json(["status"=>true,"code"=>100,"msg"=>"Successfully Show","grandtotal"=>floatval($granttotal),"netamount"=>floatval($netamount),"counter"=>$cnt,"cgst"=>$cgst,"sgst"=>$sgst,"igst"=>$igst,"couponbyadmin"=>floatval($couponbyadmin),"combinecoupon"=>$combinecoupon,"data"=>$rt]);
+          $groupedCart = app(\App\Services\BuyerCartValidationService::class)->getGroupedCart($userid);
+
+          return response()->json([
+              "status"                   => true,
+              "code"                     => 100,
+              "msg"                      => "Successfully Show",
+              "grandtotal"               => floatval($granttotal),
+              "netamount"                => floatval($netamount),
+              "counter"                  => $cnt,
+              "cgst"                     => $cgst,
+              "sgst"                     => $sgst,
+              "igst"                     => $igst,
+              "couponbyadmin"            => floatval($couponbyadmin),
+              "combinecoupon"            => $combinecoupon,
+              "seller_groups"            => $groupedCart['seller_groups'] ?? [],
+              "all_sellers_can_checkout" => $groupedCart['all_sellers_can_checkout'] ?? true,
+              "data"                     => $rt,
+          ]);
      }
     public function deletecart(Request $request){ 
         $cartid = $request->get('cartid'); $granttotal=0;$cnt=0;

@@ -93,4 +93,42 @@ class Company extends Model
         }
         return $value;
     }
+
+    /**
+     * Get raw numeric Minimum Order Value (MOV)
+     */
+    public function getRawMinOrderValue(): float
+    {
+        return (float) ($this->getRawOriginal('minordervalue') ?? $this->attributes['minordervalue'] ?? 0.0);
+    }
+
+    /**
+     * Check if a given seller subtotal satisfies this seller's configured MOV
+     */
+    public function isMovSatisfied(float $amount): bool
+    {
+        $mov = $this->getRawMinOrderValue();
+        return $mov <= 0 || $amount >= $mov;
+    }
+
+    /**
+     * Calculate shortfall to reach MOV
+     */
+    public function getMovShortfall(float $amount): float
+    {
+        $mov = $this->getRawMinOrderValue();
+        return max(0.0, round($mov - $amount, 2));
+    }
+
+    /**
+     * Calculate progress percentage toward MOV (0.0 to 100.0)
+     */
+    public function getMovProgress(float $amount): float
+    {
+        $mov = $this->getRawMinOrderValue();
+        if ($mov <= 0) {
+            return 100.0;
+        }
+        return min(100.0, round(($amount / $mov) * 100, 1));
+    }
 }
