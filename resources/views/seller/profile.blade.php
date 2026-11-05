@@ -36,7 +36,7 @@
                            <div class="border border-3 p-4 rounded">
 							<div class="mb-3">
 								<label for="inputProductTitle" class="form-label"> Company</label>
-								<input type="text" class="form-control" id="inputProductTitle" readonly value="{{$detail->name}}">
+								<input type="text" class="form-control" id="inputProductTitle" readonly value="{{$detail->name ?? ''}}">
 							  </div>
 							<div class="mb-3">
 								<label for="inputProductTitle" class="form-label"> Name</label>
@@ -44,15 +44,15 @@
 							  </div>
 							<div class="mb-3">
 								<label for="inputProductTitle" class="form-label"> Email</label>
-								<input type="email" class="form-control" id="inputProductTitle" readonly value="{{$detail->email}}">
+								<input type="email" class="form-control" id="inputProductTitle" readonly value="{{$detail->email ?? ''}}">
 							  </div>
 							<div class="mb-3">
 								<label for="inputProductTitle" class="form-label"> Mobile</label>
-								<input type="number" class="form-control" id="inputProductTitle" readonly value="{{$detail->mobile}}">
+								<input type="number" class="form-control" id="inputProductTitle" readonly value="{{$detail->mobile ?? ''}}">
 							  </div>
 							<div class="mb-3">
 								<label for="inputProductTitle" class="form-label"> Whatsapp No</label>
-								<input type="number" class="form-control" id="inputProductTitle" readonly value="{{$detail->mobile}}">
+								<input type="number" class="form-control" id="inputProductTitle" readonly value="{{$detail->mobile ?? ''}}">
 							  </div>
 							<div class="mb-3">
 								<label for="inputProductTitle" class="form-label"> Pancard</label>
@@ -60,11 +60,11 @@
 							  </div>
 							<div class="mb-3">
 								<label for="inputProductTitle" class="form-label"> CRN No</label>
-								<input type="text" class="form-control" id="inputProductTitle" readonly value="{{$detail->crn}}">
+								<input type="text" class="form-control" id="inputProductTitle" readonly value="{{$detail->crn ?? ''}}">
 							  </div>
 							<div class="mb-3">
 								<label for="inputProductTitle" class="form-label"> GST no</label>
-								<input type="text" class="form-control" id="inputProductTitle" readonly value="{{$detail->gst}}">
+								<input type="text" class="form-control" id="inputProductTitle" readonly value="{{$detail->gst ?? ''}}">
 							  </div>
                             </div>
 						   </div>
@@ -84,7 +84,7 @@
 					    <div class="row">
                             <div class="col-lg-2"></div>
 						   <div class="col-lg-8">
-                            <form method="post" action="{{url('seller/profile',$detail->id)}}">
+                            <form method="post" action="{{url('seller/profile', $detail->id ?? 0)}}">
                                 @csrf
                                 <input type="hidden" class="form-control" name="action" value="passwordupdate">
                            <div class="border border-3 p-4 rounded">
@@ -119,13 +119,13 @@
 					    <div class="row">
                             <div class="col-lg-2"></div>
 						   <div class="col-lg-8">
-                            <form method="post" action="{{url('seller/profile',$detail->id)}}">
+                            <form method="post" action="{{url('seller/profile', $detail->id ?? 0)}}">
                                 @csrf
                                 <input type="hidden" class="form-control" name="action" value="minordervalue">
                            <div class="border border-3 p-4 rounded">
 							<div class="mb-3">
 								<label for="inputProductTitle" class="form-label">Min Order Value</label>
-								<input type="text" class="form-control" name="minvalue"  value="{{$detail->minordervalue}}">
+								<input type="text" class="form-control" name="minvalue"  value="{{$detail->minordervalue ?? ''}}">
 							  </div>
                               <div class="mb-3">
                                 <div class="d-grid">
@@ -151,7 +151,7 @@
 					        
 					    <div class="row justify-content-between border border-3 p-4 roundedborder border-3 p-4 rounded">
                             <div class="col-md-5">
-                                <form method="post" enctype="multipart/form-data" action="{{url('seller/profile',$detail->id)}}">
+                                <form method="post" enctype="multipart/form-data" action="{{url('seller/profile', $detail->id ?? 0)}}">
                                 @csrf
                                 <input type="hidden" class="form-control" name="action" value="update_banner">
                                 <div class="mb-3">
@@ -169,7 +169,7 @@
 							  </form>
                             </div>
 						   <div class="col-md-5">
-                                <form method="post" enctype="multipart/form-data" action="{{url('seller/profile',$detail->id)}}">
+                                <form method="post" enctype="multipart/form-data" action="{{url('seller/profile', $detail->id ?? 0)}}">
                                 @csrf
                                 <input type="hidden" name="action" value="update_logo">
                             <div class="mb-3">

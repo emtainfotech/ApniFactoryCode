@@ -65,9 +65,12 @@ class BrandController extends Controller
         // if ($request->filled('brand')) {    $query = $query->where("name", $request->input('brand'));           }
         // if ($request->filled('srchcategory')) {    $query = $query->where("category_id", $request->input('srchcategory'));           }
         //      $data['list'] = $query->orderby('name','asc')->get();
-        $maincategory = Company::select('maincategory_id')->where('user_id',Auth::user()->id)->first();
-        $data['maincatid'] = $maincategory->maincategory_id;
-        $data['categorylist'] = Category::where('status',1)->where('maincategory_id',$maincategory->maincategory_id)->orderby('name','asc')->get();
+        $maincategory = Company::select('maincategory_id')->where('user_id', Auth::user()->id)->first();
+        $maincatid = $maincategory?->maincategory_id;
+        $data['maincatid'] = $maincatid;
+        $data['categorylist'] = $maincatid 
+            ? Category::where('status', 1)->where('maincategory_id', $maincatid)->orderby('name', 'asc')->get()
+            : Category::where('status', 1)->orderby('name', 'asc')->get();
         $data['list'] = Brand::select('mid','user_id','name','image','status','adminresponse',DB::raw('GROUP_CONCAT(category_id) as categories'))
                     ->where('user_id',Auth::user()->id)
                     ->groupBy('mid','user_id','name','image','status','adminresponse')->get();

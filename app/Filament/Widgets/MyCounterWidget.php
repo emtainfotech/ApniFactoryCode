@@ -9,7 +9,7 @@ use App\Models\User;
 use App\Models\Company;
 use App\Models\Category;
 use App\Models\Brand; 
-use App\Models\order; 
+use App\Models\Order; 
 use App\Models\Ticket; 
 use App\Models\Product;
 use DB;
@@ -65,7 +65,7 @@ class MyCounterWidget extends BaseWidget
                 Card::make('Total Brand', Brand::count()),
                 Card::make('Active Ticket', Ticket::where('status', '1')->count()),
                 Card::make('Total Product', Product::count()),
-                Card::make('Total order', order::count()),
+                Card::make('Total order', Order::count()),
                 Card::make('Processing Orders', $processingord->count()),
                 Card::make('Pending Orders', $pendingord->count()),
                 Card::make('Total Revenue',number_format(Order::sum('grandtotal'), 2)),

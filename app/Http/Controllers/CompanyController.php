@@ -100,9 +100,16 @@ class CompanyController extends Controller
       }
      public function profile_sellerview()
     {  
-        $data['detail'] = Company::where('user_id',Auth::user()->id)->first();
+        $company = Company::where('user_id', Auth::user()->id)->first();
+        if (!$company) {
+            $company = new Company();
+            $company->name = Auth::user()->name;
+            $company->email = Auth::user()->email;
+            $company->mobile = Auth::user()->phone ?? Auth::user()->mobile ?? '';
+        }
+        $data['detail'] = $company;
         $data['title'] = 'Company Profile';
-        return view('seller.profile',$data);
+        return view('seller.profile', $data);
     }
     public function index()
     {
