@@ -88,3 +88,4 @@ class ProcessScheduledPriceRevisions extends Command
         return 0;
     }
 }
+

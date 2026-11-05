@@ -243,6 +243,17 @@ Route::prefix('v2')->group(function () {
         Route::get('pricing/revisions/{id}',                     [\App\Http\Controllers\Api\AdminPriceRevisionApiController::class, 'show'])->whereNumber('id');
         Route::post('pricing/revisions/{id}/approve',            [\App\Http\Controllers\Api\AdminPriceRevisionApiController::class, 'approve'])->whereNumber('id');
         Route::post('pricing/revisions/{id}/reject',             [\App\Http\Controllers\Api\AdminPriceRevisionApiController::class, 'reject'])->whereNumber('id');
+
+        // Phase 3.2: Admin Commission & Platform Fee Management APIs
+        Route::get('commissions/rules',                          [\App\Http\Controllers\Api\AdminCommissionRuleApiController::class, 'index']);
+        Route::post('commissions/rules',                         [\App\Http\Controllers\Api\AdminCommissionRuleApiController::class, 'store']);
+        Route::get('commissions/rules/{id}',                     [\App\Http\Controllers\Api\AdminCommissionRuleApiController::class, 'show'])->whereNumber('id');
+        Route::post('commissions/rules/{id}/approve',            [\App\Http\Controllers\Api\AdminCommissionRuleApiController::class, 'approve'])->whereNumber('id');
+        Route::post('commissions/rules/{id}/reject',             [\App\Http\Controllers\Api\AdminCommissionRuleApiController::class, 'reject'])->whereNumber('id');
+        Route::post('commissions/rules/{id}/deactivate',         [\App\Http\Controllers\Api\AdminCommissionRuleApiController::class, 'deactivate'])->whereNumber('id');
+        Route::post('commissions/preview-resolution',            [\App\Http\Controllers\Api\AdminCommissionRuleApiController::class, 'previewResolution']);
+        Route::get('commissions/orders/{orderId}/breakdown',     [\App\Http\Controllers\Api\AdminCommissionRuleApiController::class, 'orderBreakdown'])->whereNumber('orderId');
+        Route::get('commissions/audit-logs',                     [\App\Http\Controllers\Api\AdminCommissionRuleApiController::class, 'auditLogs']);
     });
 });
 
@@ -310,4 +321,9 @@ Route::prefix('v2/seller')->middleware('auth:sanctum')->group(function () {
     Route::get('pricing/revisions/{id}',                     [\App\Http\Controllers\Api\PriceRevisionApiController::class, 'show'])->whereNumber('id');
     Route::post('pricing/revisions/{id}/cancel',              [\App\Http\Controllers\Api\PriceRevisionApiController::class, 'cancel'])->whereNumber('id');
     Route::get('pricing/skus/{skuId}/history',                [\App\Http\Controllers\Api\PriceRevisionApiController::class, 'skuPriceHistory'])->whereNumber('skuId');
+
+    // Phase 3.2: Seller Commission Agreement Visibility APIs
+    Route::get('commissions/agreements',                     [\App\Http\Controllers\Api\SellerCommissionApiController::class, 'agreements']);
+    Route::get('commissions/orders/{orderId}/snapshot',       [\App\Http\Controllers\Api\SellerCommissionApiController::class, 'orderSnapshot'])->whereNumber('orderId');
+    Route::get('commissions/skus/{skuId}/applicable-rule',    [\App\Http\Controllers\Api\SellerCommissionApiController::class, 'skuApplicableRule'])->whereNumber('skuId');
 });

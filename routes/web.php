@@ -235,6 +235,20 @@ Route::delete('/product/filter/{id}', [ProductController::class, 'destroyFilter'
         Route::post('/admin/pricing/revisions/{id}/approve', [\App\Http\Controllers\AdminPriceRevisionWebController::class, 'approve'])->name('admin.pricing.revisions.approve')->whereNumber('id');
         Route::post('/admin/pricing/revisions/{id}/reject',  [\App\Http\Controllers\AdminPriceRevisionWebController::class, 'reject'])->name('admin.pricing.revisions.reject')->whereNumber('id');
 
+        // --- Phase 3.2: Seller Commission Agreement Visibility ---
+        Route::get('/seller/commissions/agreements',     [\App\Http\Controllers\SellerCommissionWebController::class, 'agreements'])->name('seller.commissions.agreements');
+        Route::get('/seller/commissions/orders/{id}',    [\App\Http\Controllers\SellerCommissionWebController::class, 'orderSnapshot'])->name('seller.commissions.orders.show')->whereNumber('id');
+
+        // --- Phase 3.2: Admin Commission & Platform Fee Engine ---
+        Route::get('/admin/commissions/rules',           [\App\Http\Controllers\AdminCommissionRuleWebController::class, 'index'])->name('admin.commissions.rules.index');
+        Route::get('/admin/commissions/rules/create',    [\App\Http\Controllers\AdminCommissionRuleWebController::class, 'create'])->name('admin.commissions.rules.create');
+        Route::post('/admin/commissions/rules',          [\App\Http\Controllers\AdminCommissionRuleWebController::class, 'store'])->name('admin.commissions.rules.store');
+        Route::get('/admin/commissions/rules/{id}',      [\App\Http\Controllers\AdminCommissionRuleWebController::class, 'show'])->name('admin.commissions.rules.show')->whereNumber('id');
+        Route::post('/admin/commissions/rules/{id}/approve', [\App\Http\Controllers\AdminCommissionRuleWebController::class, 'approve'])->name('admin.commissions.rules.approve')->whereNumber('id');
+        Route::post('/admin/commissions/rules/{id}/reject',  [\App\Http\Controllers\AdminCommissionRuleWebController::class, 'reject'])->name('admin.commissions.rules.reject')->whereNumber('id');
+        Route::post('/admin/commissions/rules/{id}/deactivate', [\App\Http\Controllers\AdminCommissionRuleWebController::class, 'deactivate'])->name('admin.commissions.rules.deactivate')->whereNumber('id');
+        Route::get('/admin/commissions/orders/{id}',     [\App\Http\Controllers\AdminCommissionRuleWebController::class, 'orderBreakdown'])->name('admin.commissions.orders.show')->whereNumber('id');
+
 });
 
 // Customer Mobile App Simulator & Experience Preview

@@ -89,3 +89,4 @@ class CreateDynamicPriceRevisionsTables extends Migration
         Schema::dropIfExists('price_revisions');
     }
 }
+

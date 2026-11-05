@@ -48,3 +48,4 @@ class ExecutePriceRevisionJob implements ShouldQueue
         $pricingService->executeRevision($revision);
     }
 }
+

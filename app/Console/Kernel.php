@@ -23,6 +23,9 @@ class Kernel extends ConsoleKernel
 
         // Process scheduled dynamic price revisions every minute
         $schedule->command('price-revisions:process')->everyMinute();
+
+        // Process scheduled commission rules every minute
+        $schedule->command('commissions:process-scheduled')->everyMinute();
     }
 
     /**

@@ -94,3 +94,4 @@ class PriceRevision extends Model
         return $query->where('status', 'pending_approval');
     }
 }
+

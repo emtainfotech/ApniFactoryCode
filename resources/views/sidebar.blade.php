@@ -49,6 +49,7 @@
                 <li><a href="{{route('seller.catalogue.submissions')}}"><i class="fa-solid fa-clipboard-check me-2" style="color: #6f42c1;"></i>Approval Submissions</a></li>
                 <li><a href="{{route('seller.catalogue.analytics')}}"><i class="fa-solid fa-chart-line me-2 text-primary"></i>Catalogue Analytics</a></li>
                 <li><a href="{{route('seller.pricing.revisions.index')}}"><i class="fa-solid fa-tags me-2 text-danger"></i>Price Revisions</a></li>
+                <li><a href="{{route('seller.commissions.agreements')}}"><i class="fa-solid fa-percent me-2 text-success"></i>Commission Agreements</a></li>
                 <li><a href="{{url('seller/product')}}"><i class="fa-solid fa-list-ul me-2"></i>List All</a></li>
                 <li><a href="{{route('seller.paint-pricing.index')}}"><i class="fa-solid fa-paint-roller me-2" style="color: #6f42c1;"></i>Paint Pricing Manager</a></li>
             </ul>
@@ -167,6 +168,12 @@
             <a href="{{ route('admin.pricing.revisions.queue') }}">
                 <div class="parent-icon"><i class="fa-solid fa-scale-balanced text-warning"></i></div>
                 <div class="menu-title">Price Revisions Queue</div>
+            </a>
+        </li>
+        <li>
+            <a href="{{ route('admin.commissions.rules.index') }}">
+                <div class="parent-icon"><i class="fa-solid fa-hand-holding-dollar text-info"></i></div>
+                <div class="menu-title">Commission Rules</div>
             </a>
         </li>
         @endif
