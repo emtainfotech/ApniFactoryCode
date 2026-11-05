@@ -52,6 +52,26 @@ class Order extends Model
         return $this->hasMany(Order::class, 'parent_order_id');
     }
 
+    public function taxSnapshots()
+    {
+        return $this->hasMany(OrderTaxSnapshot::class, 'order_id');
+    }
+
+    public function invoices()
+    {
+        return $this->hasMany(Invoice::class, 'order_id');
+    }
+
+    public function settlement()
+    {
+        return $this->hasOne(SellerSettlement::class, 'order_id');
+    }
+
+    public function ledgerEntries()
+    {
+        return $this->hasMany(FinancialLedger::class, 'order_id');
+    }
+
     public function isPaid(): bool
     {
         return strtolower($this->payment_status) === 'paid';

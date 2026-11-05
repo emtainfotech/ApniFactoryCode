@@ -258,6 +258,20 @@ Route::delete('/product/filter/{id}', [ProductController::class, 'destroyFilter'
         Route::get('/admin/finance/payments/{id}',      [\App\Http\Controllers\FinancePaymentWebController::class, 'show'])->name('admin.finance.payments.show')->whereNumber('id');
         Route::post('/admin/finance/payments/{id}/reconcile', [\App\Http\Controllers\FinancePaymentWebController::class, 'reconcile'])->name('admin.finance.payments.reconcile')->whereNumber('id');
 
+        // --- Phase 4.4: GST / HSN Tax Master Web Portal ---
+        Route::get('/admin/finance/tax-master',                 [\App\Http\Controllers\TaxMasterWebController::class, 'index'])->name('admin.finance.tax-master.index');
+        Route::post('/admin/finance/tax-master',                [\App\Http\Controllers\TaxMasterWebController::class, 'store'])->name('admin.finance.tax-master.store');
+        Route::post('/admin/finance/tax-master/{id}/approve',   [\App\Http\Controllers\TaxMasterWebController::class, 'approve'])->name('admin.finance.tax-master.approve')->whereNumber('id');
+        Route::post('/admin/finance/tax-master/{id}/reject',    [\App\Http\Controllers\TaxMasterWebController::class, 'reject'])->name('admin.finance.tax-master.reject')->whereNumber('id');
+
+        // --- Phase 4.4: Financial Settlements & Ledger Web Portal ---
+        Route::get('/admin/finance/settlements',                [\App\Http\Controllers\FinancialSettlementWebController::class, 'settlementsIndex'])->name('admin.finance.settlements.index');
+        Route::post('/admin/finance/settlements/{id}/status',   [\App\Http\Controllers\FinancialSettlementWebController::class, 'updateSettlementStatus'])->name('admin.finance.settlements.update-status')->whereNumber('id');
+        Route::get('/admin/finance/ledger',                     [\App\Http\Controllers\FinancialSettlementWebController::class, 'ledgerIndex'])->name('admin.finance.ledger.index');
+
+        // --- Phase 4.4: Seller Settlements Portal ---
+        Route::get('/seller/finance/settlements',               [\App\Http\Controllers\FinancialSettlementWebController::class, 'sellerSettlements'])->name('seller.finance.settlements');
+
 });
 
 // Customer Mobile App Simulator & Experience Preview

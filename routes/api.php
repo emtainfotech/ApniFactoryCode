@@ -330,6 +330,12 @@ Route::prefix('v2/seller')->middleware('auth:sanctum')->group(function () {
     // Phase 4.1: Seller Minimum Order Value (MOV) Configuration API
     Route::get('mov',                                         [\App\Http\Controllers\Api\SellerMovApiController::class, 'show']);
     Route::put('mov',                                         [\App\Http\Controllers\Api\SellerMovApiController::class, 'update']);
+
+    // Phase 4.4: Seller-Isolated Ledger & Settlements APIs
+    Route::get('finance/ledger',                              [\App\Http\Controllers\Api\FinancialSettlementApiController::class, 'sellerLedger']);
+    Route::get('finance/settlements',                         [\App\Http\Controllers\Api\FinancialSettlementApiController::class, 'sellerSettlements']);
+    Route::get('ledger',                                      [\App\Http\Controllers\Api\FinancialSettlementApiController::class, 'sellerLedger']);
+    Route::get('settlements',                                 [\App\Http\Controllers\Api\FinancialSettlementApiController::class, 'sellerSettlements']);
 });
 
 // Phase 4.3: Payment Gateway Integration, Verified Callbacks & Reconciliation APIs (v2)
@@ -344,6 +350,29 @@ Route::prefix('v2/finance')->group(function () {
     Route::get('payments',                             [\App\Http\Controllers\Api\FinanceReconciliationApiController::class, 'index']);
     Route::get('payments/{id}',                        [\App\Http\Controllers\Api\FinanceReconciliationApiController::class, 'show'])->whereNumber('id');
     Route::post('payments/{id}/reconcile',              [\App\Http\Controllers\Api\FinanceReconciliationApiController::class, 'reconcile'])->whereNumber('id');
+
+    // Phase 4.4: Financial Ledger & Settlements (Admin/Finance)
+    Route::get('ledger',                               [\App\Http\Controllers\Api\FinancialSettlementApiController::class, 'financeLedger']);
+    Route::get('settlements',                          [\App\Http\Controllers\Api\FinancialSettlementApiController::class, 'financeSettlements']);
+    Route::post('settlements/{id}/status',              [\App\Http\Controllers\Api\FinancialSettlementApiController::class, 'updateStatus'])->whereNumber('id');
+});
+
+// Phase 4.4: GST / HSN Tax Master & Calculation APIs (v2)
+Route::prefix('v2/tax')->group(function () {
+    Route::get('masters',                              [\App\Http\Controllers\Api\TaxMasterApiController::class, 'index']);
+    Route::post('masters',                             [\App\Http\Controllers\Api\TaxMasterApiController::class, 'store']);
+    Route::get('masters/{id}',                         [\App\Http\Controllers\Api\TaxMasterApiController::class, 'show'])->whereNumber('id');
+    Route::post('masters/{id}/approve',                 [\App\Http\Controllers\Api\TaxMasterApiController::class, 'approve'])->whereNumber('id');
+    Route::post('masters/{id}/reject',                  [\App\Http\Controllers\Api\TaxMasterApiController::class, 'reject'])->whereNumber('id');
+    Route::post('calculate',                           [\App\Http\Controllers\Api\TaxMasterApiController::class, 'calculate']);
+    Route::get('orders/{orderId}/snapshots',            [\App\Http\Controllers\Api\TaxMasterApiController::class, 'orderSnapshots'])->whereNumber('orderId');
+});
+
+// Phase 4.4: Invoice Generation & Lookup APIs (v2)
+Route::prefix('v2/invoices')->group(function () {
+    Route::get('{id}',                                 [\App\Http\Controllers\Api\InvoiceApiController::class, 'show'])->whereNumber('id');
+    Route::get('orders/{orderId}',                     [\App\Http\Controllers\Api\InvoiceApiController::class, 'orderInvoices'])->whereNumber('orderId');
+    Route::post('orders/{orderId}/generate',           [\App\Http\Controllers\Api\InvoiceApiController::class, 'generate'])->whereNumber('orderId');
 });
 
 // Phase 4.1: Modern Buyer Cart, Seller Grouping & Bulk Matrix APIs (v2)

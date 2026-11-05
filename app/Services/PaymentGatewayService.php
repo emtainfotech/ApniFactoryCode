@@ -450,6 +450,14 @@ class PaymentGatewayService
                 // Clear buyer cart upon verified payment
                 DB::table('cart')->where('customer_id', $order->customer_id)->delete();
                 DB::table('cartattribute')->where('customer_id', $order->customer_id)->delete();
+
+                // Phase 4.4: Record financial ledger and settlement entries
+                try {
+                    $ledgerService = app(FinancialLedgerService::class);
+                    $ledgerService->recordOrderPayment($order, $txn);
+                } catch (\Throwable $e) {
+                    Log::error("Failed to record financial ledger for order #{$order->id}: " . $e->getMessage());
+                }
             }
 
             PaymentAuditLog::logAction(
