@@ -237,6 +237,12 @@ Route::prefix('v2')->group(function () {
         Route::post('catalogue/review/{id}/reject',              [\App\Http\Controllers\Api\AdminCatalogueReviewApiController::class, 'reject'])->whereNumber('id');
         Route::post('catalogue/review/{id}/request-corrections', [\App\Http\Controllers\Api\AdminCatalogueReviewApiController::class, 'requestCorrections'])->whereNumber('id');
         Route::get('catalogue/review/{id}/history',              [\App\Http\Controllers\Api\AdminCatalogueReviewApiController::class, 'history'])->whereNumber('id');
+
+        // Phase 3.1: Admin Price Revision Review APIs
+        Route::get('pricing/revisions/queue',                    [\App\Http\Controllers\Api\AdminPriceRevisionApiController::class, 'queue']);
+        Route::get('pricing/revisions/{id}',                     [\App\Http\Controllers\Api\AdminPriceRevisionApiController::class, 'show'])->whereNumber('id');
+        Route::post('pricing/revisions/{id}/approve',            [\App\Http\Controllers\Api\AdminPriceRevisionApiController::class, 'approve'])->whereNumber('id');
+        Route::post('pricing/revisions/{id}/reject',             [\App\Http\Controllers\Api\AdminPriceRevisionApiController::class, 'reject'])->whereNumber('id');
     });
 });
 
@@ -295,4 +301,13 @@ Route::prefix('v2/seller')->middleware('auth:sanctum')->group(function () {
     Route::get('catalogue/analytics/approval-performance',   [\App\Http\Controllers\Api\SellerCatalogueAnalyticsApiController::class, 'approvalPerformance']);
     Route::get('catalogue/analytics/product-performance',    [\App\Http\Controllers\Api\SellerCatalogueAnalyticsApiController::class, 'productPerformance']);
     Route::get('catalogue/analytics/categories-brands',      [\App\Http\Controllers\Api\SellerCatalogueAnalyticsApiController::class, 'categoryBrandInsights']);
+
+    // Phase 3.1: Dynamic Price Revision Engine (Seller APIs)
+    Route::get('pricing/revisions/filter-options',           [\App\Http\Controllers\Api\PriceRevisionApiController::class, 'filterOptions']);
+    Route::post('pricing/revisions/preview',                 [\App\Http\Controllers\Api\PriceRevisionApiController::class, 'preview']);
+    Route::post('pricing/revisions',                         [\App\Http\Controllers\Api\PriceRevisionApiController::class, 'store']);
+    Route::get('pricing/revisions',                          [\App\Http\Controllers\Api\PriceRevisionApiController::class, 'index']);
+    Route::get('pricing/revisions/{id}',                     [\App\Http\Controllers\Api\PriceRevisionApiController::class, 'show'])->whereNumber('id');
+    Route::post('pricing/revisions/{id}/cancel',              [\App\Http\Controllers\Api\PriceRevisionApiController::class, 'cancel'])->whereNumber('id');
+    Route::get('pricing/skus/{skuId}/history',                [\App\Http\Controllers\Api\PriceRevisionApiController::class, 'skuPriceHistory'])->whereNumber('skuId');
 });

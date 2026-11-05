@@ -20,6 +20,9 @@ class Kernel extends ConsoleKernel
         
         // Auto-expire and cancel pending orders where seller has not responded within 72 hours (3 days)
         $schedule->command('orders:auto-expire-pending')->hourly();
+
+        // Process scheduled dynamic price revisions every minute
+        $schedule->command('price-revisions:process')->everyMinute();
     }
 
     /**

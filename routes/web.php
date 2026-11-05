@@ -214,12 +214,26 @@ Route::delete('/product/filter/{id}', [ProductController::class, 'destroyFilter'
         // --- Seller Catalogue Dashboard & Performance Analytics (Phase 2.6) ---
         Route::get('/seller/catalogue/analytics', [\App\Http\Controllers\SellerCatalogueAnalyticsWebController::class, 'index'])->name('seller.catalogue.analytics');
 
+        // --- Phase 3.1: Dynamic Price Revision Engine (Seller Web Portal) ---
+        Route::get('/seller/pricing/revisions',          [\App\Http\Controllers\SellerPriceRevisionWebController::class, 'index'])->name('seller.pricing.revisions.index');
+        Route::get('/seller/pricing/revisions/create',   [\App\Http\Controllers\SellerPriceRevisionWebController::class, 'create'])->name('seller.pricing.revisions.create');
+        Route::post('/seller/pricing/revisions/preview', [\App\Http\Controllers\SellerPriceRevisionWebController::class, 'preview'])->name('seller.pricing.revisions.preview');
+        Route::post('/seller/pricing/revisions',         [\App\Http\Controllers\SellerPriceRevisionWebController::class, 'store'])->name('seller.pricing.revisions.store');
+        Route::get('/seller/pricing/revisions/{id}',     [\App\Http\Controllers\SellerPriceRevisionWebController::class, 'show'])->name('seller.pricing.revisions.show')->whereNumber('id');
+        Route::post('/seller/pricing/revisions/{id}/cancel', [\App\Http\Controllers\SellerPriceRevisionWebController::class, 'cancel'])->name('seller.pricing.revisions.cancel')->whereNumber('id');
+
         // --- Admin Catalogue Review Queue (Phase 2.5) ---
         Route::get('/admin/catalogue/reviews', [\App\Http\Controllers\AdminCatalogueReviewWebController::class, 'queue'])->name('admin.catalogue.reviews');
         Route::get('/admin/catalogue/reviews/{id}', [\App\Http\Controllers\AdminCatalogueReviewWebController::class, 'show'])->name('admin.catalogue.reviews.show')->whereNumber('id');
         Route::post('/admin/catalogue/reviews/{id}/approve', [\App\Http\Controllers\AdminCatalogueReviewWebController::class, 'approve'])->name('admin.catalogue.reviews.approve')->whereNumber('id');
         Route::post('/admin/catalogue/reviews/{id}/reject', [\App\Http\Controllers\AdminCatalogueReviewWebController::class, 'reject'])->name('admin.catalogue.reviews.reject')->whereNumber('id');
         Route::post('/admin/catalogue/reviews/{id}/request-corrections', [\App\Http\Controllers\AdminCatalogueReviewWebController::class, 'requestCorrections'])->name('admin.catalogue.reviews.request-corrections')->whereNumber('id');
+
+        // --- Phase 3.1: Admin Price Revision Review Queue (Admin Web Portal) ---
+        Route::get('/admin/pricing/revisions',           [\App\Http\Controllers\AdminPriceRevisionWebController::class, 'queue'])->name('admin.pricing.revisions.queue');
+        Route::get('/admin/pricing/revisions/{id}',      [\App\Http\Controllers\AdminPriceRevisionWebController::class, 'show'])->name('admin.pricing.revisions.show')->whereNumber('id');
+        Route::post('/admin/pricing/revisions/{id}/approve', [\App\Http\Controllers\AdminPriceRevisionWebController::class, 'approve'])->name('admin.pricing.revisions.approve')->whereNumber('id');
+        Route::post('/admin/pricing/revisions/{id}/reject',  [\App\Http\Controllers\AdminPriceRevisionWebController::class, 'reject'])->name('admin.pricing.revisions.reject')->whereNumber('id');
 
 });
 
