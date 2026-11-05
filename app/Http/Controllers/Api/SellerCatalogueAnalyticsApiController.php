@@ -181,3 +181,4 @@ class SellerCatalogueAnalyticsApiController extends Controller
         ], 200);
     }
 }
+

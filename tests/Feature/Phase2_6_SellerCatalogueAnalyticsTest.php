@@ -26,6 +26,7 @@ use App\Services\SellerCatalogueAnalyticsService;
 use Carbon\Carbon;
 use Database\Seeders\SellerRolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
@@ -53,6 +54,8 @@ class Phase2_6_SellerCatalogueAnalyticsTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        Cache::flush();
 
         $this->seed(SellerRolesAndPermissionsSeeder::class);
 

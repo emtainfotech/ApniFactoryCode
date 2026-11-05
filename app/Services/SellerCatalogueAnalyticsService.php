@@ -585,3 +585,4 @@ class SellerCatalogueAnalyticsService
         Cache::forget("seller_catalogue_summary_{$companyId}");
     }
 }
+
