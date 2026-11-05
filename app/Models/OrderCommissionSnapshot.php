@@ -103,3 +103,4 @@ class OrderCommissionSnapshot extends Model
         return $query->where('company_id', $companyId);
     }
 }
+

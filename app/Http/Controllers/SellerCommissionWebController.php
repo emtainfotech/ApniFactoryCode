@@ -94,3 +94,4 @@ class SellerCommissionWebController extends Controller
         return view('seller.commissions.order-snapshot', compact('company', 'orderId', 'snapshots'));
     }
 }
+

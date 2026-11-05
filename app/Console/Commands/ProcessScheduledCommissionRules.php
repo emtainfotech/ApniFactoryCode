@@ -60,3 +60,4 @@ class ProcessScheduledCommissionRules extends Command
         return 0;
     }
 }
+

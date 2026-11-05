@@ -187,3 +187,4 @@ class AdminCommissionRuleWebController extends Controller
         return view('admin.commissions.order-breakdown', compact('orderId', 'snapshots'));
     }
 }
+

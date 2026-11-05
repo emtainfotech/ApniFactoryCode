@@ -101,3 +101,4 @@ class CreateCommissionAndPlatformFeeTables extends Migration
         Schema::dropIfExists('commission_rules');
     }
 }
+

@@ -637,8 +637,12 @@ class DynamicPriceRevisionService
      * Tier 4: Promotional Coupon Discount (PR-TIER-4-PROMO)
      * Tier 5: Base Catalogue Listing Price (PR-TIER-5-CATALOGUE-BASE)
      */
-    public function resolveCurrentEffectivePrice(SellerListing $listing, ?int $buyerId = null, int $quantity = 1): array
-    {
+    public function resolveCurrentEffectivePrice(
+        SellerListing $listing,
+        ?int $buyerId = null,
+        int $quantity = 1,
+        string $priceType = 'seller_price'
+    ): array {
         // Tier 1: Accepted Contractual RFQ Quote
         if ($buyerId) {
             $rfqQuote = DB::table('rfq_quotes')
@@ -659,6 +663,10 @@ class DynamicPriceRevisionService
             }
         }
 
+        $baseFieldPrice = ($priceType === 'selling_price' && (float)$listing->selling_price > 0)
+            ? (float)$listing->selling_price
+            : ((float)$listing->seller_price > 0 ? (float)$listing->seller_price : (float)$listing->selling_price);
+
         // Tier 3: Volume / Quantity Slabs
         $slab = DB::table('product_volume_slabs')
             ->where('product_id', $listing->product_id)
@@ -671,7 +679,7 @@ class DynamicPriceRevisionService
             ->first();
 
         if ($slab) {
-            $slabPrice = (float)$listing->selling_price;
+            $slabPrice = $baseFieldPrice;
             if ($slab->discount_type === 'percentage') {
                 $slabPrice = round($slabPrice * (1 - ($slab->discount_value / 100)), 2);
             } elseif ($slab->discount_type === 'fixed_unit_price') {
@@ -688,7 +696,7 @@ class DynamicPriceRevisionService
 
         // Default: Base Catalogue Listing Price
         return [
-            'effective_price' => (float)$listing->selling_price,
+            'effective_price' => $baseFieldPrice,
             'price_tier' => 'catalogue_base',
             'rule_id' => 'PR-TIER-5-CATALOGUE-BASE',
             'source_reference' => "seller_listing_id:{$listing->id}",
