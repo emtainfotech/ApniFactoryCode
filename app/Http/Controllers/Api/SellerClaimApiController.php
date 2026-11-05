@@ -100,3 +100,4 @@ class SellerClaimApiController extends Controller
         ]);
     }
 }
+

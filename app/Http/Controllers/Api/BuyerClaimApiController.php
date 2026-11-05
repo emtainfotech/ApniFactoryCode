@@ -114,3 +114,4 @@ class BuyerClaimApiController extends Controller
         ], 201);
     }
 }
+

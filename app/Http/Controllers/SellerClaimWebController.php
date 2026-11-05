@@ -81,3 +81,4 @@ class SellerClaimWebController extends Controller
             ->with('success', 'Your response and evidence have been recorded. Platform operations and the buyer have been informed.');
     }
 }
+

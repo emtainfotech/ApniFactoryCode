@@ -46,3 +46,4 @@ class FulfilmentClaimEvidence extends Model
         return asset($this->file_path);
     }
 }
+

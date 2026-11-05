@@ -50,3 +50,4 @@ return [
     'auto_resolution_enabled'   => false,
     'require_admin_approval'    => true,
 ];
+

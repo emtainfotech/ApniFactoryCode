@@ -78,3 +78,4 @@ class AdminClaimWebController extends Controller
             ->with('success', "Claim status updated to '{$validated['status']}' successfully.");
     }
 }
+

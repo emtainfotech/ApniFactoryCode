@@ -140,3 +140,4 @@ class FulfilmentClaim extends Model
         return in_array($targetStatus, $allowed[$this->claim_status] ?? [], true);
     }
 }
+

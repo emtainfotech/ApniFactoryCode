@@ -33,3 +33,4 @@ class FulfilmentClaimItem extends Model
         return $this->belongsTo(OrderDetail::class, 'order_detail_id');
     }
 }
+

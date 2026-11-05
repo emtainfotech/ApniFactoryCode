@@ -97,3 +97,4 @@ return new class extends Migration
         Schema::dropIfExists('fulfilment_claims');
     }
 };
+
