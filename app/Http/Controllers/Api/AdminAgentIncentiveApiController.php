@@ -12,6 +12,7 @@ use App\Models\Order;
 use App\Services\AgentIncentiveCalculationService;
 use App\Services\AgentIncentiveRuleService;
 use App\Services\AgentOrderEligibilityService;
+use App\Services\AgentPayoutService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -22,7 +23,8 @@ class AdminAgentIncentiveApiController extends BaseApiController
     public function __construct(
         protected AgentOrderEligibilityService $eligibilityService,
         protected AgentIncentiveRuleService $ruleService,
-        protected AgentIncentiveCalculationService $calculationService
+        protected AgentIncentiveCalculationService $calculationService,
+        protected AgentPayoutService $payoutService
     ) {
     }
 
@@ -363,6 +365,63 @@ class AdminAgentIncentiveApiController extends BaseApiController
         );
 
         return $this->sendResponse($report, 'Ledger-reconciled incentive report generated.');
+    }
+
+    public function approvalQueue(Request $request): JsonResponse
+    {
+        $filters = $request->only(['field_agent_id', 'customer_id', 'territory', 'date_from', 'date_to', 'search']);
+        $filters['status'] = $request->input('status', AgentIncentiveLedger::STATUS_CALCULATED_PENDING_APPROVAL);
+        $paginator = $this->calculationService->listLedgerEntries($filters, (int)$request->get('per_page', 20));
+
+        return response()->json([
+            'status' => true,
+            'code'   => 200,
+            'data'   => $paginator->items(),
+            'meta'   => [
+                'current_page' => $paginator->currentPage(),
+                'last_page'    => $paginator->lastPage(),
+                'total'        => $paginator->total(),
+            ],
+        ]);
+    }
+
+    public function holdLedger(Request $request, int $id): JsonResponse
+    {
+        $entry = AgentIncentiveLedger::findOrFail($id);
+        $validated = $request->validate([
+            'reason' => 'required|string|max:500',
+            'notes'  => 'nullable|string|max:1000',
+        ]);
+
+        try {
+            $updated = $this->calculationService->holdLedgerEntry($entry, $request->user(), $validated['reason'], $validated['notes'] ?? null);
+            return $this->sendResponse($updated, 'Incentive ledger entry placed on hold.');
+        } catch (ValidationException $e) {
+            return $this->sendError('Hold action failed.', $e->errors(), 422);
+        }
+    }
+
+    public function rejectLedger(Request $request, int $id): JsonResponse
+    {
+        $entry = AgentIncentiveLedger::findOrFail($id);
+        $validated = $request->validate([
+            'reason' => 'required|string|max:500',
+            'notes'  => 'nullable|string|max:1000',
+        ]);
+
+        try {
+            $updated = $this->calculationService->rejectLedgerEntry($entry, $request->user(), $validated['reason'], $validated['notes'] ?? null);
+            return $this->sendResponse($updated, 'Incentive ledger entry rejected cleanly.');
+        } catch (ValidationException $e) {
+            return $this->sendError('Rejection action failed.', $e->errors(), 422);
+        }
+    }
+
+    public function exportReport(Request $request)
+    {
+        return $this->payoutService->streamReconciledCsvExport(
+            $request->only(['field_agent_id', 'status', 'date_from', 'date_to'])
+        );
     }
 }
 

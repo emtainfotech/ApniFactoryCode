@@ -7,6 +7,9 @@ use App\Models\AgentEligibleOrder;
 use App\Models\AgentIncentiveAuditLog;
 use App\Models\AgentIncentiveLedger;
 use App\Models\AgentIncentiveRule;
+use App\Models\AgentPayout;
+use App\Models\AgentPayoutItem;
+use App\Models\AgentPayoutReconciliationException;
 use App\Models\User;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\QueryException;
@@ -176,31 +179,65 @@ class AgentIncentiveCalculationService
             ]);
         }
 
+        // Idempotent duplicate approval protection (Stage 2)
         if ($entry->status === AgentIncentiveLedger::STATUS_APPROVED) {
             return $entry;
+        }
+
+        if ($entry->entry_type !== AgentIncentiveLedger::TYPE_EARNED) {
+            throw ValidationException::withMessages([
+                'entry_type' => ['Only primary earned incentive entries can go through incentive approval.'],
+            ]);
         }
 
         if (!in_array($entry->status, [
             AgentIncentiveLedger::STATUS_CALCULATED_PENDING_APPROVAL,
             AgentIncentiveLedger::STATUS_PENDING_REVIEW,
+            AgentIncentiveLedger::STATUS_ON_HOLD,
         ], true)) {
             throw ValidationException::withMessages([
                 'status' => ["Ledger entry #{$entry->ledger_ref} cannot be approved from '{$entry->status}'."],
             ]);
         }
 
+        // Prevent approval for unverified, unpaid, cancelled, refunded, or ineligible orders (Stage 2 & Test #2)
+        $eligibleOrder = $entry->eligibleOrder()->with('parentOrder')->first();
+        if (!$eligibleOrder || $eligibleOrder->eligibility_status !== AgentEligibleOrder::STATUS_ELIGIBLE || !$eligibleOrder->parentOrder?->isPaid()) {
+            throw ValidationException::withMessages([
+                'eligibility_status' => ["Cannot approve incentive #{$entry->ledger_ref}: underlying order is not verified eligible (status: " . ($eligibleOrder->eligibility_status ?? 'missing') . ').'],
+            ]);
+        }
+
+        // Prevent unapproved tax/withholding configuration (Test #11)
+        $taxCode = $entry->tax_treatment_snapshot['tax_treatment_code'] ?? AgentIncentiveRule::TAX_PENDING_DECISION;
+        if ($taxCode === AgentIncentiveRule::TAX_PENDING_DECISION ||
+            ((float)$entry->tax_deduction_amount > 0 && !config('marketplace_agents.payout_tax_withholding_approved', false))
+        ) {
+            throw ValidationException::withMessages([
+                'tax_treatment' => ['Cannot approve incentive: applicable tax/withholding configuration has not been approved.'],
+            ]);
+        }
+
         $updated = DB::transaction(function () use ($entry, $admin, $notes) {
-            $prevStatus = $entry->status;
-            $entry->update([
+            $locked = AgentIncentiveLedger::where('id', $entry->id)->lockForUpdate()->firstOrFail();
+            if ($locked->status === AgentIncentiveLedger::STATUS_APPROVED) {
+                return $locked;
+            }
+
+            $prevStatus = $locked->status;
+            $locked->update([
                 'status'              => AgentIncentiveLedger::STATUS_APPROVED,
                 'approved_by_user_id' => $admin->id,
                 'approved_at'         => now(),
-                'admin_notes'         => $notes !== null ? trim(($entry->admin_notes ? $entry->admin_notes . "\n" : '') . $notes) : $entry->admin_notes,
+                'reviewed_by_user_id' => $admin->id,
+                'reviewed_at'         => now(),
+                'hold_reason'         => null,
+                'admin_notes'         => $notes !== null ? trim(($locked->admin_notes ? $locked->admin_notes . "\n" : '') . $notes) : $locked->admin_notes,
             ]);
 
             AgentIncentiveAuditLog::logAction(
                 'ledger',
-                $entry->id,
+                $locked->id,
                 'ledger_approved',
                 $admin,
                 $prevStatus,
@@ -208,10 +245,122 @@ class AgentIncentiveCalculationService
                 $notes ?? 'Approved by finance/operations administrator.'
             );
 
-            return $entry->fresh();
+            return $locked->fresh();
         });
 
         $this->dispatchLedgerStatusNotification($updated, 'approved');
+
+        return $updated;
+    }
+
+    /**
+     * Place an incentive ledger entry on hold with documented reason (Stage 2).
+     */
+    public function holdLedgerEntry(AgentIncentiveLedger $entry, User $admin, string $reason, ?string $notes = null): AgentIncentiveLedger
+    {
+        if (!$admin->isAdmin()) {
+            throw ValidationException::withMessages([
+                'authorization' => ['Forbidden: Only authorized finance/platform administrators may place incentives on hold.'],
+            ]);
+        }
+
+        if (trim($reason) === '') {
+            throw ValidationException::withMessages(['reason' => ['A documented hold reason is required.']]);
+        }
+
+        if (in_array($entry->status, [AgentIncentiveLedger::STATUS_PAID, AgentIncentiveLedger::STATUS_REVERSED, AgentIncentiveLedger::STATUS_REJECTED, AgentIncentiveLedger::STATUS_CANCELLED], true)) {
+            throw ValidationException::withMessages([
+                'status' => ["Cannot place entry #{$entry->ledger_ref} on hold from terminal status '{$entry->status}'."],
+            ]);
+        }
+
+        if (AgentPayoutItem::where('agent_incentive_ledger_id', $entry->id)->whereNotNull('active_ledger_lock')->exists()) {
+            throw ValidationException::withMessages([
+                'payout' => ["Ledger entry #{$entry->ledger_ref} is locked inside an active payout batch. Cancel or fail the payout batch first."],
+            ]);
+        }
+
+        $updated = DB::transaction(function () use ($entry, $admin, $reason, $notes) {
+            $prevStatus = $entry->status;
+            $entry->update([
+                'status'              => AgentIncentiveLedger::STATUS_ON_HOLD,
+                'reviewed_by_user_id' => $admin->id,
+                'reviewed_at'         => now(),
+                'hold_reason'         => $reason,
+                'admin_notes'         => $notes !== null ? trim(($entry->admin_notes ? $entry->admin_notes . "\n" : '') . $notes) : $entry->admin_notes,
+            ]);
+
+            AgentIncentiveAuditLog::logAction(
+                'ledger',
+                $entry->id,
+                'ledger_held',
+                $admin,
+                $prevStatus,
+                AgentIncentiveLedger::STATUS_ON_HOLD,
+                $reason
+            );
+
+            return $entry->fresh();
+        });
+
+        $this->dispatchLedgerStatusNotification($updated, 'on_hold');
+
+        return $updated;
+    }
+
+    /**
+     * Reject an incentive ledger entry without mutating its immutable calculation snapshot.
+     */
+    public function rejectLedgerEntry(AgentIncentiveLedger $entry, User $admin, string $reason, ?string $notes = null): AgentIncentiveLedger
+    {
+        if (!$admin->isAdmin()) {
+            throw ValidationException::withMessages([
+                'authorization' => ['Forbidden: Only authorized finance/platform administrators may reject incentive entries.'],
+            ]);
+        }
+
+        if (trim($reason) === '') {
+            throw ValidationException::withMessages(['reason' => ['A documented rejection reason is required.']]);
+        }
+
+        if (in_array($entry->status, [AgentIncentiveLedger::STATUS_PAID, AgentIncentiveLedger::STATUS_REVERSED], true)) {
+            throw ValidationException::withMessages([
+                'status' => ["Cannot reject entry #{$entry->ledger_ref} from status '{$entry->status}'."],
+            ]);
+        }
+
+        if (AgentPayoutItem::where('agent_incentive_ledger_id', $entry->id)->whereNotNull('active_ledger_lock')->exists()) {
+            throw ValidationException::withMessages([
+                'payout' => ["Ledger entry #{$entry->ledger_ref} is locked inside an active payout batch."],
+            ]);
+        }
+
+        $updated = DB::transaction(function () use ($entry, $admin, $reason, $notes) {
+            $prevStatus = $entry->status;
+            $entry->update([
+                'status'              => AgentIncentiveLedger::STATUS_REJECTED,
+                'reviewed_by_user_id' => $admin->id,
+                'reviewed_at'         => now(),
+                'rejected_by_user_id' => $admin->id,
+                'rejected_at'         => now(),
+                'rejection_reason'    => $reason,
+                'admin_notes'         => $notes !== null ? trim(($entry->admin_notes ? $entry->admin_notes . "\n" : '') . $notes) : $entry->admin_notes,
+            ]);
+
+            AgentIncentiveAuditLog::logAction(
+                'ledger',
+                $entry->id,
+                'ledger_rejected',
+                $admin,
+                $prevStatus,
+                AgentIncentiveLedger::STATUS_REJECTED,
+                $reason
+            );
+
+            return $entry->fresh();
+        });
+
+        $this->dispatchLedgerStatusNotification($updated, 'rejected');
 
         return $updated;
     }
@@ -317,6 +466,36 @@ class AgentIncentiveCalculationService
             $lockedOriginal->update([
                 'status' => AgentIncentiveLedger::STATUS_REVERSED,
             ]);
+
+            // Stage 7: If included in an unreleased payout batch, flag reconciliation exception & release lock
+            $activeItems = AgentPayoutItem::where('agent_incentive_ledger_id', $lockedOriginal->id)
+                ->whereNotNull('active_ledger_lock')
+                ->with('payout')
+                ->get();
+
+            foreach ($activeItems as $pItem) {
+                $payout = $pItem->payout;
+                if ($payout && $payout->status !== AgentPayout::STATUS_PAID_CONFIRMED) {
+                    $pItem->update(['active_ledger_lock' => null]);
+                    $payout->update([
+                        'status'                => AgentPayout::STATUS_RECONCILIATION_EXCEPTION,
+                        'reconciliation_status' => AgentPayout::RECON_MISMATCH,
+                        'reconciliation_notes'  => "Included incentive #{$lockedOriginal->ledger_ref} was reversed: {$reason}",
+                    ]);
+                    AgentPayoutReconciliationException::create([
+                        'exception_ref'             => 'EX-PREREV-' . strtoupper(Str::random(6)),
+                        'agent_payout_id'           => $payout->id,
+                        'agent_incentive_ledger_id' => $lockedOriginal->id,
+                        'field_agent_id'            => $lockedOriginal->field_agent_id,
+                        'exception_type'            => AgentPayoutReconciliationException::TYPE_PRE_PAYOUT_REVERSAL,
+                        'expected_amount'           => $lockedOriginal->calculated_incentive_amount,
+                        'reported_amount'           => 0.00,
+                        'status'                    => AgentPayoutReconciliationException::STATUS_OPEN,
+                        'description'               => "Incentive #{$lockedOriginal->ledger_ref} reversed before payout disbursement ({$reason}). Review batch #{$payout->payout_ref}.",
+                        'created_by_user_id'        => $actor?->id,
+                    ]);
+                }
+            }
 
             AgentIncentiveAuditLog::logAction(
                 'ledger',
@@ -455,7 +634,30 @@ class AgentIncentiveCalculationService
             ->where('entry_type', AgentIncentiveLedger::TYPE_EARNED)
             ->first();
 
-        if (!$earned || in_array($earned->status, [AgentIncentiveLedger::STATUS_REVERSED, AgentIncentiveLedger::STATUS_CANCELLED, AgentIncentiveLedger::STATUS_PAID], true)) {
+        if (!$earned || in_array($earned->status, [AgentIncentiveLedger::STATUS_REVERSED, AgentIncentiveLedger::STATUS_CANCELLED, AgentIncentiveLedger::STATUS_REJECTED], true)) {
+            return;
+        }
+
+        // Stage 7: Post-payout refund/cancellation -> do NOT invent clawback/offset rules; open finance review exception!
+        if ($earned->status === AgentIncentiveLedger::STATUS_PAID) {
+            $alreadyFlagged = AgentPayoutReconciliationException::where('agent_incentive_ledger_id', $earned->id)
+                ->where('exception_type', AgentPayoutReconciliationException::TYPE_POST_PAYOUT_REVERSAL)
+                ->whereIn('status', [AgentPayoutReconciliationException::STATUS_OPEN, AgentPayoutReconciliationException::STATUS_UNDER_REVIEW])
+                ->exists();
+
+            if (!$alreadyFlagged) {
+                AgentPayoutReconciliationException::create([
+                    'exception_ref'             => 'EX-POSTREV-' . strtoupper(Str::random(6)),
+                    'agent_payout_id'           => $earned->agent_payout_id,
+                    'agent_incentive_ledger_id' => $earned->id,
+                    'field_agent_id'            => $earned->field_agent_id,
+                    'exception_type'            => AgentPayoutReconciliationException::TYPE_POST_PAYOUT_REVERSAL,
+                    'expected_amount'           => $earned->calculated_incentive_amount,
+                    'reported_amount'           => 0.00,
+                    'status'                    => AgentPayoutReconciliationException::STATUS_OPEN,
+                    'description'               => "Post-payment reversal/refund event received for paid ledger #{$earned->ledger_ref} ({$reason}). Held for manual finance policy decision; no automatic recovery performed.",
+                ]);
+            }
             return;
         }
 
@@ -525,6 +727,7 @@ class AgentIncentiveCalculationService
         $pendingApprovalTotal = round((float)$earnedEntries->whereIn('status', [
             AgentIncentiveLedger::STATUS_CALCULATED_PENDING_APPROVAL,
             AgentIncentiveLedger::STATUS_PENDING_REVIEW,
+            AgentIncentiveLedger::STATUS_ON_HOLD,
         ])->sum('calculated_incentive_amount'), 2);
         $approvedGross = round((float)$earnedEntries->where('status', AgentIncentiveLedger::STATUS_APPROVED)->sum('calculated_incentive_amount'), 2);
         $paidTotal = round((float)$earnedEntries->where('status', AgentIncentiveLedger::STATUS_PAID)->sum('calculated_incentive_amount'), 2);
@@ -578,7 +781,7 @@ class AgentIncentiveCalculationService
                 $grouped[$groupKey]['eligible_orders_count']++;
                 $grouped[$groupKey]['earned_amount'] = round($grouped[$groupKey]['earned_amount'] + (float)$entry->calculated_incentive_amount, 2);
 
-                if (in_array($entry->status, [AgentIncentiveLedger::STATUS_CALCULATED_PENDING_APPROVAL, AgentIncentiveLedger::STATUS_PENDING_REVIEW], true)) {
+                if (in_array($entry->status, [AgentIncentiveLedger::STATUS_CALCULATED_PENDING_APPROVAL, AgentIncentiveLedger::STATUS_PENDING_REVIEW, AgentIncentiveLedger::STATUS_ON_HOLD], true)) {
                     $grouped[$groupKey]['pending_amount'] = round($grouped[$groupKey]['pending_amount'] + (float)$entry->calculated_incentive_amount, 2);
                 } elseif ($entry->status === AgentIncentiveLedger::STATUS_APPROVED) {
                     $grouped[$groupKey]['approved_amount'] = round($grouped[$groupKey]['approved_amount'] + (float)$entry->calculated_incentive_amount, 2);
@@ -617,7 +820,7 @@ class AgentIncentiveCalculationService
             'summary' => [
                 'funding_policy_approved' => (bool)config('marketplace_agents.funding_policy_approved', false),
                 'funding_expense_account' => AgentIncentiveLedger::EXPENSE_APNI_FACTORY_PLATFORM,
-                'payout_execution_enabled'=> false,
+                'payout_execution_enabled'=> (bool)config('marketplace_agents.payout_execution_enabled', false),
                 'total_eligible_orders'   => (clone $eligQuery)->where('eligibility_status', AgentEligibleOrder::STATUS_ELIGIBLE)->count(),
                 'total_pending_orders'    => (clone $eligQuery)->whereIn('eligibility_status', [AgentEligibleOrder::STATUS_PENDING, AgentEligibleOrder::STATUS_PENDING_REVIEW])->count(),
                 'ledger_entries_count'    => $entries->count(),
@@ -672,7 +875,7 @@ class AgentIncentiveCalculationService
             'eligible_orders_count'  => $eligibleCount,
             'pending_orders_count'   => $pendingCount,
             'earned_total'           => round((float)$earned->sum('calculated_incentive_amount'), 2),
-            'pending_approval_total' => round((float)$earned->whereIn('status', [AgentIncentiveLedger::STATUS_CALCULATED_PENDING_APPROVAL, AgentIncentiveLedger::STATUS_PENDING_REVIEW])->sum('calculated_incentive_amount'), 2),
+            'pending_approval_total' => round((float)$earned->whereIn('status', [AgentIncentiveLedger::STATUS_CALCULATED_PENDING_APPROVAL, AgentIncentiveLedger::STATUS_PENDING_REVIEW, AgentIncentiveLedger::STATUS_ON_HOLD])->sum('calculated_incentive_amount'), 2),
             'approved_total'         => round((float)$earned->where('status', AgentIncentiveLedger::STATUS_APPROVED)->sum('calculated_incentive_amount'), 2),
             'paid_total'             => round((float)$earned->where('status', AgentIncentiveLedger::STATUS_PAID)->sum('calculated_incentive_amount'), 2),
             'reversals_adjustments'  => round((float)$entries->whereIn('entry_type', [AgentIncentiveLedger::TYPE_REVERSAL, AgentIncentiveLedger::TYPE_ADJUSTMENT])->sum('calculated_incentive_amount'), 2),
@@ -731,13 +934,13 @@ class AgentIncentiveCalculationService
                 return;
             }
 
-            // Do not send unapproved financial payout promises (Stage 10)
+            // Do not send unapproved financial payout promises (Stage 11)
             if ($event === 'approved') {
                 SendAgentIncentiveNotificationJob::dispatch(
                     (int)$agent->user_id,
                     'agent',
                     "Incentive Approved: #{$entry->ledger_ref}",
-                    "Incentive calculation #{$entry->ledger_ref} for eligible order #{$entry->eligible_order_sequence}/3 ({$entry->parentOrder?->orderno}) has been approved under rule {$entry->rule_code} v{$entry->rule_version}.",
+                    "Incentive calculation #{$entry->ledger_ref} for eligible order #{$entry->eligible_order_sequence}/3 ({$entry->parentOrder?->orderno}) has been approved under rule {$entry->rule_code} v{$entry->rule_version}. Disbursement remains subject to payout batch readiness and finance release.",
                     [
                         'Ledger Ref' => $entry->ledger_ref,
                         'Order'      => $entry->parentOrder?->orderno ?? (string)$entry->parent_order_id,
@@ -746,6 +949,22 @@ class AgentIncentiveCalculationService
                     ],
                     route('agent.incentives.index'),
                     "ledger_approved_{$entry->id}"
+                );
+            } elseif (in_array($event, ['on_hold', 'rejected'], true)) {
+                $label = $event === 'on_hold' ? 'Placed on Hold' : 'Declined / Rejected';
+                $reasonText = $event === 'on_hold' ? ($entry->hold_reason ?? 'Under finance review') : ($entry->rejection_reason ?? 'Rejected per policy');
+                SendAgentIncentiveNotificationJob::dispatch(
+                    (int)$agent->user_id,
+                    'agent',
+                    "Incentive {$label}: #{$entry->ledger_ref}",
+                    "Incentive entry #{$entry->ledger_ref} for order #{$entry->parentOrder?->orderno} has been {$label}. Reason: {$reasonText}",
+                    [
+                        'Ledger Ref' => $entry->ledger_ref,
+                        'Status'     => strtoupper($event),
+                        'Reason'     => $reasonText,
+                    ],
+                    route('agent.incentives.index'),
+                    "ledger_{$event}_{$entry->id}"
                 );
             }
         } catch (\Throwable $e) {

@@ -6,7 +6,11 @@
         <div class="page-breadcrumb d-none d-sm-flex align-items-center mb-3">
             <div class="breadcrumb-title pe-3">Field Agent Incentives</div>
             <div class="ps-3"><ol class="breadcrumb mb-0 p-0"><li class="breadcrumb-item active">Immutable Incentive Ledger (Apni Factory Expense — Zero Seller Deductions)</li></ol></div>
-            <div class="ms-auto"><a href="{{ route('admin.incentives.reports') }}" class="btn btn-sm btn-outline-info">Reconciled Reports</a></div>
+            <div class="ms-auto d-flex gap-2">
+                <a href="{{ route('admin.incentives.payouts.index') }}" class="btn btn-sm btn-outline-success">Agent Payouts</a>
+                <a href="{{ route('admin.incentives.reports.export') }}" class="btn btn-sm btn-outline-primary">Export CSV</a>
+                <a href="{{ route('admin.incentives.reports') }}" class="btn btn-sm btn-outline-info">Reconciled Reports</a>
+            </div>
         </div>
 
         @if(session('success'))<div class="alert alert-success py-2">{{ session('success') }}</div>@endif
@@ -52,12 +56,22 @@
                                 <td class="fw-bold {{ $row->calculated_incentive_amount < 0 ? 'text-danger' : 'text-success' }}">₹{{ number_format($row->calculated_incentive_amount, 2) }}</td>
                                 <td><span class="badge bg-secondary">{{ ucwords(str_replace('_', ' ', $row->status)) }}</span></td>
                                 <td class="text-end">
-                                    @if($row->entry_type === 'earned' && $row->status === 'calculated_pending_approval')
+                                    @if($row->entry_type === 'earned' && in_array($row->status, ['calculated_pending_approval', 'pending_review', 'on_hold'], true))
                                         <form method="POST" action="{{ route('admin.incentives.ledger.approve', $row->id) }}" class="d-inline">@csrf
                                             <button class="btn btn-sm btn-success">Approve</button>
                                         </form>
                                     @endif
-                                    @if($row->entry_type === 'earned' && !in_array($row->status, ['reversed','paid'], true))
+                                    @if($row->entry_type === 'earned' && in_array($row->status, ['calculated_pending_approval', 'pending_review'], true))
+                                        <form method="POST" action="{{ route('admin.incentives.ledger.hold', $row->id) }}" class="d-inline">@csrf
+                                            <input type="hidden" name="reason" value="Held for finance verification">
+                                            <button class="btn btn-sm btn-warning">Hold</button>
+                                        </form>
+                                        <form method="POST" action="{{ route('admin.incentives.ledger.reject', $row->id) }}" class="d-inline">@csrf
+                                            <input type="hidden" name="reason" value="Declined on finance review">
+                                            <button class="btn btn-sm btn-outline-secondary">Reject</button>
+                                        </form>
+                                    @endif
+                                    @if($row->entry_type === 'earned' && !in_array($row->status, ['reversed','paid','rejected'], true))
                                         <form method="POST" action="{{ route('admin.incentives.ledger.reverse', $row->id) }}" class="d-inline">@csrf
                                             <input type="hidden" name="reason" value="Authorized manual reversal">
                                             <button class="btn btn-sm btn-outline-danger">Reverse</button>

@@ -96,6 +96,37 @@
             </div>
         </div>
 
+        @if(isset($failures) && ($failures->isNotEmpty() || ($deadLetterCount ?? 0) > 0))
+        <div class="card border-danger mb-3">
+            <div class="card-header bg-light text-danger d-flex justify-content-between align-items-center py-2">
+                <span class="fw-bold small">Dead-Letter &amp; Failed Event Recovery Queue ({{ $failures->count() }} failed sync / {{ $deadLetterCount ?? 0 }} failed queue jobs)</span>
+            </div>
+            @if($failures->isNotEmpty())
+            <div class="card-body p-0">
+                <table class="table table-sm mb-0">
+                    <thead class="table-light"><tr><th>Event Key</th><th>Type</th><th>Order ID</th><th>Attempts</th><th>Error</th><th class="text-end">Action</th></tr></thead>
+                    <tbody>
+                        @foreach($failures as $fl)
+                        <tr>
+                            <td class="small">{{ $fl->event_key }}</td>
+                            <td class="small">{{ $fl->event_type }}</td>
+                            <td class="small">#{{ $fl->parent_order_id ?? $fl->order_id }}</td>
+                            <td class="small">{{ $fl->attempts }}</td>
+                            <td class="small text-danger">{{ \Illuminate\Support\Str::limit($fl->error_message, 80) }}</td>
+                            <td class="text-end">
+                                <form method="POST" action="{{ route('admin.incentives.failures.retry', $fl->id) }}" class="d-inline">@csrf
+                                    <button class="btn btn-sm btn-outline-danger">Retry Safely</button>
+                                </form>
+                            </td>
+                        </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+            @endif
+        </div>
+        @endif
+
         <!-- Tracked Orders Table -->
         <div class="card">
             <div class="card-header bg-transparent"><h6 class="mb-0 fw-bold">Parent Checkout Orders &amp; Buyer Slot Allocation ({{ $orders->total() }})</h6></div>

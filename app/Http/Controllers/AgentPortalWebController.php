@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Services\AgentIncentiveCalculationService;
 use App\Services\AgentOrderEligibilityService;
+use App\Services\AgentPayoutService;
 use App\Services\BuyerAttributionService;
 use App\Services\FieldAgentService;
 use Illuminate\Http\Request;
@@ -15,7 +16,8 @@ class AgentPortalWebController extends Controller
         protected FieldAgentService $agentService,
         protected BuyerAttributionService $attributionService,
         protected AgentOrderEligibilityService $eligibilityService,
-        protected AgentIncentiveCalculationService $calculationService
+        protected AgentIncentiveCalculationService $calculationService,
+        protected AgentPayoutService $payoutService
     ) {
         $this->middleware(['auth', 'field.agent']);
     }
@@ -64,8 +66,9 @@ class AgentPortalWebController extends Controller
         $incentiveSummary = $this->calculationService->getAgentIncentiveSummary($agent->id);
         $filters = array_merge($request->only(['eligibility_status', 'search']), ['field_agent_id' => $agent->id]);
         $trackedOrders = $this->eligibilityService->listEligibleOrders($filters, 20)->withQueryString();
+        $payouts = $this->payoutService->listPayouts(['field_agent_id' => $agent->id], 15)->withQueryString();
 
-        return view('agent.incentives', compact('agent', 'agentProfile', 'incentiveSummary', 'trackedOrders', 'filters'));
+        return view('agent.incentives', compact('agent', 'agentProfile', 'incentiveSummary', 'trackedOrders', 'payouts', 'filters'));
     }
 }
 

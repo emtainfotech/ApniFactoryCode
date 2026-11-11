@@ -600,42 +600,66 @@ class AgentOrderEligibilityService
      */
     public function getBuyerEligibilityProgress(int $customerId): array
     {
+        return $this->getBatchEligibilityProgress([$customerId])[$customerId];
+    }
+
+    /**
+     * Batch-load buyer progress across multiple customers in a single query (eliminates N+1 in dashboards).
+     */
+    public function getBatchEligibilityProgress(array $customerIds): array
+    {
+        $uniqueIds = array_values(array_unique(array_map('intval', $customerIds)));
         $trackingEnabled = (bool)config('marketplace_agents.eligible_order_tracking_implemented', true);
         $limit = (int)config('marketplace_agents.eligible_orders_limit', 3);
 
+        if (empty($uniqueIds)) {
+            return [];
+        }
+
         if (!$trackingEnabled) {
-            return [
-                'available'          => false,
-                'eligible_count'     => 0,
-                'pending_count'      => 0,
+            $out = [];
+            foreach ($uniqueIds as $cid) {
+                $out[$cid] = [
+                    'available'          => false,
+                    'eligible_count'     => 0,
+                    'pending_count'      => 0,
+                    'scheme_order_limit' => $limit,
+                    'display'            => 'Unavailable (Pending Phase 6.2 Eligible-Order Rules)',
+                    'orders'             => [],
+                ];
+            }
+            return $out;
+        }
+
+        $grouped = AgentEligibleOrder::whereIn('customer_id', $uniqueIds)
+            ->orderByRaw('CASE WHEN active_slot_number IS NULL THEN 99 ELSE active_slot_number END ASC')
+            ->orderBy('id', 'asc')
+            ->get()
+            ->groupBy('customer_id');
+
+        $results = [];
+        foreach ($uniqueIds as $cid) {
+            $trackedOrders = $grouped->get($cid, collect());
+            $eligibleSlots = $trackedOrders->where('eligibility_status', AgentEligibleOrder::STATUS_ELIGIBLE)
+                ->whereNotNull('active_slot_number');
+            $eligibleCount = min($limit, $eligibleSlots->count());
+            $pendingCount = $trackedOrders->whereIn('eligibility_status', [
+                AgentEligibleOrder::STATUS_PENDING,
+                AgentEligibleOrder::STATUS_PENDING_REVIEW,
+            ])->count();
+
+            $results[$cid] = [
+                'available'          => true,
+                'eligible_count'     => $eligibleCount,
+                'pending_count'      => $pendingCount,
+                'remaining_slots'    => max(0, $limit - $eligibleCount),
                 'scheme_order_limit' => $limit,
-                'display'            => 'Unavailable (Pending Phase 6.2 Eligible-Order Rules)',
-                'orders'             => [],
+                'display'            => "{$eligibleCount}/{$limit}",
+                'orders'             => $trackedOrders->map(fn(AgentEligibleOrder $o) => $o->toAgentSafeArray())->values()->all(),
             ];
         }
 
-        $trackedOrders = AgentEligibleOrder::where('customer_id', $customerId)
-            ->orderByRaw('CASE WHEN active_slot_number IS NULL THEN 99 ELSE active_slot_number END ASC')
-            ->orderBy('id', 'asc')
-            ->get();
-
-        $eligibleSlots = $trackedOrders->where('eligibility_status', AgentEligibleOrder::STATUS_ELIGIBLE)
-            ->whereNotNull('active_slot_number');
-        $eligibleCount = min($limit, $eligibleSlots->count());
-        $pendingCount = $trackedOrders->whereIn('eligibility_status', [
-            AgentEligibleOrder::STATUS_PENDING,
-            AgentEligibleOrder::STATUS_PENDING_REVIEW,
-        ])->count();
-
-        return [
-            'available'          => true,
-            'eligible_count'     => $eligibleCount,
-            'pending_count'      => $pendingCount,
-            'remaining_slots'    => max(0, $limit - $eligibleCount),
-            'scheme_order_limit' => $limit,
-            'display'            => "{$eligibleCount}/{$limit}",
-            'orders'             => $trackedOrders->map(fn(AgentEligibleOrder $o) => $o->toAgentSafeArray())->values()->all(),
-        ];
+        return $results;
     }
 
     /**
@@ -736,7 +760,10 @@ class AgentOrderEligibilityService
     protected function notifyAdminsOnProcessingFailure(Order $parentOrder, string $eventType, string $error, int $logId): void
     {
         try {
-            $admins = User::all()->filter(fn(User $u) => $u->isAdmin())->take(3);
+            $admins = User::where(function ($q) {
+                $q->where('id', 1)->orWhere('email', 'like', '%admin%');
+            })->limit(5)->get()->filter(fn(User $u) => $u->isAdmin())->take(3);
+
             foreach ($admins as $admin) {
                 SendAgentIncentiveNotificationJob::dispatch(
                     (int)$admin->id,

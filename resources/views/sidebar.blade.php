@@ -228,6 +228,18 @@
                 <div class="menu-title">Incentive Reports</div>
             </a>
         </li>
+        <li>
+            <a href="{{ route('admin.incentives.payouts.index') }}">
+                <div class="parent-icon"><i class="fa-solid fa-money-check-dollar text-success"></i></div>
+                <div class="menu-title">Agent Payouts</div>
+            </a>
+        </li>
+        <li>
+            <a href="{{ route('admin.incentives.exceptions.index') }}">
+                <div class="parent-icon"><i class="fa-solid fa-triangle-exclamation text-danger"></i></div>
+                <div class="menu-title">Payout Exceptions</div>
+            </a>
+        </li>
         @endif
         
     </ul>

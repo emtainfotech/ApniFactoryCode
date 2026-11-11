@@ -314,6 +314,7 @@ Route::delete('/product/filter/{id}', [ProductController::class, 'destroyFilter'
         // --- Phase 6.2: Admin Eligible Orders, Incentive Rules, Ledger & Reporting ---
         Route::get('/admin/incentives/eligible-orders',         [\App\Http\Controllers\AdminAgentIncentiveWebController::class, 'eligibleOrders'])->name('admin.incentives.eligible-orders');
         Route::get('/admin/incentives/eligible-orders/{id}',    [\App\Http\Controllers\AdminAgentIncentiveWebController::class, 'showEligibleOrder'])->name('admin.incentives.eligible-orders.show')->whereNumber('id');
+        Route::post('/admin/incentives/failures/{logId}/retry', [\App\Http\Controllers\AdminAgentIncentiveWebController::class, 'retryFailure'])->name('admin.incentives.failures.retry')->whereNumber('logId');
         Route::get('/admin/incentives/rules',                   [\App\Http\Controllers\AdminAgentIncentiveWebController::class, 'rules'])->name('admin.incentives.rules.index');
         Route::get('/admin/incentives/rules/create',            [\App\Http\Controllers\AdminAgentIncentiveWebController::class, 'createRule'])->name('admin.incentives.rules.create');
         Route::post('/admin/incentives/rules',                  [\App\Http\Controllers\AdminAgentIncentiveWebController::class, 'storeRule'])->name('admin.incentives.rules.store');
@@ -327,6 +328,20 @@ Route::delete('/product/filter/{id}', [ProductController::class, 'destroyFilter'
         Route::post('/admin/incentives/ledger/{id}/reverse',    [\App\Http\Controllers\AdminAgentIncentiveWebController::class, 'reverseLedger'])->name('admin.incentives.ledger.reverse')->whereNumber('id');
         Route::post('/admin/incentives/ledger/{id}/adjust',     [\App\Http\Controllers\AdminAgentIncentiveWebController::class, 'adjustLedger'])->name('admin.incentives.ledger.adjust')->whereNumber('id');
         Route::get('/admin/incentives/reports',                 [\App\Http\Controllers\AdminAgentIncentiveWebController::class, 'reports'])->name('admin.incentives.reports');
+        Route::get('/admin/incentives/reports/export',          [\App\Http\Controllers\AdminAgentIncentiveWebController::class, 'exportCsv'])->name('admin.incentives.reports.export');
+        Route::post('/admin/incentives/ledger/{id}/hold',       [\App\Http\Controllers\AdminAgentIncentiveWebController::class, 'holdLedger'])->name('admin.incentives.ledger.hold')->whereNumber('id');
+        Route::post('/admin/incentives/ledger/{id}/reject',     [\App\Http\Controllers\AdminAgentIncentiveWebController::class, 'rejectLedger'])->name('admin.incentives.ledger.reject')->whereNumber('id');
+
+        // --- Phase 6.3: Agent Payout Management & Financial Reconciliation ---
+        Route::get('/admin/incentives/payouts',                 [\App\Http\Controllers\AdminAgentIncentiveWebController::class, 'payoutsIndex'])->name('admin.incentives.payouts.index');
+        Route::post('/admin/incentives/payouts',                [\App\Http\Controllers\AdminAgentIncentiveWebController::class, 'payoutsCreateBatch'])->name('admin.incentives.payouts.store');
+        Route::get('/admin/incentives/payouts/{id}',            [\App\Http\Controllers\AdminAgentIncentiveWebController::class, 'payoutsShow'])->name('admin.incentives.payouts.show')->whereNumber('id');
+        Route::post('/admin/incentives/payouts/{id}/authorize', [\App\Http\Controllers\AdminAgentIncentiveWebController::class, 'payoutsAuthorize'])->name('admin.incentives.payouts.authorize')->whereNumber('id');
+        Route::post('/admin/incentives/payouts/{id}/initiate',  [\App\Http\Controllers\AdminAgentIncentiveWebController::class, 'payoutsInitiate'])->name('admin.incentives.payouts.initiate')->whereNumber('id');
+        Route::post('/admin/incentives/payouts/{id}/confirm',   [\App\Http\Controllers\AdminAgentIncentiveWebController::class, 'payoutsConfirm'])->name('admin.incentives.payouts.confirm')->whereNumber('id');
+        Route::post('/admin/incentives/payouts/{id}/fail',      [\App\Http\Controllers\AdminAgentIncentiveWebController::class, 'payoutsFail'])->name('admin.incentives.payouts.fail')->whereNumber('id');
+        Route::get('/admin/incentives/exceptions',              [\App\Http\Controllers\AdminAgentIncentiveWebController::class, 'reconciliationExceptions'])->name('admin.incentives.exceptions.index');
+        Route::post('/admin/incentives/exceptions/{id}/resolve',[\App\Http\Controllers\AdminAgentIncentiveWebController::class, 'resolveException'])->name('admin.incentives.exceptions.resolve')->whereNumber('id');
 
 });
 

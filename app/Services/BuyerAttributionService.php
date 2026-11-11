@@ -499,7 +499,12 @@ class BuyerAttributionService
         }
 
         $paginator = $query->paginate(min(max(1, $perPage), 100));
-        $paginator->getCollection()->transform(fn(BuyerAgentAttribution $attr) => $this->formatPermittedBuyerForAgent($attr));
+        $customerIds = $paginator->getCollection()->pluck('customer_id')->all();
+        $progressMap = app(AgentOrderEligibilityService::class)->getBatchEligibilityProgress($customerIds);
+
+        $paginator->getCollection()->transform(
+            fn(BuyerAgentAttribution $attr) => $this->formatPermittedBuyerForAgent($attr, $progressMap[(int)$attr->customer_id] ?? null)
+        );
 
         return $paginator;
     }
@@ -528,10 +533,10 @@ class BuyerAttributionService
      * Sanitized buyer payload permitted by BRD Section 12 access policy.
      * Shows eligibility progress as unavailable until Phase 6.2 eligibility rules are approved.
      */
-    public function formatPermittedBuyerForAgent(BuyerAgentAttribution $attr): array
+    public function formatPermittedBuyerForAgent(BuyerAgentAttribution $attr, ?array $prefetchedProgress = null): array
     {
         $customer = $attr->customer;
-        $progress = app(AgentOrderEligibilityService::class)->getBuyerEligibilityProgress((int)$attr->customer_id);
+        $progress = $prefetchedProgress ?? app(AgentOrderEligibilityService::class)->getBuyerEligibilityProgress((int)$attr->customer_id);
         $progress['scheme_order_limit'] = (int)$attr->eligible_order_limit ?: (int)$progress['scheme_order_limit'];
 
         return [
@@ -572,7 +577,9 @@ class BuyerAttributionService
         $customer = $attribution->customer;
 
         if ($eventType === 'pending_approval') {
-            $admins = User::all()->filter(fn(User $u) => $u->isAdmin());
+            $admins = User::where(function ($q) {
+                $q->where('id', 1)->orWhere('email', 'like', '%admin%');
+            })->limit(10)->get()->filter(fn(User $u) => $u->isAdmin())->take(5);
             foreach ($admins as $adminUser) {
                 SendAgentAttributionNotificationJob::dispatch(
                     (int)$adminUser->id,
@@ -628,7 +635,9 @@ class BuyerAttributionService
 
     protected function notifyConflictAttempt(BuyerAgentAttribution $existing, FieldAgent $attemptedAgent, User $actingAdmin): void
     {
-        $admins = User::all()->filter(fn(User $u) => $u->isAdmin() && $u->id !== $actingAdmin->id)->take(3);
+        $admins = User::where(function ($q) {
+            $q->where('id', 1)->orWhere('email', 'like', '%admin%');
+        })->limit(10)->get()->filter(fn(User $u) => $u->isAdmin() && $u->id !== $actingAdmin->id)->take(3);
         foreach ($admins as $adminUser) {
             SendAgentAttributionNotificationJob::dispatch(
                 (int)$adminUser->id,

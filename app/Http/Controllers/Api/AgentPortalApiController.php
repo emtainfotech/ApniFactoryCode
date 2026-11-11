@@ -4,8 +4,10 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Api\V2\BaseApiController;
 use App\Models\AgentIncentiveLedger;
+use App\Models\AgentPayout;
 use App\Services\AgentIncentiveCalculationService;
 use App\Services\AgentOrderEligibilityService;
+use App\Services\AgentPayoutService;
 use App\Services\BuyerAttributionService;
 use App\Services\FieldAgentService;
 use Illuminate\Http\JsonResponse;
@@ -17,7 +19,8 @@ class AgentPortalApiController extends BaseApiController
         protected FieldAgentService $agentService,
         protected BuyerAttributionService $attributionService,
         protected AgentOrderEligibilityService $eligibilityService,
-        protected AgentIncentiveCalculationService $calculationService
+        protected AgentIncentiveCalculationService $calculationService,
+        protected AgentPayoutService $payoutService
     ) {
     }
 
@@ -155,6 +158,62 @@ class AgentPortalApiController extends BaseApiController
                 'total'        => $trackedOrders->total(),
             ],
         ]);
+    }
+
+    /**
+     * GET /api/v2/agent/payouts
+     * Strictly scoped payout history for the logged-in Field Sales Agent (masked destination only).
+     */
+    public function payouts(Request $request): JsonResponse
+    {
+        $agent = $this->agentService->resolveAgentForUser($request->user());
+        if (!$agent) {
+            return $this->sendError('Field sales agent profile not found.', [], 403);
+        }
+
+        $filters = array_merge($request->only(['status', 'date_from', 'date_to']), ['field_agent_id' => $agent->id]);
+        $paginator = $this->payoutService->listPayouts($filters, (int)$request->get('per_page', 20));
+        $summary = $this->calculationService->getAgentIncentiveSummary($agent->id);
+
+        return response()->json([
+            'status'  => true,
+            'code'    => 200,
+            'message' => 'Agent payout history retrieved successfully.',
+            'summary' => $summary,
+            'data'    => collect($paginator->items())->map(fn(AgentPayout $p) => $p->toAgentSafeArray())->values()->all(),
+            'meta'    => [
+                'current_page' => $paginator->currentPage(),
+                'last_page'    => $paginator->lastPage(),
+                'total'        => $paginator->total(),
+            ],
+        ]);
+    }
+
+    /**
+     * GET /api/v2/agent/payouts/{id}
+     * Single payout detail strictly belonging to authenticated Field Agent (403 on cross-agent IDOR).
+     */
+    public function showPayout(Request $request, int $id): JsonResponse
+    {
+        $agent = $this->agentService->resolveAgentForUser($request->user());
+        if (!$agent) {
+            return $this->sendError('Field sales agent profile not found.', [], 403);
+        }
+
+        $payout = AgentPayout::with(['items.ledgerEntry.parentOrder:id,orderno'])->findOrFail($id);
+        if ((int)$payout->field_agent_id !== (int)$agent->id) {
+            return $this->sendError('Forbidden: You cannot view another agent\'s payout record.', [], 403);
+        }
+
+        $data = $payout->toAgentSafeArray();
+        $data['items'] = $payout->items->map(fn($item) => [
+            'ledger_ref'              => $item->ledgerEntry?->ledger_ref,
+            'order_no'                => $item->ledgerEntry?->parentOrder?->orderno,
+            'eligible_order_sequence' => $item->eligible_order_sequence,
+            'item_net_payable_amount' => (float)$item->item_net_payable_amount,
+        ])->values()->all();
+
+        return $this->sendResponse($data, 'Agent payout details retrieved.');
     }
 }
 

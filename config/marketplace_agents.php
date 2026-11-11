@@ -51,8 +51,17 @@ return [
     // Stage 7 Dashboard visibility guard: hide currency totals from agents until approved
     'expose_agent_incentive_amounts' => env('AGENT_EXPOSE_INCENTIVE_AMOUNTS', false),
 
-    // Phase 6.2 Stop Condition: actual payout disbursement is deferred to a later phase
-    'payout_execution_enabled' => false,
+    // Phase 6.3 Payout Governance Controls (MUST remain disabled / awaiting policy until written sign-off)
+    // execution_mode: 'awaiting_policy' (blocks financial execution/mark-paid),
+    //                 'manual_finance_recording' (only after written business/finance approval of manual bank/UTR workflow)
+    'payout_execution_enabled'        => env('AGENT_PAYOUT_EXECUTION_ENABLED', false),
+    'payout_execution_mode'           => env('AGENT_PAYOUT_EXECUTION_MODE', 'awaiting_policy'),
+    'payout_require_kyc_verified'     => env('AGENT_PAYOUT_REQUIRE_KYC', false),
+    'payout_require_active_contract'  => env('AGENT_PAYOUT_REQUIRE_CONTRACT', false),
+    'payout_tax_withholding_approved' => env('AGENT_PAYOUT_TAX_WITHHOLDING_APPROVED', false),
+    'payout_hold_days'                => env('AGENT_PAYOUT_HOLD_DAYS', null),
+    'payout_dual_approval_required'   => env('AGENT_PAYOUT_DUAL_APPROVAL', null),
+    'payout_minimum_threshold'        => env('AGENT_PAYOUT_MIN_THRESHOLD', null),
 
     // Controlled agent statuses
     'agent_statuses' => [

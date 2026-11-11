@@ -19,7 +19,9 @@ class AgentIncentiveLedger extends Model
 
     public const STATUS_PENDING_REVIEW               = 'pending_review';
     public const STATUS_CALCULATED_PENDING_APPROVAL  = 'calculated_pending_approval';
+    public const STATUS_ON_HOLD                      = 'on_hold';
     public const STATUS_APPROVED                     = 'approved';
+    public const STATUS_REJECTED                     = 'rejected';
     public const STATUS_PARTIALLY_REVERSED           = 'partially_reversed';
     public const STATUS_REVERSED                     = 'reversed';
     public const STATUS_CANCELLED                    = 'cancelled';
@@ -61,12 +63,19 @@ class AgentIncentiveLedger extends Model
         'reference_ledger_id',
         'reversal_or_adjustment_ref',
         'payout_reference',
+        'agent_payout_id',
         'idempotency_key',
         'reason',
         'admin_notes',
         'created_by_user_id',
         'approved_by_user_id',
         'approved_at',
+        'reviewed_by_user_id',
+        'reviewed_at',
+        'hold_reason',
+        'rejected_by_user_id',
+        'rejected_at',
+        'rejection_reason',
     ];
 
     protected $hidden = [
@@ -89,6 +98,8 @@ class AgentIncentiveLedger extends Model
         'funding_policy_approved_snapshot' => 'boolean',
         'eligibility_event_at'             => 'datetime',
         'approved_at'                      => 'datetime',
+        'reviewed_at'                      => 'datetime',
+        'rejected_at'                      => 'datetime',
     ];
 
     protected static function booted(): void
@@ -182,6 +193,21 @@ class AgentIncentiveLedger extends Model
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by_user_id');
+    }
+
+    public function reviewer(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'reviewed_by_user_id');
+    }
+
+    public function payout(): BelongsTo
+    {
+        return $this->belongsTo(AgentPayout::class, 'agent_payout_id');
+    }
+
+    public function payoutItems(): HasMany
+    {
+        return $this->hasMany(AgentPayoutItem::class, 'agent_incentive_ledger_id');
     }
 }
 

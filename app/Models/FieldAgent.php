@@ -97,6 +97,11 @@ class FieldAgent extends Model
         return $this->hasMany(FieldAgentStatusHistory::class, 'field_agent_id')->orderBy('id', 'desc');
     }
 
+    public function payouts(): HasMany
+    {
+        return $this->hasMany(AgentPayout::class, 'field_agent_id')->orderBy('id', 'desc');
+    }
+
     /**
      * Only active agents may receive new buyer attributions.
      */
