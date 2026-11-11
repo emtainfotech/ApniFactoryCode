@@ -10,7 +10,7 @@ use App\Models\Customer;
 use DB;
 use App\Helper\helper;
 use App\Models\Profile;
-use App\Models\order;
+use App\Models\Order;
 class PageController extends Controller
 {
     /**
@@ -62,7 +62,7 @@ class PageController extends Controller
          public function creditnotes_details(Request $request,$id)
     {  
             $credit = DB::table("wallet")->where("id",$id)->first();
-             $order = order::where("id",$credit->order_id)->first();
+        $order = Order::where("id",$credit->order_id)->first();
             $cartattribut = DB::table("orderdetail")->where("order_id",$order->id)->get();
             $data['title'] = 'Credit Note Details';
             $data['order'] = $order;

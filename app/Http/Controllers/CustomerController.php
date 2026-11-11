@@ -206,75 +206,7 @@ $data = [
                 return json_encode(["status"=>true,"code"=>100,"msg"=>"Successfully Send","data"=>$rmn,"originalresponse"=>$res]);
      }
 
-    /* public function sendotponwhatsapp($mobile,$otp){
-          $mobile='919456638450';
-         $data = [
-    "messaging_product" => "whatsapp",
-    "to" => $mobile,
-    "type" => "template",
-    "template" => [
-        "name" => "app_otp_verification", // Must match your approved template name
-        "language" => [
-            "code" => "en"
-        ],
-        "components" => [
-            [
-                "type" => "body",
-                "parameters" => [
-                    [
-                        "type" => "text",
-                        "text" => $otp
-                    ]
-                ]
-            ],
-            [
-                "type" => "button",
-                "sub_type" => "url",
-                "index" => "0", 
-                "parameters" => [
-                    [
-                        "type" => "text",
-                        "text" => $otp
-                    ]
-                ]
-            ]
-        ]
-    ]
-];
-            $curl = curl_init();
-            curl_setopt_array($curl, array(
-              CURLOPT_URL => 'https://graph.facebook.com/v22.0/960010463853608/messages',
-              CURLOPT_RETURNTRANSFER => true,
-              CURLOPT_ENCODING => '',
-              CURLOPT_MAXREDIRS => 10,
-              CURLOPT_TIMEOUT => 0,
-              CURLOPT_FOLLOWLOCATION => true,
-              CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-              CURLOPT_CUSTOMREQUEST => 'POST',
-              CURLOPT_POSTFIELDS =>json_encode($data),
-              CURLOPT_HTTPHEADER => array(
-                  'Authorization: Bearer EAATYG5IA1aIBQ7q2gCJt4zgjtcsqR60EMqmycjl1Yc18eUGT3JoQbZBZAkXQlXLQzihHB5S0tKGYVtstZAaKPkq0bh8CEcVkDWYf20nokR6M2lAH2THPMHAv8cVAd7da7nMrjK7LZCTY8yNfhLRlTRqqPIdXyukhivyPZCT3ouOdKant5IHBzQipuWvrDFAZDZD',
-                'Content-Type: application/json'
-              ),
-            ));
-            $response = curl_exec($curl);
-             if (curl_errno($curl)) {
-                echo 'cURL Error: ' . curl_error($curl);
-                 $attibuteary = array(
-                                 "actionon"=> 'sendwhatsappmsg_facebookapi', 
-                                 "request"=>json_encode($data), 
-                                 "response"=>json_encode($curl), 
-                                 "updateon"=>now()
-                                );
-                DB::table("logsofpages")->insert($attibuteary); 
-        } else {
-            $httpCode = curl_getinfo($curl, CURLINFO_HTTP_CODE);
-            echo 'HTTP Code: ' . $httpCode . PHP_EOL;
-            echo 'FCM Response: ' . json_encode($response);
-            return true;
-        }
-            curl_close($curl);
-} */
+    // Legacy WhatsApp OTP helper removed; configure WhatsApp credentials via config/services.php.
      public function verifyotp(Request $request){ 
         $memberid = $request->input('emailmobile');
         $otp = $request->input('otp');
@@ -284,7 +216,7 @@ $data = [
         }
 
         $tblotp = DB::table('tbl_otp')->where('otpon', $memberid)->first();
-        if ($otp === '1234') {
+        if ($otp === '1234' && config('marketplace_integration.allow_dev_otp_bypass', false)) {
             return response()->json(["status" => true, "code" => 100, "msg" => "Successfully Match", "data" => $tblotp ?? (object)['otpon' => $memberid, 'otp' => '1234']]);
         }
         if (!$tblotp) {

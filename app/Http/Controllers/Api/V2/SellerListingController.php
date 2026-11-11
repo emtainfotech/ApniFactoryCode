@@ -300,6 +300,12 @@ class SellerListingController extends BaseApiController
         ]));
         $listing->save();
 
+        try {
+            app(\App\Services\CrossPlatformSyncService::class)->syncListingToLegacyAttribute($listing, $user, 'listing_updated');
+        } catch (\Throwable $e) {
+            // Non-blocking sync hook
+        }
+
         return $this->sendResponse(new SellerListingResource($listing), 'Listing updated successfully.');
     }
 

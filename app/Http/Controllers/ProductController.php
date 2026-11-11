@@ -206,6 +206,9 @@ class ProductController extends Controller
                       $attribute = ProductAttributes::where("product_id", $request->get('productid'))->get();
                   }
               }
+              $caller = auth('sanctum')->user() ?? auth()->user();
+              $canViewInternalPricing = $caller && ($caller->isAdmin() || (int)$caller->id === (int)$rmn->user_id);
+
               foreach($attribute as $atrbt){
                    $color=ShadeCard::where("id",$atrbt->color)->first();
                    $sbm['color']=$color ? $color->name : '';
@@ -214,18 +217,22 @@ class ProductController extends Controller
                    $sbm['boxpacking']=$quantity ? $quantity->name : '';
                    $sbm['quantity']=$quantity ? $quantity->pcs : 1;
                    $sbm['pack_litres']=$atrbt->pack_litres ?: 1.0;
-                   $sbm['seller_price']=$atrbt->seller_price ?: $atrbt->price;
+                   if ($canViewInternalPricing) {
+                       $sbm['seller_price'] = $atrbt->seller_price ?: $atrbt->price;
+                   }
                    $sbm['price']=(float)$atrbt->price;
                    $sbm['oldprice']=(float)$atrbt->oldprice;
                    $sbm['attributeid']=$atrbt->id;
                    array_push($rt,$sbm);
               }
               $rmn['attributes'] = $rt;
-              /////////////////seller detail
+              /////////////////seller detail (confidential contact info restricted to authenticated admin/owner)
               $sellerdetail = Company::where("user_id",$rmn->user_id)->first();
               $srh["name"] =  $sellerdetail ? $sellerdetail->name : '';
-              $srh["email"] =  $sellerdetail ? $sellerdetail->email : '';
-              $srh["mobile"] =  $sellerdetail ? $sellerdetail->mobile : '';
+              if ($canViewInternalPricing) {
+                  $srh["email"] =  $sellerdetail ? $sellerdetail->email : '';
+                  $srh["mobile"] =  $sellerdetail ? $sellerdetail->mobile : '';
+              }
               $srh["city"] =  $sellerdetail ? $sellerdetail->city : '';
               $srh["photo"] =  $sellerdetail ? $sellerdetail->photo : '';
               $rmn['sellerdetail'] = $srh;

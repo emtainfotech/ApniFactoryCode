@@ -240,6 +240,18 @@
                 <div class="menu-title">Payout Exceptions</div>
             </a>
         </li>
+        <li>
+            <a href="{{ route('admin.integrations.sync') }}">
+                <div class="parent-icon"><i class="fa-solid fa-arrows-rotate text-primary"></i></div>
+                <div class="menu-title">Integration Sync Monitor</div>
+            </a>
+        </li>
+        <li>
+            <a href="{{ route('admin.integrations.reconciliation') }}">
+                <div class="parent-icon"><i class="fa-solid fa-code-compare text-warning"></i></div>
+                <div class="menu-title">Sync Reconciliation Diffs</div>
+            </a>
+        </li>
         @endif
         
     </ul>

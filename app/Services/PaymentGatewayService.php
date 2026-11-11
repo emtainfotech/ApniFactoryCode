@@ -470,6 +470,21 @@ class PaymentGatewayService
                 } catch (\Throwable $e) {
                     Log::error("Phase 6.2 payment_verified hook failed for order #{$order->id}: " . $e->getMessage());
                 }
+
+                // Phase 7.1: Record non-auto-retryable financial outbox notification event
+                try {
+                    app(CrossPlatformSyncService::class)->recordAndDispatchSyncEvent(
+                        CrossPlatformSyncService::CHANNEL_CRM_EXTERNAL,
+                        'payment',
+                        $order->id,
+                        $order->orderno,
+                        'payment_verified',
+                        ['order_id' => $order->id, 'order_no' => $order->orderno, 'payment_ref' => $txn->payment_ref, 'amount' => (float)$txn->amount],
+                        "pay_verified:{$txn->payment_ref}"
+                    );
+                } catch (\Throwable $e) {
+                    Log::warning("Phase 7.1 payment outbox hook skipped for order #{$order->id}: " . $e->getMessage());
+                }
             }
 
             PaymentAuditLog::logAction(

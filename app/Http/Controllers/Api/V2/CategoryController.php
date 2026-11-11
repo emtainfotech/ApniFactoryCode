@@ -129,6 +129,21 @@ class CategoryController extends BaseApiController
 
         $category->update($request->only(['name', 'title', 'maincategory_id', 'image', 'sequence', 'status']));
 
+        try {
+            app(\App\Services\CrossPlatformSyncService::class)->recordAndDispatchSyncEvent(
+                \App\Services\CrossPlatformSyncService::CHANNEL_CRM_EXTERNAL,
+                'category',
+                $category->id,
+                $category->name,
+                'category_updated',
+                ['id' => $category->id, 'name' => $category->name, 'status' => $category->status],
+                null,
+                $request->user()
+            );
+        } catch (\Throwable $e) {
+            // Non-blocking sync hook
+        }
+
         return $this->sendResponse(new CategoryResource($category), 'Category updated successfully.');
     }
 

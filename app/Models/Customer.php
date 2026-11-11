@@ -30,6 +30,12 @@ class Customer extends Model
         'regby'
     ];
 
+    protected $hidden = [
+        'password',
+        'remember_token',
+        'otp',
+    ];
+
     public function attributions()
     {
         return $this->hasMany(BuyerAgentAttribution::class, 'customer_id')->orderBy('id', 'desc');

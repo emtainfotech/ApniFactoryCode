@@ -41,12 +41,14 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
  Route::get('viewprofile/{id}', [CustomerController::class, "show"]);
  Route::post('userprofile', [CustomerController::class, "userprofile"]);
 
-// Paint Family Smart Pricing APIs
+// Paint Family Smart Pricing APIs (Sanctum authenticated seller/admin only)
+Route::middleware('auth:sanctum')->group(function () {
 Route::get('seller/paint-families/{id}/pricing', [PaintPricingController::class, 'getFamilyPricingData']);
 Route::post('seller/paint-pricing/preview', [PaintPricingController::class, 'preview']);
 Route::post('seller/paint-pricing/apply', [PaintPricingController::class, 'apply']);
 Route::post('seller/paint-pricing/sku-override', [PaintPricingController::class, 'updateSingleSku']);
 Route::get('seller/paint-pricing/audit/{id}', [PaintPricingController::class, 'auditHistory']);
+});
  Route::post('verifyotp', [CustomerController::class, "verifyotp"]);
  Route::post('resetpassword', [CustomerController::class, "resetpassword"]);
  Route::get('statecitypincode', [AppController::class, "statecitypincode"]);
@@ -488,4 +490,17 @@ Route::prefix('v2/cart')->group(function () {
     Route::post('/revalidate',                                [\App\Http\Controllers\Api\BuyerCartApiController::class, 'revalidate']);
     Route::get('/products/{productId}/variant-matrix',         [\App\Http\Controllers\Api\BuyerCartApiController::class, 'getVariantMatrix'])->whereNumber('productId');
     Route::post('/bulk-matrix',                               [\App\Http\Controllers\Api\BuyerCartApiController::class, 'submitBulkMatrix']);
+});
+
+// Phase 7.1: Cross-Platform Integration, Canonical Identifiers & Reconciliation APIs (v2)
+Route::prefix('v2/admin')->middleware(['auth:sanctum', 'admin.catalogue'])->group(function () {
+    Route::get('integrations/summary',                          [\App\Http\Controllers\Api\AdminIntegrationSyncApiController::class, 'summary']);
+    Route::get('integrations/canonical/{entityType}/{id}',      [\App\Http\Controllers\Api\AdminIntegrationSyncApiController::class, 'canonicalEntity'])->whereNumber('id');
+    Route::get('integrations/events',                           [\App\Http\Controllers\Api\AdminIntegrationSyncApiController::class, 'events']);
+    Route::post('integrations/events/{id}/retry',               [\App\Http\Controllers\Api\AdminIntegrationSyncApiController::class, 'retryEvent'])->whereNumber('id')->middleware('throttle:agent-finance-sensitive');
+    Route::post('integrations/mappings',                        [\App\Http\Controllers\Api\AdminIntegrationSyncApiController::class, 'registerMapping'])->middleware('throttle:agent-finance-sensitive');
+    Route::post('integrations/inbound-sync',                    [\App\Http\Controllers\Api\AdminIntegrationSyncApiController::class, 'inboundSync'])->middleware('throttle:agent-finance-sensitive');
+    Route::get('integrations/reconciliation',                   [\App\Http\Controllers\Api\AdminIntegrationSyncApiController::class, 'reconciliation']);
+    Route::post('integrations/reconciliation/scan',             [\App\Http\Controllers\Api\AdminIntegrationSyncApiController::class, 'scanDiscrepancies'])->middleware('throttle:agent-finance-sensitive');
+    Route::post('integrations/reconciliation/{id}/resolve',     [\App\Http\Controllers\Api\AdminIntegrationSyncApiController::class, 'resolveReconciliation'])->whereNumber('id')->middleware('throttle:agent-finance-sensitive');
 });

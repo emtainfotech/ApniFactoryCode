@@ -10,56 +10,56 @@ trait WhatsappTraits
 {
  
      public function verifyGST_trait($gst)
-    { 
-        $randno = rand('100','9999999'); 
-        $gst = $gst;  //request->get("gst")
-        $body = json_encode(["gst_number"=>$gst]);
-                                    $ch1 = curl_init();
-                                    $url1 =  'https://crm.apnifactory.co.in/core/api/mobile/gst-check/';
-                                    curl_setopt($ch1,CURLOPT_URL, $url1);
-                                    curl_setopt($ch1, CURLOPT_RETURNTRANSFER, 1);
-                                    curl_setopt($ch1, CURLOPT_TIMEOUT, 5);
-                                    curl_setopt($ch1, CURLOPT_CONNECTTIMEOUT, 3);
-                                    curl_setopt($ch1, CURLOPT_HTTPHEADER, array(
-                                    "Accept: application/json",
-                                    "Content-Type: application/json",
-                                     )); 
-                                    curl_setopt($ch1, CURLOPT_POST,1 );
-                                    curl_setopt($ch1, CURLOPT_POSTFIELDS,$body); 
-                                    $response1 = curl_exec($ch1); 
-                                    $array = json_decode($response1, true);
-                                    curl_close($ch1);
-                                    return $array;
-                                    exit;
-                                    dd($array,$response1);
-                                    $array = json_decode('{
-    "status": true,
-    "code": 100,
-    "msg": "Successfully Verified",
-    "data": {
-        "status": true,
-        "message": "GST verified successfully",
-        "data": {
-            "gstin": "08AAACA3622K1ZV",
-            "legal_name": "ASIAN PAINTS LIMITED",
-            "business_name": "ASIAN PAINTS LIMITED",
-            "status": "Active",
-            "taxpayer_type": "Regular",
-            "registration_date": "01/07/2017",
-            "address": {
-                "full": "F-601-648, 6",
-                "city": "VK I Area",
-                "state": "Rajasthan",
-                "pincode": "302013"
-            }
+    {
+        if (!config('marketplace_integration.crm_gst_check_enabled', true)) {
+            return ['status' => false, 'message' => 'External CRM GST check is disabled by policy.'];
         }
-    }', true);
-                                    if($array["status"]==true){
-                                        
-                                        return $array; 
-                                    }else{
-                                        return false;
-                                    }
+
+        $url1 = config('services.crm.gst_check_url', 'https://crm.apnifactory.co.in/core/api/mobile/gst-check/');
+        $body = json_encode(['gst_number' => $gst]);
+        $headers = [
+            'Accept: application/json',
+            'Content-Type: application/json',
+        ];
+        if ($token = config('services.crm.api_token')) {
+            $headers[] = 'Authorization: Bearer ' . $token;
+        }
+
+        $ch1 = curl_init();
+        curl_setopt($ch1, CURLOPT_URL, $url1);
+        curl_setopt($ch1, CURLOPT_RETURNTRANSFER, 1);
+        curl_setopt($ch1, CURLOPT_TIMEOUT, (int)config('marketplace_integration.crm_timeout_seconds', 5));
+        curl_setopt($ch1, CURLOPT_CONNECTTIMEOUT, 3);
+        curl_setopt($ch1, CURLOPT_HTTPHEADER, $headers);
+        curl_setopt($ch1, CURLOPT_POST, 1);
+        curl_setopt($ch1, CURLOPT_POSTFIELDS, $body);
+        $response1 = curl_exec($ch1);
+        $curlError = curl_errno($ch1) ? curl_error($ch1) : null;
+        $httpCode  = curl_getinfo($ch1, CURLINFO_HTTP_CODE);
+        curl_close($ch1);
+
+        $array = is_string($response1) ? json_decode($response1, true) : null;
+
+        try {
+            $syncService = app(\App\Services\CrossPlatformSyncService::class);
+            $res = $syncService->recordAndDispatchSyncEvent(
+                \App\Services\CrossPlatformSyncService::CHANNEL_CRM_EXTERNAL,
+                'customer',
+                null,
+                'GST:' . (string)$gst,
+                'gst_check_log',
+                ['gst_number' => (string)$gst, 'http_code' => $httpCode, 'verified' => (bool)($array['status'] ?? false), 'error' => $curlError],
+                'crm_gst_' . md5((string)$gst . '_' . date('YmdHis') . '_' . uniqid()),
+                null,
+                \App\Models\IntegrationSyncEvent::DIRECTION_OUTBOUND,
+                false
+            );
+            $syncService->processSyncEvent($res['event']);
+        } catch (\Throwable $e) {
+            // Non-blocking audit logging
+        }
+
+        return is_array($array) ? $array : ['status' => false, 'message' => $curlError ?: 'CRM GST lookup unavailable.'];
     }
     public function sendwhatsappmsg($mobile,$actionon,$extra)
     {
@@ -160,41 +160,50 @@ $note = "Thank you";
     ]
 ];
         $payload = json_encode($dataArray);
-  
-            $curl = curl_init();
-            curl_setopt_array($curl, array(
-              CURLOPT_URL => 'https://graph.facebook.com/v22.0/960010463853608/messages',
-              CURLOPT_RETURNTRANSFER => true,
-              CURLOPT_ENCODING => '',
-              CURLOPT_MAXREDIRS => 10,
-              CURLOPT_TIMEOUT => 5,
-              CURLOPT_CONNECTTIMEOUT => 3,
-              CURLOPT_FOLLOWLOCATION => true,
-              CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-              CURLOPT_CUSTOMREQUEST => 'POST',
-              CURLOPT_POSTFIELDS =>$payload,
-              CURLOPT_HTTPHEADER => array(
-                'Authorization: Bearer EAATYG5IA1aIBRUF9ciSr2O2wwkEWYZCZCDNjMuWKsbjBhtHY6crzV9SRgzvyT8XWQrKr58dA699MQJ4WIvDuR1SvGgJjCQLJIy8c0XYMmctjhWJMNZCxaF2ZAdM0InnPUx1QMCC5xJlMZBSlqNKbdQB7sS3GGETRhyiBu8JdAsqAZBefcCuxawAs3crEGOcgZDZD',
-                'Content-Type: application/json'
-              ),
-            ));
-            $response = curl_exec($curl);
-             if (curl_errno($curl)) {
-                // echo 'cURL Error: ' . curl_error($curl);
-                 $attibuteary = array(
-                                 "actionon"=> 'sendwhatsappmsg_facebookapi', 
-                                 "request"=>json_encode($data), 
-                                 "response"=>json_encode($curl), 
-                                 "updateon"=>now()
-                                );
-                DB::table("logsofpages")->insert($attibuteary); 
-        } else {
-            $httpCode = curl_getinfo($curl, CURLINFO_HTTP_CODE);
-            // echo 'HTTP Code: ' . $httpCode . PHP_EOL;
-            // echo 'FCM Response: ' . $response.$data;
-            return true;
+        return static::dispatchWhatsappGraphRequest($payload) !== null;
+    }
+
+    protected static function dispatchWhatsappGraphRequest(string $payload): ?string
+    {
+        $token = config('services.whatsapp.access_token');
+        $phoneNumberId = config('services.whatsapp.phone_number_id');
+        if (empty($token) || empty($phoneNumberId)) {
+            return null;
         }
+
+        $version = config('services.whatsapp.api_version', 'v22.0');
+        $url = "https://graph.facebook.com/{$version}/{$phoneNumberId}/messages";
+
+        $curl = curl_init();
+        curl_setopt_array($curl, [
+            CURLOPT_URL            => $url,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_ENCODING       => '',
+            CURLOPT_MAXREDIRS      => 10,
+            CURLOPT_TIMEOUT        => 5,
+            CURLOPT_CONNECTTIMEOUT => 3,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_HTTP_VERSION   => CURL_HTTP_VERSION_1_1,
+            CURLOPT_CUSTOMREQUEST  => 'POST',
+            CURLOPT_POSTFIELDS     => $payload,
+            CURLOPT_HTTPHEADER     => [
+                'Authorization: Bearer ' . $token,
+                'Content-Type: application/json',
+            ],
+        ]);
+        $response = curl_exec($curl);
+        if (curl_errno($curl)) {
+            DB::table('logsofpages')->insert([
+                'actionon' => 'sendwhatsappmsg_facebookapi',
+                'request'  => $payload,
+                'response' => curl_error($curl),
+                'updateon' => now(),
+            ]);
             curl_close($curl);
+            return null;
+        }
+        curl_close($curl);
+        return is_string($response) ? $response : null;
     }   
     
     public function sendnotification($token,$actionon,$screenid)
@@ -520,44 +529,8 @@ $data = [
         ]
     ]
 ];
-            $curl = curl_init();
-            curl_setopt_array($curl, array(
-              CURLOPT_URL => 'https://graph.facebook.com/v22.0/960010463853608/messages',
-              CURLOPT_RETURNTRANSFER => true,
-              CURLOPT_ENCODING => '',
-              CURLOPT_MAXREDIRS => 10,
-              CURLOPT_TIMEOUT => 5,
-              CURLOPT_CONNECTTIMEOUT => 3,
-              CURLOPT_FOLLOWLOCATION => true,
-              CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-              CURLOPT_CUSTOMREQUEST => 'POST',
-              CURLOPT_POSTFIELDS =>json_encode($data),
-            //   CURLOPT_HTTPHEADER => array(
-            //       'Authorization: Bearer EAATYG5IA1aIBQ7q2gCJt4zgjtcsqR60EMqmycjl1Yc18eUGT3JoQbZBZAkXQlXLQzihHB5S0tKGYVtstZAaKPkq0bh8CEcVkDWYf20nokR6M2lAH2THPMHAv8cVAd7da7nMrjK7LZCTY8yNfhLRlTRqqPIdXyukhivyPZCT3ouOdKant5IHBzQipuWvrDFAZDZD',
-            //     'Content-Type: application/json'
-            //   ),
-              CURLOPT_HTTPHEADER => array(
-                  'Authorization: Bearer EAATYG5IA1aIBRUF9ciSr2O2wwkEWYZCZCDNjMuWKsbjBhtHY6crzV9SRgzvyT8XWQrKr58dA699MQJ4WIvDuR1SvGgJjCQLJIy8c0XYMmctjhWJMNZCxaF2ZAdM0InnPUx1QMCC5xJlMZBSlqNKbdQB7sS3GGETRhyiBu8JdAsqAZBefcCuxawAs3crEGOcgZDZD',
-                'Content-Type: application/json'
-              ),
-            ));
-            $response = curl_exec($curl);
-             if (curl_errno($curl)) {
-              //  echo 'cURL Error: ' . curl_error($curl);
-                 $attibuteary = array(
-                                 "actionon"=> 'sendwhatsappmsg_facebookapi', 
-                                 "request"=>json_encode($data), 
-                                 "response"=>json_encode($curl), 
-                                 "updateon"=>now()
-                                );
-                DB::table("logsofpages")->insert($attibuteary); 
-        } else {
-            $httpCode = curl_getinfo($curl, CURLINFO_HTTP_CODE);
-            // echo 'HTTP Code: ' . $httpCode . PHP_EOL;
-            // echo 'FCM Response: ' . json_encode($response);
-        }
-        return $response;
-            curl_close($curl);
+            $response = static::dispatchWhatsappGraphRequest(json_encode($data));
+            return $response;
      }         
    
      public static function sendtobuyerthatorderstatuschangedororderplaced($phone, $status,$orderNo,$note)
@@ -616,25 +589,7 @@ $data = [
     ]
 ];
         $payload = json_encode($dataArray);
-                $curl = curl_init();
-                curl_setopt_array($curl, array(
-                  CURLOPT_URL => 'https://graph.facebook.com/v22.0/960010463853608/messages',
-                  CURLOPT_RETURNTRANSFER => true,
-                  CURLOPT_ENCODING => '',
-                  CURLOPT_MAXREDIRS => 10,
-                  CURLOPT_TIMEOUT => 5,
-              CURLOPT_CONNECTTIMEOUT => 3,
-                  CURLOPT_FOLLOWLOCATION => true,
-                  CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-                  CURLOPT_CUSTOMREQUEST => 'POST',
-                  CURLOPT_POSTFIELDS =>$payload,
-                 CURLOPT_HTTPHEADER => array(
-                      'Authorization: Bearer EAATYG5IA1aIBRUF9ciSr2O2wwkEWYZCZCDNjMuWKsbjBhtHY6crzV9SRgzvyT8XWQrKr58dA699MQJ4WIvDuR1SvGgJjCQLJIy8c0XYMmctjhWJMNZCxaF2ZAdM0InnPUx1QMCC5xJlMZBSlqNKbdQB7sS3GGETRhyiBu8JdAsqAZBefcCuxawAs3crEGOcgZDZD',
-                    'Content-Type: application/json'
-                  ),
-                ));
-                $response = curl_exec($curl);
-                
+        static::dispatchWhatsappGraphRequest($payload);
     }
         public static function sendtosellerthatorderreceived($phone, $orderNo,$sellername)
     {
@@ -680,24 +635,7 @@ $dataArray = [
     ]
 ];
     $payload = json_encode($dataArray);
-            $curl = curl_init();
-            curl_setopt_array($curl, array(
-              CURLOPT_URL => 'https://graph.facebook.com/v22.0/960010463853608/messages',
-              CURLOPT_RETURNTRANSFER => true,
-              CURLOPT_ENCODING => '',
-              CURLOPT_MAXREDIRS => 10,
-              CURLOPT_TIMEOUT => 5,
-              CURLOPT_CONNECTTIMEOUT => 3,
-              CURLOPT_FOLLOWLOCATION => true,
-              CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-              CURLOPT_CUSTOMREQUEST => 'POST',
-              CURLOPT_POSTFIELDS =>$payload,
-             CURLOPT_HTTPHEADER => array(
-                  'Authorization: Bearer EAATYG5IA1aIBRUF9ciSr2O2wwkEWYZCZCDNjMuWKsbjBhtHY6crzV9SRgzvyT8XWQrKr58dA699MQJ4WIvDuR1SvGgJjCQLJIy8c0XYMmctjhWJMNZCxaF2ZAdM0InnPUx1QMCC5xJlMZBSlqNKbdQB7sS3GGETRhyiBu8JdAsqAZBefcCuxawAs3crEGOcgZDZD',
-                'Content-Type: application/json'
-              ),
-            ));
-            $response = curl_exec($curl);
+    static::dispatchWhatsappGraphRequest($payload);
 }
      public static function orderinvoiceuploadmsgtoseller($phone, $sellername,$order_no,$invoice_no)
         {
@@ -738,24 +676,6 @@ $dataArray = [
     ]
 ];
         $payload = json_encode($dataArray);
-                $curl = curl_init();
-                curl_setopt_array($curl, array(
-                  CURLOPT_URL => 'https://graph.facebook.com/v22.0/960010463853608/messages',
-                  CURLOPT_RETURNTRANSFER => true,
-                  CURLOPT_ENCODING => '',
-                  CURLOPT_MAXREDIRS => 10,
-                  CURLOPT_TIMEOUT => 5,
-              CURLOPT_CONNECTTIMEOUT => 3,
-                  CURLOPT_FOLLOWLOCATION => true,
-                  CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-                  CURLOPT_CUSTOMREQUEST => 'POST',
-                  CURLOPT_POSTFIELDS =>$payload,
-                 CURLOPT_HTTPHEADER => array(
-                      'Authorization: Bearer EAATYG5IA1aIBRUF9ciSr2O2wwkEWYZCZCDNjMuWKsbjBhtHY6crzV9SRgzvyT8XWQrKr58dA699MQJ4WIvDuR1SvGgJjCQLJIy8c0XYMmctjhWJMNZCxaF2ZAdM0InnPUx1QMCC5xJlMZBSlqNKbdQB7sS3GGETRhyiBu8JdAsqAZBefcCuxawAs3crEGOcgZDZD',
-                    'Content-Type: application/json'
-                  ),
-                ));
-                $response = curl_exec($curl);
-                
+        static::dispatchWhatsappGraphRequest($payload);
     }
 }

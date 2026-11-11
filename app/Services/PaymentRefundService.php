@@ -169,12 +169,50 @@ class PaymentRefundService
 
     /**
      * Handle incoming payment gateway webhooks (Razorpay / Cashfree / Stripe).
+     * Hardened in Phase 7.1: enforces signature verification, redacts logs, and removes broken SQL writes.
      */
     public function handleWebhook(array $payload, ?string $signature = null): array
     {
-        Log::info("Payment Webhook received:", $payload);
+        $syncService = app(CrossPlatformSyncService::class);
+        $redacted = $syncService->redactSensitiveData($payload);
+        Log::info('Payment Webhook received:', $redacted);
+
+        $secret = config('services.razorpay.webhook_secret') ?: config('services.razorpay.secret');
+        if (config('marketplace_integration.require_legacy_webhook_signature', true) && !empty($secret)) {
+            $expected = hash_hmac('sha256', json_encode($payload), $secret);
+            if (empty($signature) || !hash_equals($expected, (string)$signature)) {
+                $syncService->recordReconciliationDiff(
+                    'order',
+                    null,
+                    $payload['payload']['payment']['entity']['notes']['order_no'] ?? 'LEGACY-WEBHOOK',
+                    CrossPlatformSyncService::CHANNEL_PAYMENT_GATEWAY,
+                    CrossPlatformSyncService::CHANNEL_LARAVEL_BACKEND,
+                    \App\Models\IntegrationReconciliationRecord::TYPE_PAYMENT_MISMATCH,
+                    ['signature_required' => true],
+                    ['signature_present' => !empty($signature)],
+                    'Rejected unverified or tampered legacy payment webhook callback.',
+                    'critical'
+                );
+
+                return ['status' => false, 'code' => 'INVALID_SIGNATURE', 'message' => 'Webhook signature verification failed.'];
+            }
+        }
 
         $event = $payload['event'] ?? 'unknown';
+        $eventId = $payload['event_id'] ?? ('wh_' . md5(json_encode($redacted)));
+
+        $syncRes = $syncService->recordAndDispatchSyncEvent(
+            CrossPlatformSyncService::CHANNEL_LARAVEL_BACKEND,
+            'payment',
+            null,
+            $payload['payload']['payment']['entity']['notes']['order_no'] ?? $eventId,
+            'legacy_webhook_' . $event,
+            $redacted,
+            "legacy_wh:{$event}:{$eventId}",
+            null,
+            \App\Models\IntegrationSyncEvent::DIRECTION_INBOUND,
+            false
+        );
 
         if ($event === 'payment.captured') {
             $payment = $payload['payload']['payment']['entity'] ?? [];
@@ -182,7 +220,7 @@ class PaymentRefundService
             if ($orderNo) {
                 Order::where('orderno', $orderNo)->update([
                     'payment_status' => 'Paid',
-                    'status'         => 'Pending', // Pending seller acceptance
+                    'paid_at'        => now(),
                 ]);
             }
         } elseif ($event === 'refund.processed') {
@@ -193,6 +231,11 @@ class PaymentRefundService
             }
         }
 
-        return ['status' => true, 'event' => $event];
+        $syncRes['event']->update([
+            'status'       => \App\Models\IntegrationSyncEvent::STATUS_PROCESSED,
+            'processed_at' => now(),
+        ]);
+
+        return ['status' => true, 'event' => $event, 'is_duplicate' => $syncRes['is_duplicate']];
     }
 }

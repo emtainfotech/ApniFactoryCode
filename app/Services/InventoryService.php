@@ -192,6 +192,12 @@ class InventoryService
                 'created_by' => $userId,
             ]);
 
+            try {
+                app(CrossPlatformSyncService::class)->syncListingToLegacyAttribute($listing, null, 'stock_adjustment');
+            } catch (\Throwable $e) {
+                // Non-blocking sync outbox
+            }
+
             return $listing;
         });
     }

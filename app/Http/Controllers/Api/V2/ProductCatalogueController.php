@@ -325,6 +325,21 @@ class ProductCatalogueController extends BaseApiController
             'image', 'description', 'tax', 'hsncode', 'status'
         ]));
 
+        try {
+            app(\App\Services\CrossPlatformSyncService::class)->recordAndDispatchSyncEvent(
+                \App\Services\CrossPlatformSyncService::CHANNEL_CRM_EXTERNAL,
+                'product',
+                $product->id,
+                $product->slug ?: ('PROD-' . $product->id),
+                'product_updated',
+                ['id' => $product->id, 'name' => $product->name, 'slug' => $product->slug, 'status' => $product->status],
+                null,
+                $user
+            );
+        } catch (\Throwable $e) {
+            // Non-blocking sync outbox
+        }
+
         return $this->sendResponse(new ProductResource($product), 'Product updated successfully.');
     }
 

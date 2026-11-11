@@ -343,6 +343,13 @@ Route::delete('/product/filter/{id}', [ProductController::class, 'destroyFilter'
         Route::get('/admin/incentives/exceptions',              [\App\Http\Controllers\AdminAgentIncentiveWebController::class, 'reconciliationExceptions'])->name('admin.incentives.exceptions.index');
         Route::post('/admin/incentives/exceptions/{id}/resolve',[\App\Http\Controllers\AdminAgentIncentiveWebController::class, 'resolveException'])->name('admin.incentives.exceptions.resolve')->whereNumber('id');
 
+        // --- Phase 7.1: Cross-Platform Integration Sync & Reconciliation Dashboards ---
+        Route::get('/admin/integrations/sync',                       [\App\Http\Controllers\AdminIntegrationSyncWebController::class, 'syncDashboard'])->name('admin.integrations.sync');
+        Route::post('/admin/integrations/events/{id}/retry',         [\App\Http\Controllers\AdminIntegrationSyncWebController::class, 'retryEvent'])->name('admin.integrations.events.retry')->whereNumber('id');
+        Route::get('/admin/integrations/reconciliation',             [\App\Http\Controllers\AdminIntegrationSyncWebController::class, 'reconciliationDashboard'])->name('admin.integrations.reconciliation');
+        Route::post('/admin/integrations/reconciliation/scan',       [\App\Http\Controllers\AdminIntegrationSyncWebController::class, 'scanDiscrepancies'])->name('admin.integrations.reconciliation.scan');
+        Route::post('/admin/integrations/reconciliation/{id}/resolve',[\App\Http\Controllers\AdminIntegrationSyncWebController::class, 'resolveReconciliation'])->name('admin.integrations.reconciliation.resolve')->whereNumber('id');
+
 });
 
 // Customer Mobile App Simulator & Experience Preview

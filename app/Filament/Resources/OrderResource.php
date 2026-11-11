@@ -23,7 +23,7 @@ use Filament\Forms\Components\Section;
 use DB;
 class OrderResource extends Resource
 {
-    protected static ?string $model = order::class;
+    protected static ?string $model = Order::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-collection';
     protected static ?string $navigationBadgeTooltip = 'Number of pending orders';

@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\order;
+use App\Models\Order;
 use Illuminate\Http\Request;
 use App\Models\SubCatgory;
 use App\Models\Category;
@@ -111,41 +111,22 @@ class OrderController extends Controller
         return response()->json(["message"=>"Transection Successfully!!! Please Wait..."]);
    }
     public function transectionfailed_app_testingconvertassuccess(Request $request){
-        $resp = '{"mihpayid":"28283398636","mode":"UPI","status":"success","unmappedstatus":"captured","key":"Ks0wGV","txnid":"6264078429","amount":"7.08","discount":"0.00","net_amount_debit":"7.08","addedon":"2026-04-22 13:11:54","productinfo":"3208","firstname":"Surbhi","lastname":null,"address1":null,"address2":null,"city":null,"state":null,"country":null,"zipcode":null,"email":"surbhi072018@gmail.com","phone":"9834567890","udf1":null,"udf2":null,"udf3":null,"udf4":null,"udf5":null,"udf6":null,"udf7":null,"udf8":null,"udf9":null,"udf10":null,"hash":"14a76c6fe45706967a43adeda1aaf11e1c98a4ab86142b71e97aee3eb0dbf631a3a7881a7767a4e738e8800ad37b874ffb3f075a5bcb32cc40694a33e076ec8d","field1":"tanika2808@ibl","field2":"443733","field3":"tanika2808@ibl","field4":"TANIKA KHUNTETA","field5":"INDbab2890140e146a18c1e7acea6be48b2","field6":"TANIKA KHUNTETA || UCBA0002258","field7":"APPROVED OR COMPLETED SUCCESSFULLY|00","field8":null,"field9":"Success|Completed Using Callback","payment_source":"payu","meCode":"{\"pgMerchantId\":\"INDB000010846510\",\"encKey\":\"02be3a84b9fa9a23c49117e463f6ddfd92e19b7d71a1ead6e101417ca54420fd7248fd48195e70d01e6326fa82060919\",\"merchantVpa\":\"HBOSEECOMMERCEPRIVATEL-13130457.payu@indus\"}","PG_TYPE":"UPI-PG","bank_ref_num":"100075854431","bankcode":"UPI","error":"E000","error_Message":"No Error","device_type":"1"}';//json_encode($request->all());
-       $payid = 'transectionfailed_app_testingconvertassuccess';//$request->get('mihpayid');
-       $mode = 'UPI';//$request->get('mode');
-       $status = 'success';//$request->get('status');
-       $order_id = $request->get('txnid');
-       $payment_source = 'payu';//$request->get('payment_source');
-       $txndetail = '{"field9":"Success|Completed Using Callback","payment_source":"payu","PG_TYPE":"UPI-PG","bank_ref_num":"100075854431","bankcode":"UPI","error":"E000","error_Message":"No Error","device_type":"1","net_amount_debit":"7.08","addedon":"2026-04-22 13:11:54"}';
-    //   $txndetail = json_encode(array(
-    //       "field9"=>$request->get('field9'),
-    //       "payment_source"=>$request->get('payment_source'),
-    //       "PG_TYPE"=>$request->get('PG_TYPE'),
-    //       "bank_ref_num"=>$request->get('bank_ref_num'),
-    //       "bankcode"=>$request->get('bankcode'),
-    //       "error"=>$request->get('error'),
-    //       "error_Message"=>$request->get('error_Message'),
-    //       "device_type"=>$request->get('device_type'),
-    //       "net_amount_debit"=>$request->get('net_amount_debit'),
-    //       "addedon"=>$request->get('addedon')
-    //       ));
-        $updateorder_id = DB::table("transections")->where("order_no",$order_id)->update([
-            "txnresponse"=>$resp,
-            "status"=>'success',
-            "txnid"=>$order_id,
-            "txndetail"=>$txndetail,
-            "txnmethod"=>$payment_source,
-            "updated_at"=>now()
-            ]);
-             $customer = DB::table("transections")->where("order_no",$order_id)->first();
-        $customerid = $customer->customer_id;
-            $token = Customer::where("id",$customerid)->first();
-            $tokenid = $token->firebaseid;
-           $sendnotification = $this->sendnotification($tokenid,'order_transectionfailed',$order_id);
-        //   $sendwhatsapp = $this->sendwhatsappmsg($token->whatsappno,'ordertransection_failed',$order_id);
-        return response()->json(["message"=>"Transections Success !!! Please Check the details."]);
-       
+        if (!config('marketplace_integration.legacy_test_endpoints_enabled', false)) {
+            return response()->json([
+                'status'  => false,
+                'message' => 'Legacy test transaction override endpoint is disabled for production safety.',
+            ], 403);
+        }
+
+        $orderNo = (string)$request->get('txnid', '');
+        if ($orderNo === '') {
+            return response()->json(['status' => false, 'message' => 'Transaction reference txnid is required.'], 422);
+        }
+
+        return response()->json([
+            'status'  => false,
+            'message' => 'Use verified /api/v2/payments/webhook/{gateway} callback flow for authoritative payment status updates.',
+        ], 410);
    }
    public function transectionfailed_app(Request $request){
         $resp = json_encode($request->all());
@@ -350,7 +331,7 @@ class OrderController extends Controller
                             "taxamount"=>$taxamount,
                             "grandtotal"=>$netamount + $taxamount
                         );
-        $orderid = order::insertGetId($orderarray);    
+        $orderid = Order::insertGetId($orderarray);    
         $updateorder_id = DB::table("orderdetail")->where("orderno",$orderno)->update(["order_id"=>$orderid]);
         ////////////////////////now create transection transection history 
         $transection = array(
@@ -405,7 +386,7 @@ class OrderController extends Controller
     
     public function orderhistory(Request $request){
         $customerid = $request->get('userid');
-        $order = order::where("customer_id",$customerid)->orderby("id","desc")->get();
+        $order = Order::where("customer_id",$customerid)->orderby("id","desc")->get();
         $ordr = [];
         if($order->isNotEmpty()){
             $orderNos = $order->pluck('orderno')->toArray();
@@ -426,7 +407,7 @@ class OrderController extends Controller
     public function orderdetailforapi(Request $request){
         $orderdet = array();
         $orderno = $request->get('orderno');
-        $order = order::where("orderno",$orderno)->first();
+        $order = Order::where("orderno",$orderno)->first();
         $data = $order;
         $cartattribut = DB::table("orderdetail")->select('productname','hsn','brdcmpcat','attribute','coupondetail','productimage')->where("order_id",$order->id)->get();
         foreach ($cartattribut as $orderdetail){
@@ -509,7 +490,7 @@ class OrderController extends Controller
     public function getAlternativeSellersForOrder(Request $request, $orderno = null)
     {
         $orderno = $orderno ?? $request->get('orderno');
-        $order = order::where("orderno", $orderno)->first();
+        $order = Order::where("orderno", $orderno)->first();
 
         if (!$order) {
             return response()->json(["status" => false, "code" => 404, "msg" => "Order not found", "data" => []], 404);
@@ -645,7 +626,7 @@ class OrderController extends Controller
      */
     public function show($orderno)
     {
-        $order = order::where("orderno",$orderno)->first();
+        $order = Order::where("orderno",$orderno)->first();
         $cartattribut = DB::table("orderdetail")->where("orderno",$orderno)->get();
         $data['title'] = 'ORDERS';
         $data['order'] = $order;
@@ -666,7 +647,7 @@ class OrderController extends Controller
             'mode' => 'utf-8','format' => 'A4','margin_left' => 10, 'margin_right' => 10, 'margin_top' => 12, 'margin_bottom' => 12,
         ]);
         ///seller detail
-        $order = order::where("orderno",$orderno)->first();
+        $order = Order::where("orderno",$orderno)->first();
         $orderdetail = DB::table("orderdetail")->where("orderno",$orderno)->get();
         $seller = Company::where("user_id",$order->user_id)->first();
         $buyer = Customer::where("id",$order->customer_id)->first();
@@ -737,7 +718,7 @@ class OrderController extends Controller
      * @param  \App\Models\order  $order
      * @return \Illuminate\Http\Response
      */
-    public function edit(order $order)
+    public function edit(Order $order)
     {
         //
     }
@@ -749,7 +730,7 @@ class OrderController extends Controller
      * @param  \App\Models\order  $order
      * @return \Illuminate\Http\Response
      */
-    public function update(Request $request, order $order)
+    public function update(Request $request, Order $order)
     {  
         $action = $request->action;
         $company = Company::where("user_id",$order->user_id)->first();
@@ -800,7 +781,7 @@ class OrderController extends Controller
         $track = DB::table("order_tracks")->where([ "order_id"=>$order->id])->update($arry);
         $refundbuyer = 0;
         if($track){
-                $order = order::where("id",$order->id)->first();
+                $order = Order::where("id",$order->id)->first();
                 $grandtotal = $order->grandtotal;
                 $commission = 100 - $company->comission;
                 $com = ($grandtotal*$commission)/100;
@@ -960,7 +941,7 @@ if ($action == 'trackstatus') {
      * @param  \App\Models\order  $order
      * @return \Illuminate\Http\Response
      */
-    public function destroy(order $order)
+    public function destroy(Order $order)
     {
         //
     }

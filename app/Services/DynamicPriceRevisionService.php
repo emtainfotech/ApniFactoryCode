@@ -539,6 +539,12 @@ class DynamicPriceRevisionService
                     }
                     $listing->save();
 
+                    try {
+                        app(CrossPlatformSyncService::class)->syncListingToLegacyAttribute($listing, null, 'price_revision');
+                    } catch (\Throwable $syncErr) {
+                        Log::warning("Phase 7.1 price projection sync skipped for listing #{$listing->id}: " . $syncErr->getMessage());
+                    }
+
                     $item->update([
                         'status' => 'applied',
                         'error_message' => null,
