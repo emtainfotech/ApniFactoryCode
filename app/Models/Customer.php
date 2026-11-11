@@ -57,5 +57,15 @@ class Customer extends Model
         return $this->hasMany(Order::class, 'customer_id');
     }
 
+    public function eligibleOrders()
+    {
+        return $this->hasMany(AgentEligibleOrder::class, 'customer_id')->orderBy('id', 'asc');
+    }
+
+    public function incentiveLedgers()
+    {
+        return $this->hasMany(AgentIncentiveLedger::class, 'customer_id')->orderBy('id', 'desc');
+    }
+
 }
 

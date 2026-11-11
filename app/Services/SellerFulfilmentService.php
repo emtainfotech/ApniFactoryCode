@@ -353,6 +353,8 @@ class SellerFulfilmentService
         // Dispatch in-app notification to buyer
         $this->notifyBuyerOfDispatch($fulfilment);
 
+        $this->triggerEligibilitySync($fulfilment, 'fulfilment_dispatched');
+
         return $fulfilment->fresh();
     }
 
@@ -403,6 +405,8 @@ class SellerFulfilmentService
             $notes ?? "Status updated to {$newStatus}."
         );
 
+        $this->triggerEligibilitySync($fulfilment, "fulfilment_{$newStatus}");
+
         return $fulfilment->fresh();
     }
 
@@ -447,6 +451,8 @@ class SellerFulfilmentService
             'buyer',
             'Buyer confirmed receipt of goods at designated delivery point.'
         );
+
+        $this->triggerEligibilitySync($fulfilment, 'buyer_acknowledged_receipt');
 
         return $fulfilment->fresh();
     }
@@ -495,6 +501,8 @@ class SellerFulfilmentService
             'buyer',
             "Buyer reported {$disputeType}: {$reason}"
         );
+
+        $this->triggerEligibilitySync($fulfilment, 'fulfilment_dispute_reported');
 
         return $fulfilment->fresh();
     }
@@ -622,6 +630,25 @@ class SellerFulfilmentService
             ]);
         } catch (\Throwable $e) {
             // Notification failure must not roll back a valid dispatch record
+        }
+    }
+
+    /**
+     * Trigger Phase 6.2 eligible-order evaluation safely on fulfilment transitions.
+     */
+    protected function triggerEligibilitySync(SellerFulfilment $fulfilment, string $eventType): void
+    {
+        try {
+            $order = $fulfilment->order()->first();
+            if ($order) {
+                app(AgentOrderEligibilityService::class)->handleOrderLifecycleEvent(
+                    $order,
+                    $eventType,
+                    "fulfil_{$fulfilment->id}_{$eventType}_" . now()->format('YmdHis')
+                );
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning("Phase 6.2 eligibility sync skipped ({$eventType}): " . $e->getMessage());
         }
     }
 }

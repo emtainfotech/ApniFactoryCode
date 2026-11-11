@@ -531,7 +531,8 @@ class BuyerAttributionService
     public function formatPermittedBuyerForAgent(BuyerAgentAttribution $attr): array
     {
         $customer = $attr->customer;
-        $trackingEnabled = (bool)config('marketplace_agents.eligible_order_tracking_implemented', false);
+        $progress = app(AgentOrderEligibilityService::class)->getBuyerEligibilityProgress((int)$attr->customer_id);
+        $progress['scheme_order_limit'] = (int)$attr->eligible_order_limit ?: (int)$progress['scheme_order_limit'];
 
         return [
             'attribution_id'     => $attr->id,
@@ -549,12 +550,7 @@ class BuyerAttributionService
                 'account_status'=> $customer?->status,
                 'registered_at' => $customer?->created_at ? $customer->created_at->toIso8601String() : null,
             ],
-            // Stage 5: Do NOT fabricate counts if order eligibility has not yet been implemented
-            'eligible_order_progress' => [
-                'available'           => $trackingEnabled,
-                'display'             => $trackingEnabled ? '0/3' : 'Unavailable (Pending Phase 6.2 Eligible-Order Rules)',
-                'scheme_order_limit'  => (int)$attr->eligible_order_limit,
-            ],
+            'eligible_order_progress' => $progress,
         ];
     }
 

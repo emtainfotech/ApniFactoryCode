@@ -165,6 +165,12 @@
                 <div class="menu-title">Agent Dashboard</div>
             </a>
         </li>
+        <li>
+            <a href="{{ route('agent.incentives.index') }}">
+                <div class="parent-icon"><i class="fa-solid fa-award text-success"></i></div>
+                <div class="menu-title">Eligible Orders & Incentives</div>
+            </a>
+        </li>
         @endif
 
         @if(auth()->check() && auth()->user()->isAdmin())
@@ -196,6 +202,30 @@
             <a href="{{ route('admin.attributions.index') }}">
                 <div class="parent-icon"><i class="fa-solid fa-link text-primary"></i></div>
                 <div class="menu-title">Buyer Attributions</div>
+            </a>
+        </li>
+        <li>
+            <a href="{{ route('admin.incentives.eligible-orders') }}">
+                <div class="parent-icon"><i class="fa-solid fa-list-check text-primary"></i></div>
+                <div class="menu-title">Eligible Orders (0/3..3/3)</div>
+            </a>
+        </li>
+        <li>
+            <a href="{{ route('admin.incentives.rules.index') }}">
+                <div class="parent-icon"><i class="fa-solid fa-sliders text-warning"></i></div>
+                <div class="menu-title">Agent Incentive Rules</div>
+            </a>
+        </li>
+        <li>
+            <a href="{{ route('admin.incentives.ledger.index') }}">
+                <div class="parent-icon"><i class="fa-solid fa-book text-success"></i></div>
+                <div class="menu-title">Agent Incentive Ledger</div>
+            </a>
+        </li>
+        <li>
+            <a href="{{ route('admin.incentives.reports') }}">
+                <div class="parent-icon"><i class="fa-solid fa-chart-pie text-info"></i></div>
+                <div class="menu-title">Incentive Reports</div>
             </a>
         </li>
         @endif

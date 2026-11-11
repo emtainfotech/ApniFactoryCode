@@ -201,6 +201,8 @@ class BuyerDisputeService
             // Notify seller and operations
             $this->notifyStakeholdersOnClaimSubmission($claim, $fulfilment);
 
+            $this->syncOrderEligibility($fulfilment->order_id, 'claim_submitted', "claim_{$claim->id}");
+
             return $claim->load(['items', 'evidence', 'history']);
         });
     }
@@ -251,6 +253,8 @@ class BuyerDisputeService
             'buyer',
             'Buyer confirmed receipt of goods at designated delivery point.'
         );
+
+        $this->syncOrderEligibility($fulfilment->order_id, 'buyer_acknowledged_receipt', "ack_{$fulfilment->id}_" . now()->format('YmdHis'));
 
         return $fulfilment->refresh();
     }
@@ -380,6 +384,8 @@ class BuyerDisputeService
                 ],
                 "Admin transitioned claim status to '{$newStatus}'."
             );
+
+            $this->syncOrderEligibility($claim->order_id, "claim_{$newStatus}", "claim_admin_{$claim->id}_{$newStatus}");
 
             return $claim->load(['items', 'evidence', 'history']);
         });
@@ -575,6 +581,21 @@ class BuyerDisputeService
                 'updated_at'  => now(),
             ]);
         } catch (\Throwable $e) {
+        }
+    }
+
+    protected function syncOrderEligibility(?int $orderId, string $eventType, string $eventRef): void
+    {
+        try {
+            if (!$orderId) {
+                return;
+            }
+            $order = Order::find($orderId);
+            if ($order) {
+                app(AgentOrderEligibilityService::class)->handleOrderLifecycleEvent($order, $eventType, $eventRef);
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning("Phase 6.2 eligibility sync skipped ({$eventType}): " . $e->getMessage());
         }
     }
 }

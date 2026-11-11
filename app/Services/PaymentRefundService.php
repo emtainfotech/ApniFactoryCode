@@ -145,6 +145,18 @@ class PaymentRefundService
                 ]
             );
 
+            // 6. Phase 6.2: Reconcile agent eligible-order slot & reverse open earned incentives on refund
+            try {
+                app(AgentOrderEligibilityService::class)->handleOrderLifecycleEvent(
+                    $order,
+                    'order_refunded',
+                    $refundTxnId,
+                    ['refund_amount' => $refundAmount, 'reason' => $reason]
+                );
+            } catch (\Throwable $e) {
+                Log::warning("Phase 6.2 refund sync skipped for order #{$order->id}: " . $e->getMessage());
+            }
+
             return [
                 'success'         => true,
                 'message'         => 'Refund of ₹' . number_format($refundAmount, 2) . ' processed successfully.',

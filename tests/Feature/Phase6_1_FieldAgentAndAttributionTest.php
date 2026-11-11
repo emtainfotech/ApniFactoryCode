@@ -413,6 +413,9 @@ class Phase6_1_FieldAgentAndAttributionTest extends TestCase
             'field_agent_id' => $this->agentB->id,
         ], $this->adminUser);
 
+        // Verify Phase 6.1 disabled-tracking compatibility mode renders Unavailable placeholder cleanly
+        Config::set('marketplace_agents.eligible_order_tracking_implemented', false);
+
         $this->actingAs($this->agentUserA);
 
         $buyersRes = $this->getJson('/api/v2/agent/buyers');
@@ -446,6 +449,9 @@ class Phase6_1_FieldAgentAndAttributionTest extends TestCase
             'customer_id'    => $this->customer2->id,
             'field_agent_id' => $this->agentB->id,
         ], $this->adminUser);
+
+        // Verify Phase 6.1 disabled-tracking compatibility mode renders Unavailable placeholder cleanly
+        Config::set('marketplace_agents.eligible_order_tracking_implemented', false);
 
         $this->actingAs($this->agentUserA);
 
@@ -486,6 +492,9 @@ class Phase6_1_FieldAgentAndAttributionTest extends TestCase
             'stock_quantity'     => 100,
             'status'             => 'Active',
         ]);
+
+        // Verify Phase 6.1 disabled-tracking compatibility mode renders Unavailable placeholder cleanly
+        Config::set('marketplace_agents.eligible_order_tracking_implemented', false);
 
         $this->actingAs($this->agentUserA);
 
@@ -708,6 +717,9 @@ class Phase6_1_FieldAgentAndAttributionTest extends TestCase
         $this->assertStringNotContainsString('rajeshsharma@okhdfc', (string)$rawPayout);
 
         // 2. Agent viewing own profile sees masked payout summary, NOT raw account number / KYC ref / admin notes
+        // Verify Phase 6.1 disabled-tracking compatibility mode renders Unavailable placeholder cleanly
+        Config::set('marketplace_agents.eligible_order_tracking_implemented', false);
+
         $this->actingAs($this->agentUserA);
         $selfRes = $this->getJson('/api/v2/agent/profile');
         $selfRes->assertStatus(200);
@@ -781,6 +793,9 @@ class Phase6_1_FieldAgentAndAttributionTest extends TestCase
         $this->get("/admin/attributions/{$attr->id}")->assertStatus(200)->assertSee('Immutable Attribution History');
 
         // Agent Screens
+        // Verify Phase 6.1 disabled-tracking compatibility mode renders Unavailable placeholder cleanly
+        Config::set('marketplace_agents.eligible_order_tracking_implemented', false);
+
         $this->actingAs($this->agentUserA);
         $this->get('/agent/dashboard')->assertStatus(200)
             ->assertSee('FSA-2026-0001')

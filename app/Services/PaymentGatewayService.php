@@ -458,6 +458,18 @@ class PaymentGatewayService
                 } catch (\Throwable $e) {
                     Log::error("Failed to record financial ledger for order #{$order->id}: " . $e->getMessage());
                 }
+
+                // Phase 6.2: Trigger non-blocking eligible-order evaluation on verified payment only
+                try {
+                    app(AgentOrderEligibilityService::class)->handleOrderLifecycleEvent(
+                        $order,
+                        'payment_verified',
+                        $txn->gateway_event_id ?: $txn->payment_ref,
+                        ['transaction_id' => $txn->id, 'gateway' => $txn->gateway_name]
+                    );
+                } catch (\Throwable $e) {
+                    Log::error("Phase 6.2 payment_verified hook failed for order #{$order->id}: " . $e->getMessage());
+                }
             }
 
             PaymentAuditLog::logAction(

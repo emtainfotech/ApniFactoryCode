@@ -268,6 +268,30 @@ Route::prefix('v2')->group(function () {
         Route::post('attributions/{id}/approve',                 [\App\Http\Controllers\Api\AdminBuyerAttributionApiController::class, 'approve'])->whereNumber('id');
         Route::post('attributions/{id}/reject',                  [\App\Http\Controllers\Api\AdminBuyerAttributionApiController::class, 'reject'])->whereNumber('id');
         Route::post('attributions/reassign',                     [\App\Http\Controllers\Api\AdminBuyerAttributionApiController::class, 'reassign']);
+
+        // Phase 6.2: Admin Eligible-Order Tracking, Configurable Rules, Incentive Ledger & Reporting APIs
+        Route::get('incentives/eligible-orders',                    [\App\Http\Controllers\Api\AdminAgentIncentiveApiController::class, 'eligibleOrders']);
+        Route::get('incentives/eligible-orders/{id}',               [\App\Http\Controllers\Api\AdminAgentIncentiveApiController::class, 'showEligibleOrder'])->whereNumber('id');
+        Route::get('incentives/buyers/{customerId}/progress',       [\App\Http\Controllers\Api\AdminAgentIncentiveApiController::class, 'buyerProgress'])->whereNumber('customerId');
+        Route::post('incentives/orders/{orderId}/evaluate',         [\App\Http\Controllers\Api\AdminAgentIncentiveApiController::class, 'evaluateOrder'])->whereNumber('orderId');
+        Route::post('incentives/failures/{logId}/retry',            [\App\Http\Controllers\Api\AdminAgentIncentiveApiController::class, 'retryFailure'])->whereNumber('logId');
+
+        Route::get('incentives/rules',                              [\App\Http\Controllers\Api\AdminAgentIncentiveApiController::class, 'rules']);
+        Route::post('incentives/rules',                             [\App\Http\Controllers\Api\AdminAgentIncentiveApiController::class, 'storeRule']);
+        Route::get('incentives/rules/{id}',                         [\App\Http\Controllers\Api\AdminAgentIncentiveApiController::class, 'showRule'])->whereNumber('id');
+        Route::post('incentives/rules/{id}/version',                [\App\Http\Controllers\Api\AdminAgentIncentiveApiController::class, 'createRuleVersion'])->whereNumber('id');
+        Route::post('incentives/rules/{id}/approve-business',       [\App\Http\Controllers\Api\AdminAgentIncentiveApiController::class, 'approveRuleBusiness'])->whereNumber('id');
+        Route::post('incentives/rules/{id}/approve-finance',        [\App\Http\Controllers\Api\AdminAgentIncentiveApiController::class, 'approveRuleFinance'])->whereNumber('id');
+        Route::post('incentives/rules/{id}/activate',               [\App\Http\Controllers\Api\AdminAgentIncentiveApiController::class, 'activateRule'])->whereNumber('id');
+        Route::post('incentives/rules/{id}/deactivate',             [\App\Http\Controllers\Api\AdminAgentIncentiveApiController::class, 'deactivateRule'])->whereNumber('id');
+        Route::post('incentives/preview',                           [\App\Http\Controllers\Api\AdminAgentIncentiveApiController::class, 'previewCalculation']);
+
+        Route::get('incentives/ledger',                             [\App\Http\Controllers\Api\AdminAgentIncentiveApiController::class, 'ledger']);
+        Route::get('incentives/ledger/{id}',                        [\App\Http\Controllers\Api\AdminAgentIncentiveApiController::class, 'showLedger'])->whereNumber('id');
+        Route::post('incentives/ledger/{id}/approve',               [\App\Http\Controllers\Api\AdminAgentIncentiveApiController::class, 'approveLedger'])->whereNumber('id');
+        Route::post('incentives/ledger/{id}/reverse',               [\App\Http\Controllers\Api\AdminAgentIncentiveApiController::class, 'reverseLedger'])->whereNumber('id');
+        Route::post('incentives/ledger/{id}/adjust',                [\App\Http\Controllers\Api\AdminAgentIncentiveApiController::class, 'adjustLedger'])->whereNumber('id');
+        Route::get('incentives/reports',                            [\App\Http\Controllers\Api\AdminAgentIncentiveApiController::class, 'reports']);
         Route::get('customers/{customerId}/attribution-history', [\App\Http\Controllers\Api\AdminBuyerAttributionApiController::class, 'customerHistory'])->whereNumber('customerId');
     });
 });
@@ -377,6 +401,9 @@ Route::prefix('v2/buyer')->middleware('auth:sanctum')->group(function () {
     Route::get('claims',                                      [\App\Http\Controllers\Api\BuyerClaimApiController::class, 'index']);
     Route::get('claims/{id}',                                 [\App\Http\Controllers\Api\BuyerClaimApiController::class, 'show'])->whereNumber('id');
     Route::post('fulfilment/{fulfilmentId}/claim',            [\App\Http\Controllers\Api\BuyerClaimApiController::class, 'store'])->whereNumber('fulfilmentId');
+
+    // Phase 6.2: Buyer Eligible-Order Progress (non-financial 0/3..3/3)
+    Route::get('incentive-progress',                          [\App\Http\Controllers\Api\BuyerIncentiveProgressApiController::class, 'progress']);
 });
 
 // Phase 5.2: Admin Central Claims & Dispute Adjudication APIs (v2)
@@ -386,11 +413,12 @@ Route::prefix('v2/admin')->middleware('auth:sanctum')->group(function () {
     Route::post('claims/{id}/status',                         [\App\Http\Controllers\Api\AdminClaimApiController::class, 'updateStatus'])->whereNumber('id');
 });
 
-// Phase 6.1: Field Sales Agent Portal APIs (v2)
+// Phase 6.1 & 6.2: Field Sales Agent Portal APIs (v2)
 Route::prefix('v2/agent')->middleware(['auth:sanctum', 'field.agent'])->group(function () {
     Route::get('profile',                                     [\App\Http\Controllers\Api\AgentPortalApiController::class, 'profile']);
     Route::get('buyers',                                      [\App\Http\Controllers\Api\AgentPortalApiController::class, 'buyers']);
     Route::get('buyers/{customerId}',                         [\App\Http\Controllers\Api\AgentPortalApiController::class, 'showBuyer'])->whereNumber('customerId');
+    Route::get('incentives',                                  [\App\Http\Controllers\Api\AgentPortalApiController::class, 'incentives']);
 });
 
 // Phase 4.3: Payment Gateway Integration, Verified Callbacks & Reconciliation APIs (v2)

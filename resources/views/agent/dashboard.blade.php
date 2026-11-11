@@ -47,7 +47,7 @@
 
         <!-- Eligibility & Policy Notice -->
         <div class="alert alert-info border-0 bg-light-info py-2 mb-3 small text-dark">
-            <strong>Scheme Governance Notice:</strong> Eligible-order counting (first 3 eligible orders) and Apni Factory incentive calculations are scheduled for Phase 6.2 pending formal business sign-off. Confidential seller pricing and settlement ledgers are restricted.
+            <strong>Scheme Governance Notice:</strong> Buyer eligible-order slot progress (0/3..3/3 across sellers) is tracked below; financial incentive activation awaits formal written funding policy approval. Confidential seller pricing and settlement ledgers remain restricted.
         </div>
 
         <!-- Assigned Buyer Search -->

@@ -33,7 +33,24 @@
                 <hr>
                 <div class="p-3 bg-light rounded">
                     <div class="fw-bold small mb-1">First 3 Eligible Orders Progress</div>
-                    <div class="text-secondary small">{{ $buyerData['eligible_order_progress']['display'] }}</div>
+                    <div class="text-secondary fw-bold">{{ $buyerData['eligible_order_progress']['display'] }}</div>
+                    @if(!empty($buyerData['eligible_order_progress']['orders']))
+                        <div class="table-responsive mt-2">
+                            <table class="table table-sm table-bordered mb-0 bg-white">
+                                <thead class="table-light"><tr><th>Order #</th><th>Slot</th><th>Eligibility Status</th><th>Incentive Status</th></tr></thead>
+                                <tbody>
+                                    @foreach($buyerData['eligible_order_progress']['orders'] as $eo)
+                                    <tr>
+                                        <td class="fw-bold">{{ $eo['order_no'] }}</td>
+                                        <td>{{ $eo['sequence_number'] ? $eo['sequence_number'].'/3' : '-' }}</td>
+                                        <td>{{ ucwords(str_replace('_', ' ', $eo['eligibility_status'])) }}</td>
+                                        <td>{{ ucwords(str_replace('_', ' ', $eo['incentive_status'])) }}</td>
+                                    </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    @endif
                 </div>
             </div>
         </div>

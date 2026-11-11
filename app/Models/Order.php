@@ -97,6 +97,16 @@ class Order extends Model
         return $this->hasMany(FinancialLedger::class, 'order_id');
     }
 
+    public function agentEligibleOrder()
+    {
+        return $this->hasOne(AgentEligibleOrder::class, 'parent_order_id');
+    }
+
+    public function agentIncentiveLedgers()
+    {
+        return $this->hasMany(AgentIncentiveLedger::class, 'parent_order_id');
+    }
+
     public function isPaid(): bool
     {
         return strtolower($this->payment_status) === 'paid';

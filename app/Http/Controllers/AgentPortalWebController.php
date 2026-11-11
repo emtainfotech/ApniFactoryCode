@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\AgentIncentiveCalculationService;
+use App\Services\AgentOrderEligibilityService;
 use App\Services\BuyerAttributionService;
 use App\Services\FieldAgentService;
 use Illuminate\Http\Request;
@@ -11,7 +13,9 @@ class AgentPortalWebController extends Controller
 {
     public function __construct(
         protected FieldAgentService $agentService,
-        protected BuyerAttributionService $attributionService
+        protected BuyerAttributionService $attributionService,
+        protected AgentOrderEligibilityService $eligibilityService,
+        protected AgentIncentiveCalculationService $calculationService
     ) {
         $this->middleware(['auth', 'field.agent']);
     }
@@ -44,8 +48,24 @@ class AgentPortalWebController extends Controller
         }
 
         $agentProfile = $agent->toAgentSelfArray();
+        $incentiveSummary = $this->calculationService->getAgentIncentiveSummary($agent->id);
 
-        return view('agent.buyer_show', compact('agentProfile', 'buyerData'));
+        return view('agent.buyer_show', compact('agentProfile', 'buyerData', 'incentiveSummary'));
+    }
+
+    public function incentives(Request $request): View
+    {
+        $agent = $this->agentService->resolveAgentForUser(auth()->user());
+        if (!$agent) {
+            abort(403, 'Field sales agent profile not found.');
+        }
+
+        $agentProfile = $agent->toAgentSelfArray();
+        $incentiveSummary = $this->calculationService->getAgentIncentiveSummary($agent->id);
+        $filters = array_merge($request->only(['eligibility_status', 'search']), ['field_agent_id' => $agent->id]);
+        $trackedOrders = $this->eligibilityService->listEligibleOrders($filters, 20)->withQueryString();
+
+        return view('agent.incentives', compact('agent', 'agentProfile', 'incentiveSummary', 'trackedOrders', 'filters'));
     }
 }
 

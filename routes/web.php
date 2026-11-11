@@ -306,9 +306,27 @@ Route::delete('/product/filter/{id}', [ProductController::class, 'destroyFilter'
         Route::post('/admin/attributions/{id}/reject',          [\App\Http\Controllers\AdminBuyerAttributionWebController::class, 'reject'])->name('admin.attributions.reject')->whereNumber('id');
         Route::post('/admin/attributions/reassign',             [\App\Http\Controllers\AdminBuyerAttributionWebController::class, 'reassign'])->name('admin.attributions.reassign');
 
-        // --- Phase 6.1: Field Sales Agent Dashboard ---
+        // --- Phase 6.1 & 6.2: Field Sales Agent Dashboard ---
         Route::get('/agent/dashboard',                          [\App\Http\Controllers\AgentPortalWebController::class, 'dashboard'])->name('agent.dashboard');
         Route::get('/agent/buyers/{customerId}',                [\App\Http\Controllers\AgentPortalWebController::class, 'showBuyer'])->name('agent.buyers.show')->whereNumber('customerId');
+        Route::get('/agent/incentives',                         [\App\Http\Controllers\AgentPortalWebController::class, 'incentives'])->name('agent.incentives.index');
+
+        // --- Phase 6.2: Admin Eligible Orders, Incentive Rules, Ledger & Reporting ---
+        Route::get('/admin/incentives/eligible-orders',         [\App\Http\Controllers\AdminAgentIncentiveWebController::class, 'eligibleOrders'])->name('admin.incentives.eligible-orders');
+        Route::get('/admin/incentives/eligible-orders/{id}',    [\App\Http\Controllers\AdminAgentIncentiveWebController::class, 'showEligibleOrder'])->name('admin.incentives.eligible-orders.show')->whereNumber('id');
+        Route::get('/admin/incentives/rules',                   [\App\Http\Controllers\AdminAgentIncentiveWebController::class, 'rules'])->name('admin.incentives.rules.index');
+        Route::get('/admin/incentives/rules/create',            [\App\Http\Controllers\AdminAgentIncentiveWebController::class, 'createRule'])->name('admin.incentives.rules.create');
+        Route::post('/admin/incentives/rules',                  [\App\Http\Controllers\AdminAgentIncentiveWebController::class, 'storeRule'])->name('admin.incentives.rules.store');
+        Route::get('/admin/incentives/rules/{id}',              [\App\Http\Controllers\AdminAgentIncentiveWebController::class, 'showRule'])->name('admin.incentives.rules.show')->whereNumber('id');
+        Route::post('/admin/incentives/rules/{id}/approve-business', [\App\Http\Controllers\AdminAgentIncentiveWebController::class, 'approveRuleBusiness'])->name('admin.incentives.rules.approve-business')->whereNumber('id');
+        Route::post('/admin/incentives/rules/{id}/approve-finance',  [\App\Http\Controllers\AdminAgentIncentiveWebController::class, 'approveRuleFinance'])->name('admin.incentives.rules.approve-finance')->whereNumber('id');
+        Route::post('/admin/incentives/rules/{id}/activate',    [\App\Http\Controllers\AdminAgentIncentiveWebController::class, 'activateRule'])->name('admin.incentives.rules.activate')->whereNumber('id');
+        Route::post('/admin/incentives/rules/{id}/deactivate',  [\App\Http\Controllers\AdminAgentIncentiveWebController::class, 'deactivateRule'])->name('admin.incentives.rules.deactivate')->whereNumber('id');
+        Route::get('/admin/incentives/ledger',                  [\App\Http\Controllers\AdminAgentIncentiveWebController::class, 'ledger'])->name('admin.incentives.ledger.index');
+        Route::post('/admin/incentives/ledger/{id}/approve',    [\App\Http\Controllers\AdminAgentIncentiveWebController::class, 'approveLedger'])->name('admin.incentives.ledger.approve')->whereNumber('id');
+        Route::post('/admin/incentives/ledger/{id}/reverse',    [\App\Http\Controllers\AdminAgentIncentiveWebController::class, 'reverseLedger'])->name('admin.incentives.ledger.reverse')->whereNumber('id');
+        Route::post('/admin/incentives/ledger/{id}/adjust',     [\App\Http\Controllers\AdminAgentIncentiveWebController::class, 'adjustLedger'])->name('admin.incentives.ledger.adjust')->whereNumber('id');
+        Route::get('/admin/incentives/reports',                 [\App\Http\Controllers\AdminAgentIncentiveWebController::class, 'reports'])->name('admin.incentives.reports');
 
 });
 
