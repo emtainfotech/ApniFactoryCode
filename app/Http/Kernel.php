@@ -66,5 +66,6 @@ class Kernel extends HttpKernel
         'admin.catalogue' => \App\Http\Middleware\EnsureCatalogueAdmin::class,
         'seller.ownership' => \App\Http\Middleware\EnsureSellerOwnership::class,
         'seller.permission' => \App\Http\Middleware\CheckSellerPermission::class,
+        'field.agent' => \App\Http\Middleware\EnsureFieldAgent::class,
     ];
 }

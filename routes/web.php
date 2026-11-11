@@ -290,6 +290,26 @@ Route::delete('/product/filter/{id}', [ProductController::class, 'destroyFilter'
         Route::get('/admin/claims/{id}',                        [\App\Http\Controllers\AdminClaimWebController::class, 'show'])->name('admin.claims.show')->whereNumber('id');
         Route::post('/admin/claims/{id}/status',                [\App\Http\Controllers\AdminClaimWebController::class, 'updateStatus'])->name('admin.claims.status.update')->whereNumber('id');
 
+        // --- Phase 6.1: Admin Field Sales Agent Master & Buyer Attribution ---
+        Route::get('/admin/agents',                             [\App\Http\Controllers\AdminFieldAgentWebController::class, 'index'])->name('admin.agents.index');
+        Route::get('/admin/agents/create',                      [\App\Http\Controllers\AdminFieldAgentWebController::class, 'create'])->name('admin.agents.create');
+        Route::post('/admin/agents',                            [\App\Http\Controllers\AdminFieldAgentWebController::class, 'store'])->name('admin.agents.store');
+        Route::get('/admin/agents/{id}',                        [\App\Http\Controllers\AdminFieldAgentWebController::class, 'show'])->name('admin.agents.show')->whereNumber('id');
+        Route::get('/admin/agents/{id}/edit',                   [\App\Http\Controllers\AdminFieldAgentWebController::class, 'edit'])->name('admin.agents.edit')->whereNumber('id');
+        Route::put('/admin/agents/{id}',                        [\App\Http\Controllers\AdminFieldAgentWebController::class, 'update'])->name('admin.agents.update')->whereNumber('id');
+        Route::post('/admin/agents/{id}/status',                [\App\Http\Controllers\AdminFieldAgentWebController::class, 'updateStatus'])->name('admin.agents.status')->whereNumber('id');
+
+        Route::get('/admin/attributions',                       [\App\Http\Controllers\AdminBuyerAttributionWebController::class, 'index'])->name('admin.attributions.index');
+        Route::post('/admin/attributions',                      [\App\Http\Controllers\AdminBuyerAttributionWebController::class, 'store'])->name('admin.attributions.store');
+        Route::get('/admin/attributions/{id}',                  [\App\Http\Controllers\AdminBuyerAttributionWebController::class, 'show'])->name('admin.attributions.show')->whereNumber('id');
+        Route::post('/admin/attributions/{id}/approve',         [\App\Http\Controllers\AdminBuyerAttributionWebController::class, 'approve'])->name('admin.attributions.approve')->whereNumber('id');
+        Route::post('/admin/attributions/{id}/reject',          [\App\Http\Controllers\AdminBuyerAttributionWebController::class, 'reject'])->name('admin.attributions.reject')->whereNumber('id');
+        Route::post('/admin/attributions/reassign',             [\App\Http\Controllers\AdminBuyerAttributionWebController::class, 'reassign'])->name('admin.attributions.reassign');
+
+        // --- Phase 6.1: Field Sales Agent Dashboard ---
+        Route::get('/agent/dashboard',                          [\App\Http\Controllers\AgentPortalWebController::class, 'dashboard'])->name('agent.dashboard');
+        Route::get('/agent/buyers/{customerId}',                [\App\Http\Controllers\AgentPortalWebController::class, 'showBuyer'])->name('agent.buyers.show')->whereNumber('customerId');
+
 });
 
 // Customer Mobile App Simulator & Experience Preview

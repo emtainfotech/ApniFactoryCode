@@ -30,6 +30,10 @@ class SellerListingController extends BaseApiController
     public function sellerListings(Request $request): JsonResponse
     {
         $user = $request->user();
+        if ($user && $user->isFieldAgent() && !$user->isAdmin() && !$user->isSeller()) {
+            return $this->sendError('Forbidden: Field sales agents cannot access confidential seller prices.', [], 403);
+        }
+
         $query = SellerListing::with(['product', 'variant', 'company']);
 
         // Seller isolation: non-admins can only see their own listings
@@ -69,6 +73,9 @@ class SellerListingController extends BaseApiController
         }
 
         $user = $request->user();
+        if ($user && $user->isFieldAgent() && !$user->isAdmin() && !$user->isSeller()) {
+            return $this->sendError('Forbidden: Field sales agents cannot access confidential seller prices.', [], 403);
+        }
         if ($user && !$user->isAdmin() && $listing->seller_user_id !== $user->id) {
             return $this->sendError('Unauthorized: Cross-seller listing access denied.', [], 403);
         }
@@ -132,6 +139,9 @@ class SellerListingController extends BaseApiController
         }
 
         $user = $request->user();
+        if ($user && $user->isFieldAgent() && !$user->isAdmin() && !$user->isSeller()) {
+            return $this->sendError('Forbidden: Field sales agents cannot access confidential seller prices.', [], 403);
+        }
         if ($user && !$user->isAdmin() && $listing->seller_user_id !== $user->id) {
             return $this->sendError('Unauthorized: Access denied.', [], 403);
         }
@@ -245,6 +255,9 @@ class SellerListingController extends BaseApiController
         }
 
         $user = $request->user();
+        if ($user && $user->isFieldAgent() && !$user->isAdmin() && !$user->isSeller()) {
+            return $this->sendError('Forbidden: Field sales agents cannot access confidential seller prices.', [], 403);
+        }
         if ($user && !$user->isAdmin() && $listing->seller_user_id !== $user->id) {
             return $this->sendError('Unauthorized: You cannot modify another seller\'s listing.', [], 403);
         }
@@ -301,6 +314,9 @@ class SellerListingController extends BaseApiController
         }
 
         $user = $request->user();
+        if ($user && $user->isFieldAgent() && !$user->isAdmin() && !$user->isSeller()) {
+            return $this->sendError('Forbidden: Field sales agents cannot access confidential seller prices.', [], 403);
+        }
         if ($user && !$user->isAdmin() && $listing->seller_user_id !== $user->id) {
             return $this->sendError('Unauthorized: Access denied.', [], 403);
         }
@@ -330,6 +346,9 @@ class SellerListingController extends BaseApiController
         }
 
         $user = $request->user();
+        if ($user && $user->isFieldAgent() && !$user->isAdmin() && !$user->isSeller()) {
+            return $this->sendError('Forbidden: Field sales agents cannot access confidential seller prices.', [], 403);
+        }
         if ($user && !$user->isAdmin() && $listing->seller_user_id !== $user->id) {
             return $this->sendError('Unauthorized: Access denied.', [], 403);
         }

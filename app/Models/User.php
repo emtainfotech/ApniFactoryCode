@@ -56,6 +56,19 @@ class User extends Authenticatable implements FilamentUser
         return $this->hasOne(SellerStaff::class);
     }
 
+    /**
+     * Field sales agent profile if this user is an onboarded field agent.
+     */
+    public function fieldAgent()
+    {
+        return $this->hasOne(FieldAgent::class, 'user_id');
+    }
+
+    public function isFieldAgent(): bool
+    {
+        return $this->fieldAgent()->exists();
+    }
+
     public function isAdmin(): bool
     {
         return $this->id === 1 || str_contains(strtolower($this->email ?? ''), 'admin');
@@ -63,6 +76,10 @@ class User extends Authenticatable implements FilamentUser
 
     public function isSeller(): bool
     {
+        if ($this->isFieldAgent() && !$this->company()->exists() && !$this->sellerStaff()->exists() && !str_contains(strtolower($this->email ?? ''), 'seller')) {
+            return false;
+        }
+
         return $this->company()->exists() 
             || $this->sellerStaff()->exists()
             || str_contains(strtolower($this->email ?? ''), 'seller') 
@@ -110,6 +127,10 @@ class User extends Authenticatable implements FilamentUser
 
     public function canAccessFilament(): bool
     {
+        if ($this->isFieldAgent() && !$this->isAdmin()) {
+            return false;
+        }
+
         return true;
     }
 }

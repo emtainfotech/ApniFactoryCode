@@ -254,6 +254,21 @@ Route::prefix('v2')->group(function () {
         Route::post('commissions/preview-resolution',            [\App\Http\Controllers\Api\AdminCommissionRuleApiController::class, 'previewResolution']);
         Route::get('commissions/orders/{orderId}/breakdown',     [\App\Http\Controllers\Api\AdminCommissionRuleApiController::class, 'orderBreakdown'])->whereNumber('orderId');
         Route::get('commissions/audit-logs',                     [\App\Http\Controllers\Api\AdminCommissionRuleApiController::class, 'auditLogs']);
+
+        // Phase 6.1: Field Sales Agent Master & Buyer Attribution APIs
+        Route::get('agents',                                     [\App\Http\Controllers\Api\AdminFieldAgentApiController::class, 'index']);
+        Route::post('agents',                                    [\App\Http\Controllers\Api\AdminFieldAgentApiController::class, 'store']);
+        Route::get('agents/{id}',                                [\App\Http\Controllers\Api\AdminFieldAgentApiController::class, 'show'])->whereNumber('id');
+        Route::put('agents/{id}',                                [\App\Http\Controllers\Api\AdminFieldAgentApiController::class, 'update'])->whereNumber('id');
+        Route::patch('agents/{id}/status',                       [\App\Http\Controllers\Api\AdminFieldAgentApiController::class, 'updateStatus'])->whereNumber('id');
+
+        Route::get('attributions',                               [\App\Http\Controllers\Api\AdminBuyerAttributionApiController::class, 'index']);
+        Route::post('attributions',                              [\App\Http\Controllers\Api\AdminBuyerAttributionApiController::class, 'store']);
+        Route::get('attributions/{id}',                          [\App\Http\Controllers\Api\AdminBuyerAttributionApiController::class, 'show'])->whereNumber('id');
+        Route::post('attributions/{id}/approve',                 [\App\Http\Controllers\Api\AdminBuyerAttributionApiController::class, 'approve'])->whereNumber('id');
+        Route::post('attributions/{id}/reject',                  [\App\Http\Controllers\Api\AdminBuyerAttributionApiController::class, 'reject'])->whereNumber('id');
+        Route::post('attributions/reassign',                     [\App\Http\Controllers\Api\AdminBuyerAttributionApiController::class, 'reassign']);
+        Route::get('customers/{customerId}/attribution-history', [\App\Http\Controllers\Api\AdminBuyerAttributionApiController::class, 'customerHistory'])->whereNumber('customerId');
     });
 });
 
@@ -369,6 +384,13 @@ Route::prefix('v2/admin')->middleware('auth:sanctum')->group(function () {
     Route::get('claims',                                      [\App\Http\Controllers\Api\AdminClaimApiController::class, 'index']);
     Route::get('claims/{id}',                                 [\App\Http\Controllers\Api\AdminClaimApiController::class, 'show'])->whereNumber('id');
     Route::post('claims/{id}/status',                         [\App\Http\Controllers\Api\AdminClaimApiController::class, 'updateStatus'])->whereNumber('id');
+});
+
+// Phase 6.1: Field Sales Agent Portal APIs (v2)
+Route::prefix('v2/agent')->middleware(['auth:sanctum', 'field.agent'])->group(function () {
+    Route::get('profile',                                     [\App\Http\Controllers\Api\AgentPortalApiController::class, 'profile']);
+    Route::get('buyers',                                      [\App\Http\Controllers\Api\AgentPortalApiController::class, 'buyers']);
+    Route::get('buyers/{customerId}',                         [\App\Http\Controllers\Api\AgentPortalApiController::class, 'showBuyer'])->whereNumber('customerId');
 });
 
 // Phase 4.3: Payment Gateway Integration, Verified Callbacks & Reconciliation APIs (v2)

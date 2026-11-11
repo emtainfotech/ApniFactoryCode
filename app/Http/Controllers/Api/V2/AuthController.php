@@ -44,6 +44,8 @@ class AuthController extends BaseApiController
                 'email' => $user->email,
                 'is_admin' => $user->isAdmin(),
                 'is_seller' => $user->isSeller(),
+                'is_field_agent' => $user->isFieldAgent(),
+                'field_agent_id' => $user->fieldAgent->id ?? null,
                 'company_id' => $user->company->id ?? null,
                 'company_name' => $user->company->name ?? null,
             ],
@@ -66,6 +68,8 @@ class AuthController extends BaseApiController
             'email' => $user->email,
             'is_admin' => $user->isAdmin(),
             'is_seller' => $user->isSeller(),
+            'is_field_agent' => $user->isFieldAgent(),
+            'field_agent_id' => $user->fieldAgent->id ?? null,
             'company_id' => $user->company->id ?? null,
             'company_name' => $user->company->name ?? null,
         ], 'User profile retrieved.');

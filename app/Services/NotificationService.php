@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -350,5 +351,88 @@ class NotificationService
             return (bool) User::where('id', $id)->update(['fcm_token' => $token]);
         }
         return false;
+    }
+
+    /**
+     * Phase 6.1: Send In-App + Email notification ONLY for Field Agent / Admin attribution events.
+     * Strictly honors Stage 8: No SMS, WhatsApp, or paid providers, with deduplication & delivery logs.
+     */
+    public function sendAgentAttributionInAppAndEmail(
+        int $recipientUserId,
+        string $recipientType,
+        string $title,
+        string $message,
+        array $details = [],
+        ?string $actionUrl = null,
+        ?string $dedupKey = null
+    ): array {
+        if ($dedupKey && !Cache::add("agent_attr_notif_{$dedupKey}", true, now()->addMinutes(10))) {
+            Log::info("[AgentAttributionNotification] Deduplicated notification skipped", [
+                'dedup_key' => $dedupKey,
+                'user_id'   => $recipientUserId,
+            ]);
+            return ['deduplicated' => true, 'in_app' => false, 'email' => false];
+        }
+
+        $channels = config('marketplace_agents.notification_channels', ['in_app' => true, 'email' => true]);
+        $results = [
+            'deduplicated' => false,
+            'in_app'       => false,
+            'email'        => false,
+        ];
+
+        $user = User::find($recipientUserId);
+        if (!$user) {
+            Log::warning("[AgentAttributionNotification] Recipient user not found", ['user_id' => $recipientUserId]);
+            return $results;
+        }
+
+        // 1. In-App Database Notification
+        if (!empty($channels['in_app'])) {
+            try {
+                DB::table('notifications')->insert([
+                    'title'       => $title,
+                    'msg'         => $message,
+                    'type'        => $recipientType,
+                    'customer_id' => null,
+                    'user_id'     => $user->id,
+                    'msgread'     => 0,
+                    'created_at'  => now(),
+                    'updated_at'  => now(),
+                ]);
+                $results['in_app'] = true;
+            } catch (\Throwable $e) {
+                Log::error("[AgentAttributionNotification] DB insert failed: " . $e->getMessage());
+            }
+        }
+
+        // 2. Email Channel (Never SMS/WhatsApp)
+        if (!empty($channels['email']) && !empty($user->email)) {
+            try {
+                Mail::to($user->email, $user->name ?: 'ApniFactory User')->send(
+                    new \App\Mail\AgentAttributionMail(
+                        $user->name ?? 'Partner',
+                        $title,
+                        $message,
+                        $details,
+                        $actionUrl,
+                        $recipientType === 'agent' ? 'Open Agent Dashboard' : 'Review Attribution'
+                    )
+                );
+                $results['email'] = true;
+            } catch (\Throwable $e) {
+                Log::error("[AgentAttributionNotification] Email delivery failed: " . $e->getMessage());
+            }
+        }
+
+        Log::info("[AgentAttributionNotification] Delivery processed", [
+            'recipient_user_id' => $user->id,
+            'recipient_type'    => $recipientType,
+            'title'             => $title,
+            'results'           => $results,
+            'dedup_key'         => $dedupKey,
+        ]);
+
+        return $results;
     }
 }

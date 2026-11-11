@@ -11,7 +11,7 @@
     
     <!-- Navigation Tree Links Hierarchy -->
     <ul class="metismenu" id="menu">
-        
+        @if(!auth()->check() || auth()->user()->isSeller() || auth()->user()->isAdmin())
         <!-- Core Dashboard Anchor -->
         <li>
             <a href="{{url('seller/dashboard')}}">
@@ -156,6 +156,16 @@
             </a>
         </li>
         @endif
+        @endif
+
+        @if(auth()->check() && auth()->user()->isFieldAgent())
+        <li>
+            <a href="{{ route('agent.dashboard') }}">
+                <div class="parent-icon"><i class="fa-solid fa-id-badge text-primary"></i></div>
+                <div class="menu-title">Agent Dashboard</div>
+            </a>
+        </li>
+        @endif
 
         @if(auth()->check() && auth()->user()->isAdmin())
         <li>
@@ -174,6 +184,18 @@
             <a href="{{ route('admin.commissions.rules.index') }}">
                 <div class="parent-icon"><i class="fa-solid fa-hand-holding-dollar text-info"></i></div>
                 <div class="menu-title">Commission Rules</div>
+            </a>
+        </li>
+        <li>
+            <a href="{{ route('admin.agents.index') }}">
+                <div class="parent-icon"><i class="fa-solid fa-user-tie text-success"></i></div>
+                <div class="menu-title">Field Sales Agents</div>
+            </a>
+        </li>
+        <li>
+            <a href="{{ route('admin.attributions.index') }}">
+                <div class="parent-icon"><i class="fa-solid fa-link text-primary"></i></div>
+                <div class="menu-title">Buyer Attributions</div>
             </a>
         </li>
         @endif

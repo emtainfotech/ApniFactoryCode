@@ -77,5 +77,15 @@ class LoginController extends Controller
 
         return false;
     }
+
+    /**
+     * Route authenticated field sales agents to their dedicated dashboard.
+     */
+    protected function authenticated(Request $request, $user)
+    {
+        if ($user && method_exists($user, 'isFieldAgent') && $user->isFieldAgent() && !$user->isAdmin() && !$user->company()->exists()) {
+            return redirect()->route('agent.dashboard');
+        }
+    }
 }
 

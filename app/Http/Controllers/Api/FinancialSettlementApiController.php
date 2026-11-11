@@ -16,12 +16,28 @@ class FinancialSettlementApiController extends Controller
     ) {
     }
 
+    protected function denyFieldAgent(Request $request): ?JsonResponse
+    {
+        $user = $request->user();
+        if ($user && $user->isFieldAgent() && !$user->isAdmin()) {
+            return response()->json([
+                'status'  => false,
+                'message' => 'Forbidden: Field sales agents cannot access confidential financial or settlement data.',
+            ], 403);
+        }
+        return null;
+    }
+
     /**
      * GET /api/v2/finance/ledger
      * Finance/admin view of all ledger entries with summary metrics.
      */
     public function financeLedger(Request $request): JsonResponse
     {
+        if ($denied = $this->denyFieldAgent($request)) {
+            return $denied;
+        }
+
         $query = FinancialLedger::query()->with(['seller', 'company', 'order']);
 
         if ($request->filled('seller_user_id')) {
@@ -62,6 +78,10 @@ class FinancialSettlementApiController extends Controller
      */
     public function financeSettlements(Request $request): JsonResponse
     {
+        if ($denied = $this->denyFieldAgent($request)) {
+            return $denied;
+        }
+
         $query = $this->ledgerService->getSettlementsQuery($request->all());
 
         $totalPayable = (clone $query)->sum('net_seller_payable');
@@ -90,6 +110,10 @@ class FinancialSettlementApiController extends Controller
      */
     public function updateStatus(Request $request, int $id): JsonResponse
     {
+        if ($denied = $this->denyFieldAgent($request)) {
+            return $denied;
+        }
+
         $validated = $request->validate([
             'status'           => 'required|string|in:pending,on_hold,eligible,processing,completed,cancelled',
             'payout_reference' => 'nullable|string|max:100',
@@ -121,6 +145,10 @@ class FinancialSettlementApiController extends Controller
      */
     public function sellerLedger(Request $request): JsonResponse
     {
+        if ($denied = $this->denyFieldAgent($request)) {
+            return $denied;
+        }
+
         $user = $request->user();
         $sellerId = $user ? (int)$user->id : (int)$request->input('seller_id', 1);
 
@@ -150,6 +178,10 @@ class FinancialSettlementApiController extends Controller
      */
     public function sellerSettlements(Request $request): JsonResponse
     {
+        if ($denied = $this->denyFieldAgent($request)) {
+            return $denied;
+        }
+
         $user = $request->user();
         $sellerId = $user ? (int)$user->id : (int)$request->input('seller_id', 1);
 
