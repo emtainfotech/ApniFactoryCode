@@ -19,22 +19,56 @@ class CartController extends Controller
     public function relatedproductlistincart(Request $request){
         $userid = $request->userid;
         $related = array();
-         $cartdetail = DB::table("cart")->select("category_id")->where("customer_id",$userid)->groupby("category_id")->pluck('category_id');
-           $relatedpr = Product::whereIN("category_id",$cartdetail)->orderby("id","desc")->limit(5)->get();
-              foreach($relatedpr as $rel){
-                  $rlt['id'] = $rel->id;
-                  $rlt['name'] = $rel->name;
-                  $rlt['image'] = $rel->image;
-                  $price = ProductAttributes::where("product_id",$rel->id)->orderby('price','asc')->first();
-                  if(!$price) continue;
-                  $rlt['color']= Helper::getcolorsnamebyid($price->color);
-                  $rlt['colorid']= $price->color;
-                  $quantity=BoxPacking::where("id",$price->quantity)->first();
-                  $qtyName = $quantity ? $quantity->name : '1 Unit';
-                  $rlt['price'] = 'Rs. '.$price->price.'('.$qtyName.')';
-                  array_push($related,$rlt);
-              }
-          return response()->json(["status"=>true,"code"=>100,"msg"=>"Successfully Show","data"=>$related]);
+        $cartRows = DB::table("cart")
+            ->where("customer_id", $userid)
+            ->get(['product_id', 'category_id']);
+
+        if ($cartRows->isEmpty()) {
+            return response()->json(["status"=>true,"code"=>100,"msg"=>"Successfully Show","data"=>[]]);
+        }
+
+        $cartProductIds = $cartRows->pluck('product_id')->filter()->unique()->values()->toArray();
+        $cartCatIds = $cartRows->pluck('category_id')->filter()->unique()->values()->toArray();
+        $companyUserId = (int)(Product::whereIn('id', $cartProductIds)->value('user_id') ?: 0);
+
+        if ($companyUserId <= 0) {
+            return response()->json(["status"=>true,"code"=>100,"msg"=>"Successfully Show","data"=>[]]);
+        }
+
+        $comp = Company::where('user_id', $companyUserId)->first(['id', 'name']);
+
+        // Strictly scope upsell/related products ONLY to the company currently in cart
+        $relatedpr = Product::whereIn("status", ["Active", "active", "1"])
+            ->where("user_id", $companyUserId)
+            ->whereNotIn("id", $cartProductIds)
+            ->orderByDesc("id")
+            ->limit(8)
+            ->get();
+
+        // Put same-category items from the SAME company first
+        if (!empty($cartCatIds) && $relatedpr->isNotEmpty()) {
+            $relatedpr = $relatedpr->sortByDesc(function ($p) use ($cartCatIds) {
+                return in_array($p->category_id, $cartCatIds) ? 1 : 0;
+            })->values();
+        }
+
+        foreach($relatedpr as $rel){
+            $price = ProductAttributes::where("product_id",$rel->id)->orderby('price','asc')->first();
+            if(!$price) continue;
+            $rlt = [];
+            $rlt['id'] = $rel->id;
+            $rlt['name'] = $rel->name;
+            $rlt['image'] = $rel->image;
+            $rlt['company_id'] = $comp ? (int)$comp->id : 0;
+            $rlt['company_name'] = $comp ? (string)$comp->name : '';
+            $rlt['color']= Helper::getcolorsnamebyid($price->color);
+            $rlt['colorid']= $price->color;
+            $quantity=BoxPacking::where("id",$price->quantity)->first();
+            $qtyName = $quantity ? $quantity->name : '1 Unit';
+            $rlt['price'] = 'Rs. '.$price->price.'('.$qtyName.')';
+            array_push($related,$rlt);
+        }
+        return response()->json(["status"=>true,"code"=>100,"msg"=>"Successfully Show","data"=>$related]);
     }
     public function updatecartaddress(Request $request){ 
          $addressid =  $request->get('addressid');
@@ -327,6 +361,10 @@ class CartController extends Controller
         //  $queries = DB::getQueryLog(); dd($queries);
           
           $groupedCart = app(\App\Services\BuyerCartValidationService::class)->getGroupedCart($userid);
+          $firstSellerGroup = !empty($groupedCart['seller_groups']) ? $groupedCart['seller_groups'][0] : null;
+          $activeCompany = ($firstSellerGroup && !empty($firstSellerGroup['company_id']))
+              ? Company::where('id', (int)$firstSellerGroup['company_id'])->first(['id', 'name', 'photo', 'city', 'state'])
+              : null;
 
           return response()->json([
               "status"                   => true,
@@ -340,6 +378,10 @@ class CartController extends Controller
               "igst"                     => $igst,
               "couponbyadmin"            => floatval($couponbyadmin),
               "combinecoupon"            => $combinecoupon,
+              "company_id"               => $activeCompany ? (int)$activeCompany->id : ($firstSellerGroup ? (int)($firstSellerGroup['company_id'] ?? 0) : 0),
+              "company_name"             => $activeCompany ? (string)$activeCompany->name : ($firstSellerGroup ? (string)($firstSellerGroup['company_name'] ?? '') : ''),
+              "company_photo"            => $activeCompany ? (string)($activeCompany->photo ?? '') : '',
+              "company_city"             => $activeCompany ? (string)($activeCompany->city ?? '') : '',
               "seller_groups"            => $groupedCart['seller_groups'] ?? [],
               "all_sellers_can_checkout" => $groupedCart['all_sellers_can_checkout'] ?? true,
               "data"                     => $rt,

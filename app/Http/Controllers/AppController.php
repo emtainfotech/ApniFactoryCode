@@ -49,24 +49,29 @@ class AppController extends Controller
                          unset($company->user_id);
                          return $company;
                         });
-         $product  = Product::select(['id', 'name', 'image'])->whereIn("status", ["Active", "active", "1"])->where(function($q) use ($search) { $q->where("name","like","%{$search}%")->orWhere("description","like","%{$search}%"); })->get();
-         $prodIds = $product->pluck('id')->toArray();
-         $firstAttrs = ProductAttributes::whereIn('product_id', $prodIds)->groupBy('product_id')->selectRaw('product_id, MIN(id) as attr_id')->pluck('attr_id', 'product_id');
-         $product = $product->map(function ($p) use ($firstAttrs) {
-                         $p->{'screen'} = 'product';
-                         $p->{'relatedid'} = $firstAttrs->get($p->id, 0);
-                         return $p;
-                        });
+         $product  = Product::select(['id', 'name', 'image', 'user_id'])->whereIn("status", ["Active", "active", "1"])->where(function($q) use ($search) { $q->where("name","like","%{$search}%")->orWhere("description","like","%{$search}%"); })->get();
          $shadecard = ShadeCard::where("name","like","%{$search}%")->pluck('id');
          $productattribute = ProductAttributes::select('product_id')->whereIn("color",$shadecard)->groupby('product_id')->pluck('product_id');
-         $productbyshade  = Product::select(['id', 'name', 'image'])->whereIn("status", ["Active", "active", "1"])->whereIn("id",$productattribute)->get();
-         $shadeProdIds = $productbyshade->pluck('id')->toArray();
-         $firstShadeAttrs = ProductAttributes::whereIn('product_id', $shadeProdIds)->groupBy('product_id')->selectRaw('product_id, MIN(id) as attr_id')->pluck('attr_id', 'product_id');
-         $productbyshade = $productbyshade->map(function ($p) use ($firstShadeAttrs) {
-                          $p->{'screen'} = 'product';
-                          $p->{'relatedid'} = $firstShadeAttrs->get($p->id, 0);
-                          return $p;
-                         });
+         $productbyshade  = Product::select(['id', 'name', 'image', 'user_id'])->whereIn("status", ["Active", "active", "1"])->whereIn("id",$productattribute)->get();
+
+         $allSearchProdIds = $product->pluck('id')->merge($productbyshade->pluck('id'))->unique()->values()->toArray();
+         $firstAttrs = empty($allSearchProdIds)
+             ? collect()
+             : ProductAttributes::whereIn('product_id', $allSearchProdIds)->groupBy('product_id')->selectRaw('product_id, MIN(id) as attr_id')->pluck('attr_id', 'product_id');
+         $allSearchUserIds = $product->pluck('user_id')->merge($productbyshade->pluck('user_id'))->filter()->unique()->values()->toArray();
+         $searchCompaniesByUser = $this->resolveCompaniesByUserId($allSearchUserIds);
+
+         $mapSearchProduct = function ($p) use ($firstAttrs, $searchCompaniesByUser) {
+             $comp = isset($searchCompaniesByUser[(int)$p->user_id]) ? $searchCompaniesByUser[(int)$p->user_id] : null;
+             $p->{'screen'} = 'product';
+             $p->{'relatedid'} = $firstAttrs->get($p->id, 0);
+             $p->{'company_id'} = $comp ? (int)$comp->id : 0;
+             $p->{'company_name'} = $comp ? (string)$comp->name : '';
+             unset($p->user_id);
+             return $p;
+         };
+         $product = $product->map($mapSearchProduct);
+         $productbyshade = $productbyshade->map($mapSearchProduct);
          $mergedCollection = collect();
          // Merge the results, some of which might be empty
          $mergedCollection = $mergedCollection
@@ -182,8 +187,8 @@ class AppController extends Controller
         $companiesRaw = Company::whereIn("status", ["Active", "active", "1"])
             ->whereNotNull('name')
             ->where('name', '!=', '')
-            ->limit(10)
-            ->get(['id', 'name', 'photo', 'city', 'state']);
+            ->limit(15)
+            ->get(['id', 'name', 'photo', 'city', 'state', 'minordervalue']);
         $companies = [];
         foreach ($companiesRaw as $comp) {
             $companies[] = [
@@ -192,6 +197,7 @@ class AppController extends Controller
                 'photo' => $comp->photo ?: '',
                 'city' => $comp->city ?: 'India',
                 'state' => $comp->state ?: '',
+                'minordervalue' => $comp->minordervalue ? (float)$comp->minordervalue : 0.0,
             ];
         }
 
@@ -243,9 +249,30 @@ class AppController extends Controller
         return response()->json(["status"=>true,"code"=>100,"msg"=>"Successfully Show","data"=>$rmn]);
      }
 
+     private function resolveCompaniesByUserId(array $userIds): array {
+        $cleanIds = array_values(array_unique(array_filter(array_map('intval', $userIds))));
+        if (empty($cleanIds)) {
+            return [];
+        }
+        $companies = Company::whereIn('user_id', $cleanIds)
+            ->orderByDesc('id')
+            ->get(['id', 'user_id', 'name', 'photo', 'city', 'state', 'minordervalue']);
+        $map = [];
+        foreach ($companies as $comp) {
+            $uid = (int)$comp->user_id;
+            if (!isset($map[$uid])) {
+                $map[$uid] = $comp;
+            }
+        }
+        return $map;
+     }
+
      private function formatProductCollection($collection) {
         if ($collection->isEmpty()) return [];
         $prodIds = $collection->pluck('id')->toArray();
+        $userIds = $collection->pluck('user_id')->filter()->unique()->toArray();
+        $companiesByUserId = $this->resolveCompaniesByUserId($userIds);
+
         $rawAttrs = DB::table('product_attributes')
             ->leftJoin('box_packings', function($join) {
                 $join->on('box_packings.id', '=', DB::raw('CAST(product_attributes.quantity AS UNSIGNED)'));
@@ -285,6 +312,7 @@ class AppController extends Controller
             $oldPrice = ($attr && $attr->numeric_oldprice > 0) ? (float)$attr->numeric_oldprice : ($price > 0 ? round($price * 1.25, 2) : 0.0);
             $colorId = $attr && $attr->color ? (string)$attr->color : '0';
             $packSize = $attr && $attr->pack_size ? (string)$attr->pack_size : '';
+            $comp = isset($companiesByUserId[(int)$p->user_id]) ? $companiesByUserId[(int)$p->user_id] : null;
 
             $out[] = [
                 'id' => $p->id,
@@ -294,6 +322,10 @@ class AppController extends Controller
                 'category_name' => Helper::getcatname($p->category_id),
                 'brand_id' => $p->brand_id ?: 0,
                 'brand_name' => Helper::getbrandname($p->brand_id),
+                'company_id' => $comp ? (int)$comp->id : 0,
+                'company_name' => $comp ? (string)$comp->name : '',
+                'company_city' => $comp ? ($comp->city ?: 'India') : 'India',
+                'company_photo' => $comp ? ($comp->photo ?: '') : '',
                 'price' => $price,
                 'oldprice' => $oldPrice,
                 'color_id' => $colorId,
@@ -374,33 +406,69 @@ class AppController extends Controller
      public function brandlist_bycompanyid(Request $request){
         $cmpid = (int)$request->get('cmpid', 0);
         $cid = (int)$request->get('cid', 0);
+        $comp = Company::where("id", $cmpid)->first();
+        $companyUserId = $comp ? (int)$comp->user_id : 0;
+
         $baseQuery = Brand::whereIn("status", ["Active", "active", "1"])->where("company_id", $cmpid);
+        $allBrandsRaw = (clone $baseQuery)->get();
+
         if ($cid > 0) {
             $rmnBrand = (clone $baseQuery)->where("category_id", $cid)->get();
-            if ($rmnBrand->isEmpty()) {
-                $companyUserId = Company::where("id", $cmpid)->value('user_id');
-                if ($companyUserId) {
-                    $brandIdsInCat = Product::whereIn("status", ["Active", "active", "1"])
-                        ->where("user_id", $companyUserId)
-                        ->where("category_id", $cid)
-                        ->distinct()
-                        ->pluck('brand_id');
-                    if ($brandIdsInCat->isNotEmpty()) {
-                        $rmnBrand = (clone $baseQuery)->whereIn("id", $brandIdsInCat)->get();
-                    }
+            if ($rmnBrand->isEmpty() && $companyUserId > 0) {
+                $brandIdsInCat = Product::whereIn("status", ["Active", "active", "1"])
+                    ->where("user_id", $companyUserId)
+                    ->where("category_id", $cid)
+                    ->distinct()
+                    ->pluck('brand_id');
+                if ($brandIdsInCat->isNotEmpty()) {
+                    $rmnBrand = (clone $baseQuery)->whereIn("id", $brandIdsInCat)->get();
                 }
             }
             if ($rmnBrand->isEmpty()) {
-                $rmnBrand = $baseQuery->get();
+                $rmnBrand = $allBrandsRaw;
             }
         } else {
-            $rmnBrand = $baseQuery->get();
+            $rmnBrand = $allBrandsRaw;
         }
+
+        // Hydrate full single-company storefront: all company brands, categories, and products
+        $companyProductsRaw = $companyUserId > 0
+            ? Product::whereIn("status", ["Active", "active", "1"])
+                ->where("user_id", $companyUserId)
+                ->orderByDesc('id')
+                ->get()
+            : collect();
+        $companyProducts = $this->formatProductCollection($companyProductsRaw);
+
+        $companyCatIds = $companyProductsRaw->pluck('category_id')
+            ->merge($allBrandsRaw->pluck('category_id'))
+            ->filter()
+            ->unique()
+            ->values()
+            ->toArray();
+        $companyCategories = empty($companyCatIds)
+            ? []
+            : Category::whereIn('id', $companyCatIds)
+                ->whereIn("status", ["Active", "active", "1"])
+                ->orderBy('name')
+                ->get(['id', 'name', 'image', 'maincategory_id'])
+                ->toArray();
+
         $rmn['Brand'] = collect($rmnBrand)->unique('name')->values()->toArray();
-        $comp = Company::where("id", $cmpid)->first();
-        $rmn['bannerimage'] = empty($comp) ? '' : $comp->photo;
+        $rmn['all_brands'] = collect($allBrandsRaw)->unique('name')->values()->toArray();
+        $rmn['categories'] = $companyCategories;
+        $rmn['products'] = $companyProducts;
+        $rmn['bannerimage'] = empty($comp) ? '' : ($comp->photo ?: '');
         $rmn['companyname'] = Helper::getcompanyname($cmpid);
         $rmn['cmpid'] = $cmpid;
+        $rmn['company'] = empty($comp) ? null : [
+            'id' => (int)$comp->id,
+            'name' => (string)$comp->name,
+            'photo' => (string)($comp->photo ?: ''),
+            'city' => (string)($comp->city ?: 'India'),
+            'state' => (string)($comp->state ?: ''),
+            'minordervalue' => $comp->minordervalue ? (float)$comp->minordervalue : 0.0,
+        ];
         return json_encode(["status"=>true,"code"=>100,"msg"=>"Successfully Show","data"=>$rmn]);
      }
      public function companylist_bycategoryid(Request $request){
