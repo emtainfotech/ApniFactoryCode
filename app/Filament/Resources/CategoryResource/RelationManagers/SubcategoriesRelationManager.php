@@ -31,7 +31,7 @@ class SubcategoriesRelationManager extends RelationManager
                 Forms\Components\Select::make('status')
                     ->options([
                         'Active' => 'Active',
-                        'Inactive' => 'Inactive',
+                        'Deactive' => 'Deactive',
                     ])
                     ->default('Active'),
             ]);

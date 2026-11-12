@@ -195,15 +195,43 @@ class AppController extends Controller
             ];
         }
 
-        // 6. Fetch Subcategories (child categories) for sliders
+        // 6. Fetch Categories and active 4th-tier Subcategories for sliders
         $allCategories = Category::whereIn("status", ["Active", "active", "1"])
             ->orderBy("name")
-            ->get(['id', 'name', 'image', 'maincategory_id']);
+            ->get(['id', 'name', 'image', 'maincategory_id'])
+            ->map(function ($cat) {
+                return [
+                    'id' => $cat->id,
+                    'scid' => 0,
+                    'name' => $cat->name,
+                    'image' => $cat->image,
+                    'maincategory_id' => $cat->maincategory_id,
+                ];
+            })
+            ->values();
+
+        $catMainMap = $allCategories->pluck('maincategory_id', 'id');
+        $activeSubCats = SubCatgory::whereIn("status", ["Active", "active", "1"])
+            ->orderBy("name")
+            ->get()
+            ->map(function ($sc) use ($catMainMap) {
+                $parentCatId = (int)($sc->category_id ?: $sc->cid ?: 0);
+                $mainId = (int)($sc->maincategory_id ?: $sc->mid ?: ($catMainMap->get($parentCatId) ?? 0));
+                return [
+                    'id' => $parentCatId,
+                    'scid' => $sc->id,
+                    'name' => $sc->name,
+                    'image' => $sc->image ?: 'default.png',
+                    'maincategory_id' => $mainId,
+                ];
+            });
+
+        $mergedCategories = $allCategories->concat($activeSubCats)->values();
 
         $rmn = [
             "slider" => $slider,
             "maincategory" => $maincategory,
-            "subcategories" => $allCategories,
+            "subcategories" => $mergedCategories,
             "advertisement" => $advertisement,
             "notification" => $cntnotification,
             "random_products" => $randomProducts,
@@ -362,78 +390,106 @@ class AppController extends Controller
           $rmn['categoryname']= Helper::getcatname($request->get('cid'));
           return json_encode(["status"=>true,"code"=>100,"msg"=>"Successfully Show","data"=>$rmn]);
      }
-     public function productcategorylist_bybrandid(Request $request){
-          $bid = $request->get('bid');
-          $cid = $request->get('cid');
-          $query = Product::whereIn("status", ["Active", "active", "1"]);
-          if (!empty($bid) && $bid > 0) {
-              $query->where("brand_id", $bid);
+     private function hydrateCategoryProducts($productlist, string $catName = ''): array
+     {
+          if ($productlist->isEmpty()) {
+              return [];
           }
-          if (!empty($cid) && $cid > 0) {
-              $query->where("category_id", $cid);
-          }
-          $productlist = $query->get();
-          $rmn['product'] = [];
-          $sbct = [];
-          $userid = '';
+          $pids = $productlist->pluck('id')->toArray();
+          $attributes = DB::table('product_attributes')
+              ->select('product_id', 'color', DB::raw('MIN(CAST(price AS DECIMAL(12,2))) as min_price'))
+              ->whereIn('product_id', $pids)
+              ->whereRaw('CAST(price AS DECIMAL(12,2)) > 0')
+              ->groupBy('product_id', 'color')
+              ->get();
 
-          if($productlist->isNotEmpty()){
-              $pids = $productlist->pluck('id')->toArray();
-              $attributes = DB::table('product_attributes')
-                  ->select('product_id', 'color', DB::raw('MIN(CAST(price AS DECIMAL(12,2))) as min_price'))
-                  ->whereIn('product_id', $pids)
-                  ->whereRaw('CAST(price AS DECIMAL(12,2)) > 0')
-                  ->groupBy('product_id', 'color')
+          $colorIds = $attributes->pluck('color')->unique()->filter()->values()->toArray();
+          $shadeCards = ShadeCard::whereIn('id', $colorIds)->get()->keyBy('id');
+          $attrsByProduct = $attributes->groupBy('product_id');
+
+          $items = [];
+          foreach ($productlist as $prod) {
+              $prodAttrs = $attrsByProduct->get($prod->id, collect());
+              $resolvedCatName = $catName ?: Helper::getcatname($prod->category_id);
+              if ($prodAttrs->isEmpty()) {
+                  $items[] = [
+                      'name' => $prod->name,
+                      'image' => $prod->image,
+                      'price' => (float)($prod->price ?: 0),
+                      'cid' => $prod->category_id,
+                      'categoryname' => $resolvedCatName,
+                      'pid' => $prod->id,
+                      'color' => '',
+                      'hexcode' => '',
+                      'hexcode_image' => '',
+                      'colorid' => '0',
+                  ];
+              } else {
+                  foreach ($prodAttrs as $pat) {
+                      $sc = $shadeCards->get($pat->color);
+                      $colorName = $sc ? $sc->name : '';
+                      $hexcode = $sc ? $sc->hexcode : '';
+                      $items[] = [
+                          'name' => $colorName ? $prod->name . ' (' . $colorName . ')' : $prod->name,
+                          'image' => $prod->image,
+                          'price' => (float)$pat->min_price,
+                          'cid' => $prod->category_id,
+                          'categoryname' => $resolvedCatName,
+                          'pid' => $prod->id,
+                          'color' => $colorName,
+                          'hexcode' => $hexcode,
+                          'hexcode_image' => ($hexcode == '' && $sc) ? ($sc->image ?? '') : '',
+                          'colorid' => $pat->color ?: '0',
+                      ];
+                  }
+              }
+          }
+          return $items;
+     }
+
+     private function buildCategorySidebar(int $cid, int $bid, $userid, int $scid = 0): array
+     {
+          $sbct = [];
+
+          // Include active 4th-tier sub_categories belonging to this Category first
+          if ($cid > 0) {
+              $parentCat = Category::find($cid);
+              $childSubCats = SubCatgory::where(function ($q) use ($cid) {
+                      $q->where('category_id', $cid)->orWhere('cid', $cid);
+                  })
+                  ->whereIn('status', ['Active', 'active', '1'])
+                  ->orderBy('name')
                   ->get();
 
-              $colorIds = $attributes->pluck('color')->unique()->filter()->values()->toArray();
-              $shadeCards = ShadeCard::whereIn('id', $colorIds)->get()->keyBy('id');
-              $attrsByProduct = $attributes->groupBy('product_id');
-              $catName = Helper::getcatname($cid);
-
-              foreach($productlist as $prod){
-                  $prodAttrs = $attrsByProduct->get($prod->id, collect());
-                  if ($prodAttrs->isEmpty()) {
-                      // Fallback if no attributes
-                      $rmn['product'][] = [
-                          'name' => $prod->name,
-                          'image' => $prod->image,
-                          'price' => 0.0,
-                          'cid' => $prod->category_id,
-                          'categoryname' => $catName ?: ($prod->category ? $prod->category->name : ''),
-                          'pid' => $prod->id,
-                          'color' => '',
-                          'hexcode' => '',
-                          'hexcode_image' => '',
-                          'colorid' => '0',
+              if ($childSubCats->isNotEmpty()) {
+                  if ($parentCat) {
+                      $sbct[] = [
+                          'highlight' => ($scid === 0),
+                          'name' => 'All ' . $parentCat->name,
+                          'image' => $parentCat->image,
+                          'cid' => $parentCat->id,
+                          'scid' => 0,
+                          'bid' => $bid ?: 0,
                       ];
-                  } else {
-                      foreach($prodAttrs as $pat){
-                          $sc = $shadeCards->get($pat->color);
-                          $colorName = $sc ? $sc->name : '';
-                          $hexcode = $sc ? $sc->hexcode : '';
-                          $cm = [
-                              'name' => $colorName ? $prod->name . ' (' . $colorName . ')' : $prod->name,
-                              'image' => $prod->image,
-                              'price' => (float)$pat->min_price,
-                              'cid' => $prod->category_id,
-                              'categoryname' => $catName,
-                              'pid' => $prod->id,
-                              'color' => $colorName,
-                              'hexcode' => $hexcode,
-                              'hexcode_image' => ($hexcode == '' && $sc) ? ($sc->image ?? '') : '',
-                              'colorid' => $pat->color ?: '0',
-                          ];
-                          $rmn['product'][] = $cm;
-                      }
                   }
-                  $userid = $prod->user_id;
+                  foreach ($childSubCats as $sc) {
+                      $sbct[] = [
+                          'highlight' => ($scid === (int)$sc->id),
+                          'name' => $sc->name,
+                          'image' => $sc->image ?: 'default.png',
+                          'cid' => $cid,
+                          'scid' => (int)$sc->id,
+                          'bid' => $bid ?: 0,
+                      ];
+                  }
               }
           }
 
-          if(!empty($userid) && !empty($bid)){
-              $b = Helper::getbrandname($bid);
-              $brandModels = Brand::where("user_id", $userid)->where("name", "like", '%' . $b . '%')->get(['id', 'category_id']);
+          if (!empty($userid) && $bid > 0) {
+              $brandName = Helper::getbrandname($bid);
+              $brandModels = Brand::where("user_id", $userid)
+                  ->where("name", "like", '%' . $brandName . '%')
+                  ->get(['id', 'category_id']);
               $brandIds = $brandModels->pluck('id')->toArray();
               $brandByCat = $brandModels->keyBy('category_id');
 
@@ -448,38 +504,79 @@ class AppController extends Controller
                   ->whereIn("id", $catIds)
                   ->get();
 
-              $cidnm = Helper::getcatname($cid);
-              foreach($categories as $category){
+              foreach ($categories as $category) {
                   $getbrand1 = $brandByCat->get($category->id);
                   $sbct[] = [
-                      'highlight' => ($category->name == $cidnm),
+                      'highlight' => ($scid === 0 && (int)$category->id === $cid),
                       'name' => $category->name,
                       'image' => $category->image,
-                      'cid' => $category->id,
-                      'bid' => $getbrand1 ? $getbrand1->id : 0,
+                      'cid' => (int)$category->id,
+                      'scid' => 0,
+                      'bid' => $getbrand1 ? (int)$getbrand1->id : 0,
                   ];
               }
           }
 
-          if (empty($sbct) && !empty($cid)) {
-              $currentCat = Category::find($cid);
-              if ($currentCat) {
-                  $relatedCats = Category::where('maincategory_id', $currentCat->maincategory_id)
-                      ->whereIn('status', ['Active', 'active', '1'])
-                      ->get();
-                  foreach ($relatedCats as $rc) {
-                      $sbct[] = [
-                          'highlight' => ($rc->id == $cid),
-                          'name' => $rc->name,
-                          'image' => $rc->image,
-                          'cid' => $rc->id,
-                          'bid' => $bid ?: 0,
-                      ];
+          // Fallback / sibling categories under the same maincategory_id so users can freely switch categories
+          if ($cid > 0) {
+              $alreadyHasCats = collect($sbct)->contains(fn ($item) => (int)$item['scid'] === 0 && (int)$item['cid'] !== $cid);
+              if (!$alreadyHasCats) {
+                  $currentCat = Category::find($cid);
+                  if ($currentCat) {
+                      $relatedCats = Category::where('maincategory_id', $currentCat->maincategory_id)
+                          ->whereIn('status', ['Active', 'active', '1'])
+                          ->orderBy('sequence', 'asc')
+                          ->get();
+                      $existingKeys = collect($sbct)->map(fn ($item) => $item['cid'] . ':' . $item['scid'])->flip();
+                      foreach ($relatedCats as $rc) {
+                          $key = $rc->id . ':0';
+                          if (!$existingKeys->has($key)) {
+                              $sbct[] = [
+                                  'highlight' => ($scid === 0 && (int)$rc->id === $cid),
+                                  'name' => $rc->name,
+                                  'image' => $rc->image,
+                                  'cid' => (int)$rc->id,
+                                  'scid' => 0,
+                                  'bid' => 0,
+                              ];
+                          }
+                      }
                   }
               }
           }
 
-          $rmn['subcategory'] = $sbct;
+          return $sbct;
+     }
+
+     public function productcategorylist_bybrandid(Request $request){
+          $bid = (int)$request->get('bid', 0);
+          $cid = (int)($request->get('cid') ?: $request->get('subcatid') ?: 0);
+          $scid = (int)$request->get('scid', 0);
+
+          $query = Product::whereIn("status", ["Active", "active", "1"]);
+          if ($bid > 0) {
+              $query->where("brand_id", $bid);
+          }
+          if ($scid > 0) {
+              $query->where(function ($q) use ($scid) {
+                  $q->where("subcategory_id", $scid)->orWhere("sid", $scid);
+              });
+          } elseif ($cid > 0) {
+              $query->where("category_id", $cid);
+          }
+          $productlist = $query->get();
+
+          $catName = $scid > 0
+              ? (SubCatgory::where('id', $scid)->value('name') ?: Helper::getcatname($cid))
+              : Helper::getcatname($cid);
+
+          $rmn['product'] = $this->hydrateCategoryProducts($productlist, $catName);
+          $userid = $productlist->isNotEmpty() ? $productlist->first()->user_id : '';
+          if (empty($userid) && $bid > 0) {
+              $userid = Product::whereIn("status", ["Active", "active", "1"])->where("brand_id", $bid)->value('user_id') ?: '';
+          }
+
+          $rmn['subcategory'] = $this->buildCategorySidebar($cid, $bid, $userid, $scid);
           $slider = Slider::where("screen","CategoryScreen")->orderby("id","desc")->first();
           $rmn['bannerimage'] = $slider ? $slider->image : '';
           $rmn['brandname'] = Helper::getbrandname($bid);
@@ -487,102 +584,34 @@ class AppController extends Controller
      }
      
      public function productlistby_bybrandidandsid(Request $request){
-          $bid = $request->get('bid');
-          $sid = $request->get('sid');
-          $productlist  = Product::whereIn("status", ["Active", "active", "1"])->where("category_id",$sid)->where("brand_id",$bid)->get();
-          $rmn['product'] = [];
-          $sbct = [];
-          $userid = '';
+          $bid = (int)$request->get('bid', 0);
+          $sid = (int)($request->get('sid') ?: $request->get('categoryid') ?: 0);
+          $scid = (int)$request->get('scid', 0);
 
-          if($productlist->isNotEmpty()){
-              $pids = $productlist->pluck('id')->toArray();
-              $attributes = DB::table('product_attributes')
-                  ->select('product_id', 'color', DB::raw('MIN(CAST(price AS DECIMAL(12,2))) as min_price'))
-                  ->whereIn('product_id', $pids)
-                  ->whereRaw('CAST(price AS DECIMAL(12,2)) > 0')
-                  ->groupBy('product_id', 'color')
-                  ->get();
+          $query = Product::whereIn("status", ["Active", "active", "1"]);
+          if ($scid > 0) {
+              $query->where(function ($q) use ($scid) {
+                  $q->where("subcategory_id", $scid)->orWhere("sid", $scid);
+              });
+          } elseif ($sid > 0) {
+              $query->where("category_id", $sid);
+          }
+          if ($bid > 0) {
+              $query->where("brand_id", $bid);
+          }
+          $productlist = $query->get();
 
-              $colorIds = $attributes->pluck('color')->unique()->filter()->values()->toArray();
-              $shadeCards = ShadeCard::whereIn('id', $colorIds)->get()->keyBy('id');
-              $attrsByProduct = $attributes->groupBy('product_id');
-              $catName = Helper::getcatname($sid);
+          $catName = $scid > 0
+              ? (SubCatgory::where('id', $scid)->value('name') ?: Helper::getcatname($sid))
+              : Helper::getcatname($sid);
 
-              foreach($productlist as $prod){
-                  $prodAttrs = $attrsByProduct->get($prod->id, collect());
-                  foreach($prodAttrs as $pat){
-                      $sc = $shadeCards->get($pat->color);
-                      $colorName = $sc ? $sc->name : '';
-                      $hexcode = $sc ? $sc->hexcode : '';
-                      $cm = [
-                          'name' => $prod->name . '(' . $colorName . ')',
-                          'image' => $prod->image,
-                          'price' => (float)$pat->min_price,
-                          'cid' => $prod->category_id,
-                          'categoryname' => $catName,
-                          'pid' => $prod->id,
-                          'color' => $colorName,
-                          'hexcode' => $hexcode,
-                          'hexcode_image' => ($hexcode == '' && $sc) ? ($sc->image ?? '') : '',
-                          'colorid' => $pat->color,
-                      ];
-                      $rmn['product'][] = $cm;
-                  }
-                  $userid = $prod->user_id;
-              }
+          $rmn['product'] = $this->hydrateCategoryProducts($productlist, $catName);
+          $userid = $productlist->isNotEmpty() ? $productlist->first()->user_id : '';
+          if (empty($userid) && $bid > 0) {
+              $userid = Product::whereIn("status", ["Active", "active", "1"])->where("brand_id", $bid)->value('user_id') ?: '';
           }
 
-          $catname = Helper::getcatname($sid);
-          $getuser = Product::whereIn("status", ["Active", "active", "1"])->where("brand_id",$bid)->first();
-          $brdnm = Helper::getbrandname($bid);
-          if(!empty($getuser)){
-              $userid = $getuser->user_id;
-              $brandModels = Brand::where("user_id", $userid)->where("name", "like", '%' . $brdnm . '%')->get(['id', 'category_id']);
-              $brandIds = $brandModels->pluck('id')->toArray();
-              $brandByCat = $brandModels->keyBy('category_id');
-
-              $catIds = Product::whereIn("status", ["Active", "active", "1"])
-                  ->where("user_id", $userid)
-                  ->whereIn("brand_id", $brandIds)
-                  ->distinct()
-                  ->pluck('category_id')
-                  ->toArray();
-
-              $categories = Category::whereIn("status", ["Active", "active", "1"])
-                  ->whereIn("id", $catIds)
-                  ->get();
-
-              foreach($categories as $category){
-                  $getbrand1 = $brandByCat->get($category->id);
-                  $sbct[] = [
-                      'highlight' => ($category->name == $catname),
-                      'name' => $category->name,
-                      'image' => $category->image,
-                      'cid' => $category->id,
-                      'bid' => $getbrand1 ? $getbrand1->id : 0,
-                  ];
-              }
-          }
-
-          if (empty($sbct) && !empty($sid)) {
-              $currentCat = Category::find($sid);
-              if ($currentCat) {
-                  $relatedCats = Category::where('maincategory_id', $currentCat->maincategory_id)
-                      ->whereIn('status', ['Active', 'active', '1'])
-                      ->get();
-                  foreach ($relatedCats as $rc) {
-                      $sbct[] = [
-                          'highlight' => ($rc->id == $sid),
-                          'name' => $rc->name,
-                          'image' => $rc->image,
-                          'cid' => $rc->id,
-                          'bid' => $bid ?: 0,
-                      ];
-                  }
-              }
-          }
-
-          $rmn['subcategory'] = $sbct;
+          $rmn['subcategory'] = $this->buildCategorySidebar($sid, $bid, $userid, $scid);
           $rmn['bannerimage'] = 'storage/app/public/slider/banner.jpg';
           $rmn['brandname'] = Helper::getbrandname($bid);
           return json_encode(["status"=>true,"code"=>100,"msg"=>"Successfully Show","data"=>$rmn]);

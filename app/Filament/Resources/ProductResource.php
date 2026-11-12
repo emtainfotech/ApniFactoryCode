@@ -73,17 +73,22 @@ class ProductResource extends Resource
                                                     }
                                                      return $cityst;
                                                 })
+                    ->reactive()
+                    ->afterStateUpdated(fn (callable $set) => $set('subcategory_id', null))
                     ->searchable(),
-              /*   Select::make('subcategory_id')
+                 Select::make('subcategory_id')
+                    ->label('Subcategory')
                     ->placeholder('Select a sub-category')
                     ->options(function (callable $get){
-                                                    $subcityst = SubCatgory::where('category_id', $get('cid'))->pluck('name','id');
-                                                    if(!$subcityst){
-                                                        return SubCatgory::all()->pluck('name','id');
-                                                    }
-                                                     return $subcityst;
-                                                })
-                    ->searchable(),  */
+                        $catId = $get('category_id');
+                        if (!$catId) {
+                            return SubCatgory::pluck('name', 'id');
+                        }
+                        return SubCatgory::where('category_id', $catId)
+                            ->orWhere('cid', $catId)
+                            ->pluck('name', 'id');
+                    })
+                    ->searchable(),
                     Select::make('brand')
                     ->placeholder('Select a Brand')
                     ->relationship("brand","name")
