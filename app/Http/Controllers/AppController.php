@@ -354,41 +354,82 @@ class AppController extends Controller
            $rmn['advertisement'] = array_values($adPluck->toArray());
            return json_encode(["status"=>true,"code"=>100,"msg"=>"Successfully Show","data"=>$rmn]);
      }
+     private function resolveScopedUserId(int $cmpid, int $bid): int
+     {
+          if ($cmpid > 0) {
+              $uid = (int)(Company::where("id", $cmpid)->value('user_id') ?: 0);
+              if ($uid > 0) {
+                  return $uid;
+              }
+          }
+          if ($bid > 0) {
+              $uid = (int)(Brand::where("id", $bid)->value('user_id') ?: 0);
+              if ($uid > 0) {
+                  return $uid;
+              }
+              return (int)(Product::whereIn("status", ["Active", "active", "1"])->where("brand_id", $bid)->value('user_id') ?: 0);
+          }
+          return 0;
+     }
      public function brandlist_bycompanyid(Request $request){
-        if($request->get('cid')=='0'){
-            $rmnBrand  = Brand::whereIn("status", ["Active", "active", "1"])->where("company_id",$request->get('cmpid'))->get();
-          $data = collect($rmnBrand)
-        ->unique('name')
-        ->values()
-        ->toArray();
-         $rmn['Brand']  = $data;
-          $comp = Company::where("id",$request->get('cmpid'))->first();
-           if(empty($comp)){$rmn['bannerimage']='';}else{$rmn['bannerimage']=$comp->photo;}
-          $rmn['companyname']= Helper::getcompanyname($request->get('cmpid'));
-          return json_encode(["status"=>true,"code"=>100,"msg"=>"Successfully Show","data"=>$rmn]);
-        }else{
-         $rmnBrand  = Brand::whereIn("status", ["Active", "active", "1"])->where("company_id",$request->get('cmpid'))->where("category_id",$request->get('cid'))->get();
-          $data = collect($rmnBrand)
-        ->unique('name')
-        ->values()
-        ->toArray();
-         $rmn['Brand']  = $data;
-          $comp = Company::where("id",$request->get('cmpid'))->first();
-           if(empty($comp)){$rmn['bannerimage']='';}else{$rmn['bannerimage']=$comp->photo;}
-          $rmn['companyname']= Helper::getcompanyname($request->get('cmpid'));
-          return json_encode(["status"=>true,"code"=>100,"msg"=>"Successfully Show","data"=>$rmn]);
+        $cmpid = (int)$request->get('cmpid', 0);
+        $cid = (int)$request->get('cid', 0);
+        $baseQuery = Brand::whereIn("status", ["Active", "active", "1"])->where("company_id", $cmpid);
+        if ($cid > 0) {
+            $rmnBrand = (clone $baseQuery)->where("category_id", $cid)->get();
+            if ($rmnBrand->isEmpty()) {
+                $companyUserId = Company::where("id", $cmpid)->value('user_id');
+                if ($companyUserId) {
+                    $brandIdsInCat = Product::whereIn("status", ["Active", "active", "1"])
+                        ->where("user_id", $companyUserId)
+                        ->where("category_id", $cid)
+                        ->distinct()
+                        ->pluck('brand_id');
+                    if ($brandIdsInCat->isNotEmpty()) {
+                        $rmnBrand = (clone $baseQuery)->whereIn("id", $brandIdsInCat)->get();
+                    }
+                }
+            }
+            if ($rmnBrand->isEmpty()) {
+                $rmnBrand = $baseQuery->get();
+            }
+        } else {
+            $rmnBrand = $baseQuery->get();
         }
+        $rmn['Brand'] = collect($rmnBrand)->unique('name')->values()->toArray();
+        $comp = Company::where("id", $cmpid)->first();
+        $rmn['bannerimage'] = empty($comp) ? '' : $comp->photo;
+        $rmn['companyname'] = Helper::getcompanyname($cmpid);
+        $rmn['cmpid'] = $cmpid;
+        return json_encode(["status"=>true,"code"=>100,"msg"=>"Successfully Show","data"=>$rmn]);
      }
      public function companylist_bycategoryid(Request $request){
-         $sellerid  = Product::select('user_id')->whereIn("status", ["Active", "active", "1"])->where("category_id",$request->get('cid'))->groupby('user_id')->get('user_id');
-          $prid=array();foreach($sellerid as $seller){array_push($prid,$seller->user_id);} 
-           $rmn['company'] = Company::whereIn("status", ["Active", "active", "1"])->whereIN("user_id",$prid)->orderby("id","desc")->get();
-           $sliderPluck = Advertisement::whereIn("status", ["Active", "active", "1"])->where("screen","CompanyScreen")->where(function($q){$q->whereNull("enddate")->orWhere("enddate",">=",date("Y-m-d"));})->orderby("sequence","asc")->pluck('file');
-           $rmn['slider'] = array_values($sliderPluck->toArray());
-           $adPluck = Slider::whereIn("status", ["Active", "active", "1"])->where(function($q){$q->whereNull("enddate")->orWhere("enddate",">=",date("Y-m-d"));})->where("screen","CompanyScreen")->orderby("id","desc")->pluck('image');
-           $rmn['advertisement'] = array_values($adPluck->toArray());
-          $rmn['categoryname']= Helper::getcatname($request->get('cid'));
-          return json_encode(["status"=>true,"code"=>100,"msg"=>"Successfully Show","data"=>$rmn]);
+         $cid = (int)$request->get('cid', 0);
+         $scid = (int)$request->get('scid', 0);
+         $prodQuery = Product::select('user_id')->whereIn("status", ["Active", "active", "1"]);
+         if ($scid > 0) {
+             $prodQuery->where(function ($q) use ($scid) {
+                 $q->where("subcategory_id", $scid)->orWhere("sid", $scid);
+             });
+         } elseif ($cid > 0) {
+             $prodQuery->where("category_id", $cid);
+         }
+         $sellerid = $prodQuery->groupby('user_id')->get('user_id');
+         $prid = [];
+         foreach ($sellerid as $seller) {
+             $prid[] = $seller->user_id;
+         }
+         $rmn['company'] = empty($prid)
+             ? []
+             : Company::whereIn("status", ["Active", "active", "1"])->whereIn("user_id", $prid)->orderby("id","desc")->get();
+         $sliderPluck = Advertisement::whereIn("status", ["Active", "active", "1"])->where("screen","CompanyScreen")->where(function($q){$q->whereNull("enddate")->orWhere("enddate",">=",date("Y-m-d"));})->orderby("sequence","asc")->pluck('file');
+         $rmn['slider'] = array_values($sliderPluck->toArray());
+         $adPluck = Slider::whereIn("status", ["Active", "active", "1"])->where(function($q){$q->whereNull("enddate")->orWhere("enddate",">=",date("Y-m-d"));})->where("screen","CompanyScreen")->orderby("id","desc")->pluck('image');
+         $rmn['advertisement'] = array_values($adPluck->toArray());
+         $rmn['categoryname'] = $scid > 0
+             ? (SubCatgory::where('id', $scid)->value('name') ?: Helper::getcatname($cid))
+             : Helper::getcatname($cid);
+         return json_encode(["status"=>true,"code"=>100,"msg"=>"Successfully Show","data"=>$rmn]);
      }
      private function hydrateCategoryProducts($productlist, string $catName = ''): array
      {
@@ -447,19 +488,43 @@ class AppController extends Controller
           return $items;
      }
 
-     private function buildCategorySidebar(int $cid, int $bid, $userid, int $scid = 0): array
+     private function buildCategorySidebar(int $cid, int $bid, $userid, int $scid = 0, int $cmpid = 0): array
      {
           $sbct = [];
+          $scopedUid = (int)$userid;
+          if ($scopedUid <= 0 && ($cmpid > 0 || $bid > 0)) {
+              $scopedUid = $this->resolveScopedUserId($cmpid, $bid);
+          }
+          $resolvedCmpId = $cmpid > 0
+              ? $cmpid
+              : ($scopedUid > 0 ? (int)(Company::where('user_id', $scopedUid)->value('id') ?: 0) : 0);
 
-          // Include active 4th-tier sub_categories belonging to this Category first
+          // 1. Include active 4th-tier sub_categories belonging to $cid (scoped to this company if inside a store)
           if ($cid > 0) {
               $parentCat = Category::find($cid);
-              $childSubCats = SubCatgory::where(function ($q) use ($cid) {
+              $subCatQuery = SubCatgory::where(function ($q) use ($cid) {
                       $q->where('category_id', $cid)->orWhere('cid', $cid);
                   })
                   ->whereIn('status', ['Active', 'active', '1'])
-                  ->orderBy('name')
-                  ->get();
+                  ->orderBy('name');
+
+              if ($scopedUid > 0) {
+                  $usedScids = Product::whereIn('status', ['Active', 'active', '1'])
+                      ->where('user_id', $scopedUid)
+                      ->where('category_id', $cid)
+                      ->when($bid > 0, fn ($q) => $q->where('brand_id', $bid))
+                      ->get(['subcategory_id', 'sid'])
+                      ->flatMap(fn ($p) => [(int)$p->subcategory_id, (int)$p->sid])
+                      ->filter(fn ($id) => $id > 0)
+                      ->unique()
+                      ->values()
+                      ->toArray();
+                  $childSubCats = empty($usedScids)
+                      ? collect()
+                      : $subCatQuery->whereIn('id', $usedScids)->get();
+              } else {
+                  $childSubCats = $subCatQuery->get();
+              }
 
               if ($childSubCats->isNotEmpty()) {
                   if ($parentCat) {
@@ -470,6 +535,7 @@ class AppController extends Controller
                           'cid' => $parentCat->id,
                           'scid' => 0,
                           'bid' => $bid ?: 0,
+                          'cmpid' => $resolvedCmpId,
                       ];
                   }
                   foreach ($childSubCats as $sc) {
@@ -480,44 +546,50 @@ class AppController extends Controller
                           'cid' => $cid,
                           'scid' => (int)$sc->id,
                           'bid' => $bid ?: 0,
+                          'cmpid' => $resolvedCmpId,
                       ];
                   }
               }
           }
 
-          if (!empty($userid) && $bid > 0) {
-              $brandName = Helper::getbrandname($bid);
-              $brandModels = Brand::where("user_id", $userid)
-                  ->where("name", "like", '%' . $brandName . '%')
-                  ->get(['id', 'category_id']);
-              $brandIds = $brandModels->pluck('id')->toArray();
-              $brandByCat = $brandModels->keyBy('category_id');
+          // 2. When inside a Company storefront (Swiggy store mode), list ONLY that company's active categories
+          if ($scopedUid > 0) {
+              $companyProdQuery = Product::whereIn("status", ["Active", "active", "1"])
+                  ->where("user_id", $scopedUid);
+              $catIds = (clone $companyProdQuery)->distinct()->pluck('category_id')->toArray();
 
-              $catIds = Product::whereIn("status", ["Active", "active", "1"])
-                  ->where("user_id", $userid)
-                  ->whereIn("brand_id", $brandIds)
-                  ->distinct()
-                  ->pluck('category_id')
-                  ->toArray();
+              // Categories where current $bid specifically has active products, so same-brand stays highlighted cleanly
+              $brandCatIds = $bid > 0
+                  ? (clone $companyProdQuery)->where("brand_id", $bid)->distinct()->pluck('category_id')->flip()
+                  : collect();
 
-              $categories = Category::whereIn("status", ["Active", "active", "1"])
-                  ->whereIn("id", $catIds)
-                  ->get();
+              $categories = empty($catIds)
+                  ? collect()
+                  : Category::whereIn("status", ["Active", "active", "1"])
+                      ->whereIn("id", $catIds)
+                      ->orderBy('sequence', 'asc')
+                      ->get();
 
+              $existingKeys = collect($sbct)->map(fn ($item) => $item['cid'] . ':' . $item['scid'])->flip();
               foreach ($categories as $category) {
-                  $getbrand1 = $brandByCat->get($category->id);
+                  $key = $category->id . ':0';
+                  if ($existingKeys->has($key)) {
+                      continue;
+                  }
                   $sbct[] = [
                       'highlight' => ($scid === 0 && (int)$category->id === $cid),
                       'name' => $category->name,
                       'image' => $category->image,
                       'cid' => (int)$category->id,
                       'scid' => 0,
-                      'bid' => $getbrand1 ? (int)$getbrand1->id : 0,
+                      'bid' => ($bid > 0 && $brandCatIds->has($category->id)) ? $bid : 0,
+                      'cmpid' => $resolvedCmpId,
                   ];
               }
+              return $sbct;
           }
 
-          // Fallback / sibling categories under the same maincategory_id so users can freely switch categories
+          // 3. Global fallback (only when NO company/brand scope is active)
           if ($cid > 0) {
               $alreadyHasCats = collect($sbct)->contains(fn ($item) => (int)$item['scid'] === 0 && (int)$item['cid'] !== $cid);
               if (!$alreadyHasCats) {
@@ -538,6 +610,7 @@ class AppController extends Controller
                                   'cid' => (int)$rc->id,
                                   'scid' => 0,
                                   'bid' => 0,
+                                  'cmpid' => 0,
                               ];
                           }
                       }
@@ -548,12 +621,17 @@ class AppController extends Controller
           return $sbct;
      }
 
-     public function productcategorylist_bybrandid(Request $request){
-          $bid = (int)$request->get('bid', 0);
-          $cid = (int)($request->get('cid') ?: $request->get('subcatid') ?: 0);
-          $scid = (int)$request->get('scid', 0);
+     private function buildProductListResponse(int $bid, int $cid, int $scid, int $cmpid, string $defaultBanner = '')
+     {
+          $scopedUserId = $this->resolveScopedUserId($cmpid, $bid);
+          $resolvedCmpId = $cmpid > 0
+              ? $cmpid
+              : ($scopedUserId > 0 ? (int)(Company::where('user_id', $scopedUserId)->value('id') ?: 0) : 0);
 
           $query = Product::whereIn("status", ["Active", "active", "1"]);
+          if ($scopedUserId > 0) {
+              $query->where("user_id", $scopedUserId);
+          }
           if ($bid > 0) {
               $query->where("brand_id", $bid);
           }
@@ -571,50 +649,33 @@ class AppController extends Controller
               : Helper::getcatname($cid);
 
           $rmn['product'] = $this->hydrateCategoryProducts($productlist, $catName);
-          $userid = $productlist->isNotEmpty() ? $productlist->first()->user_id : '';
-          if (empty($userid) && $bid > 0) {
-              $userid = Product::whereIn("status", ["Active", "active", "1"])->where("brand_id", $bid)->value('user_id') ?: '';
-          }
+          $userid = $scopedUserId > 0
+              ? $scopedUserId
+              : ($productlist->isNotEmpty() ? $productlist->first()->user_id : '');
 
-          $rmn['subcategory'] = $this->buildCategorySidebar($cid, $bid, $userid, $scid);
+          $rmn['subcategory'] = $this->buildCategorySidebar($cid, $bid, $userid, $scid, $resolvedCmpId);
           $slider = Slider::where("screen","CategoryScreen")->orderby("id","desc")->first();
-          $rmn['bannerimage'] = $slider ? $slider->image : '';
+          $rmn['bannerimage'] = $slider ? $slider->image : $defaultBanner;
           $rmn['brandname'] = Helper::getbrandname($bid);
+          $rmn['company_id'] = $resolvedCmpId;
+          $rmn['company_name'] = $resolvedCmpId > 0 ? Helper::getcompanyname($resolvedCmpId) : '';
           return json_encode(["status"=>true,"code"=>100,"msg"=>"Successfully Show","data"=>$rmn]);
+     }
+
+     public function productcategorylist_bybrandid(Request $request){
+          $bid = (int)$request->get('bid', 0);
+          $cid = (int)($request->get('cid') ?: $request->get('subcatid') ?: 0);
+          $scid = (int)$request->get('scid', 0);
+          $cmpid = (int)$request->get('cmpid', 0);
+          return $this->buildProductListResponse($bid, $cid, $scid, $cmpid, '');
      }
      
      public function productlistby_bybrandidandsid(Request $request){
           $bid = (int)$request->get('bid', 0);
           $sid = (int)($request->get('sid') ?: $request->get('categoryid') ?: 0);
           $scid = (int)$request->get('scid', 0);
-
-          $query = Product::whereIn("status", ["Active", "active", "1"]);
-          if ($scid > 0) {
-              $query->where(function ($q) use ($scid) {
-                  $q->where("subcategory_id", $scid)->orWhere("sid", $scid);
-              });
-          } elseif ($sid > 0) {
-              $query->where("category_id", $sid);
-          }
-          if ($bid > 0) {
-              $query->where("brand_id", $bid);
-          }
-          $productlist = $query->get();
-
-          $catName = $scid > 0
-              ? (SubCatgory::where('id', $scid)->value('name') ?: Helper::getcatname($sid))
-              : Helper::getcatname($sid);
-
-          $rmn['product'] = $this->hydrateCategoryProducts($productlist, $catName);
-          $userid = $productlist->isNotEmpty() ? $productlist->first()->user_id : '';
-          if (empty($userid) && $bid > 0) {
-              $userid = Product::whereIn("status", ["Active", "active", "1"])->where("brand_id", $bid)->value('user_id') ?: '';
-          }
-
-          $rmn['subcategory'] = $this->buildCategorySidebar($sid, $bid, $userid, $scid);
-          $rmn['bannerimage'] = 'storage/app/public/slider/banner.jpg';
-          $rmn['brandname'] = Helper::getbrandname($bid);
-          return json_encode(["status"=>true,"code"=>100,"msg"=>"Successfully Show","data"=>$rmn]);
+          $cmpid = (int)$request->get('cmpid', 0);
+          return $this->buildProductListResponse($bid, $sid, $scid, $cmpid, 'storage/app/public/slider/banner.jpg');
      }
 
      public function statecitypincode(Request $request){ 

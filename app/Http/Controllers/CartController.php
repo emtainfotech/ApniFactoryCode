@@ -85,9 +85,19 @@ class CartController extends Controller
          return response()->json(["status"=>true,"code"=>100,"msg"=>"Successfully Show","grandtotal"=>$totalprice]);
      }
      public function checkcartconditions($customerid,$bid,$pid){
-         // In Phase II (Milestone M4 Phase 4.1), multi-seller carts are natively supported.
-         // Products from multiple sellers/companies are grouped by seller with independent MOV.
-         return true;
+         $existing = DB::table("cart")->where("customer_id", $customerid)->first(['company_id']);
+         if (!$existing || empty($existing->company_id)) {
+             return true;
+         }
+         $prod = Product::where("id", $pid)->first(['user_id']);
+         if (!$prod) {
+             return false;
+         }
+         $company = Company::where("user_id", $prod->user_id)->first(['id']);
+         if (!$company) {
+             return false;
+         }
+         return (int)$existing->company_id === (int)$company->id;
      }
        public function addtocart(Request $request){ 
          $attribute=$rt=array();$granttotal=0;$cnt=0;
@@ -95,11 +105,39 @@ class CartController extends Controller
          $productid = $reqdata['productid'];
          $userid = $reqdata['userid'];
          $attribute = $reqdata['attributes'];
-         $brandid = $reqdata['brandid'];
-        $checkcondition = $this->checkcartconditions($userid,$brandid,$productid);
-         if($checkcondition==false){ return response()->json(["status"=>false,"code"=>500,"msg"=>"Please Add Same Company Product","grandtotal"=>0.0,"counter"=>0,"data"=>[]]);
-                  exit();}
-             $prod = Product::where("id",$productid)->first();
+         $brandid = $reqdata['brandid'] ?? 0;
+         $replaceCart = filter_var($reqdata['replace_cart'] ?? false, FILTER_VALIDATE_BOOLEAN);
+
+         $prod = Product::where("id", $productid)->first();
+         if (!$prod) {
+             return response()->json(["status"=>false,"code"=>500,"msg"=>"Product not found","grandtotal"=>0.0,"counter"=>0,"data"=>[]]);
+         }
+         $company = Company::where("user_id", $prod->user_id)->first();
+         if (!$company) {
+             return response()->json(["status"=>false,"code"=>500,"msg"=>"Company not found for product","grandtotal"=>0.0,"counter"=>0,"data"=>[]]);
+         }
+
+         $existingCart = DB::table("cart")->where("customer_id", $userid)->first(['company_id']);
+         if ($existingCart && !empty($existingCart->company_id) && (int)$existingCart->company_id !== (int)$company->id) {
+             if (!$replaceCart) {
+                 $existingCompanyName = Helper::getcompanyname($existingCart->company_id) ?: 'another company';
+                 return response()->json([
+                     "status" => false,
+                     "code" => 409,
+                     "conflict" => true,
+                     "msg" => "Your cart already has items from {$existingCompanyName}. Replace cart to order from {$company->name} instead?",
+                     "existing_company_id" => (int)$existingCart->company_id,
+                     "existing_company_name" => $existingCompanyName,
+                     "new_company_id" => (int)$company->id,
+                     "new_company_name" => $company->name,
+                     "grandtotal" => 0.0,
+                     "counter" => (int)DB::table("cart")->where("customer_id", $userid)->count('id'),
+                     "data" => [],
+                 ]);
+             }
+             DB::table("cartattribute")->where("customer_id", $userid)->delete();
+             DB::table("cart")->where("customer_id", $userid)->delete();
+         }
          $check = DB::table("cart")->where("customer_id",$userid)->where("product_id",$productid)->first();
         if(empty($check)){
              ////////////////////////////////////////if attribute array empty h to entry na ho////

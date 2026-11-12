@@ -228,6 +228,7 @@ class ProductController extends Controller
               $rmn['attributes'] = $rt;
               /////////////////seller detail (confidential contact info restricted to authenticated admin/owner)
               $sellerdetail = Company::where("user_id",$rmn->user_id)->first();
+              $srh["company_id"] = $sellerdetail ? (int)$sellerdetail->id : 0;
               $srh["name"] =  $sellerdetail ? $sellerdetail->name : '';
               if ($canViewInternalPricing) {
                   $srh["email"] =  $sellerdetail ? $sellerdetail->email : '';

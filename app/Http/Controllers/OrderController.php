@@ -211,6 +211,9 @@ class OrderController extends Controller
              ///////////////check data of this customer is in cart or not
              $cartdata = DB::table("cart")->where("customer_id",$customerid)->get();
              if($cartdata->isEmpty()){return response()->json(["status"=>false,"code"=>500,"msg"=>"Cart is Empty","data"=>""]);}
+             if($cartdata->pluck('company_id')->filter()->unique()->count() > 1){
+                 return response()->json(["status"=>false,"code"=>409,"msg"=>"You can order from only one company at a time. Please keep items from a single company in your cart.","data"=>""]);
+             }
             //////////////////////for tax type
             $cmpy = DB::table("cart")->where("customer_id",$customerid)->first('company_id');
             $cmpnypin = $cmpy ? Company::where("id",$cmpy->company_id)->first() : null;
