@@ -37,7 +37,9 @@ class ProfileResource extends Resource
                     ->options([
                         'Sellerpanel' => 'Sellerpanel',
                         'Invoice' => 'Invoice',
-                        'App' => 'App'
+                        'App' => 'App',
+                        'Gateway' => 'Payment Gateway (PayU)',
+                        'WhatsApp' => 'WhatsApp Meta API',
                     ]),
             ]);
     }

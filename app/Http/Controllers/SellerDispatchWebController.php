@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Order;
 use App\Models\SellerFulfilment;
 use App\Services\SellerFulfilmentService;
+use App\Traits\WhatsappTraits;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -108,6 +109,20 @@ class SellerDispatchWebController extends Controller
             'dispatched_at'           => $validated['dispatched_at'] ?? null,
             'estimated_delivery_date' => $validated['estimated_delivery_date'] ?? null,
         ], $actorId, $actorName);
+
+        try {
+            $buyerMobile = $order->customer?->mobile ?? null;
+            if ($buyerMobile) {
+                $lr = $validated['lr_number'] ?? ($fulfilment->lr_number ?? 'Updated');
+                WhatsappTraits::sendtobuyerthatorderstatuschangedororderplaced(
+                    $buyerMobile,
+                    'Dispatched',
+                    $order->orderno,
+                    "Transporter: {$validated['transporter_name']}, LR: {$lr}"
+                );
+            }
+        } catch (\Throwable $e) {
+        }
 
         return redirect()->route('seller.orders.dispatch', $order->id)
             ->with('success', 'Order marked as Dispatched successfully. Transporter and LR details recorded. Buyer has been notified.');

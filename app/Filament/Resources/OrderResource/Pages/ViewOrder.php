@@ -3,6 +3,10 @@
 namespace App\Filament\Resources\OrderResource\Pages;
 
 use App\Filament\Resources\OrderResource;
+use App\Traits\WhatsappTraits;
+use Filament\Forms;
+use Filament\Notifications\Notification;
+use Filament\Pages\Actions\Action;
 use Filament\Resources\Pages\ViewRecord;
 use App\Models\order;
 use App\Models\Company;
@@ -15,6 +19,65 @@ class ViewOrder extends ViewRecord
 
     // Use custom view instead of form schema
     protected static string $view = 'filament.pages.view-order';
+
+    protected function getActions(): array
+    {
+        return [
+            Action::make('updateOrderStatus')
+                ->label('Update Order Status & Notify WhatsApp')
+                ->icon('heroicon-o-chat-alt-2')
+                ->color('primary')
+                ->form([
+                    Forms\Components\Select::make('status')
+                        ->label('New Status')
+                        ->options([
+                            'Processing'       => 'Processing',
+                            'Accepted'         => 'Accepted',
+                            'Order Processed'  => 'Order Processed',
+                            'In Transit'       => 'In Transit',
+                            'Out For Delivery' => 'Out For Delivery',
+                            'Delivered'        => 'Delivered',
+                            'Rejected'         => 'Rejected',
+                            'Cancelled'        => 'Cancelled',
+                        ])
+                        ->required(),
+                    Forms\Components\Textarea::make('note')
+                        ->label('Customer Note (sent on WhatsApp template)')
+                        ->default('Order status updated by Apni Factory team.')
+                        ->required(),
+                ])
+                ->action(function (array $data): void {
+                    $order = $this->record;
+                    DB::table('order_status')->insert([
+                        'order_id'   => $order->id,
+                        'order_no'   => $order->orderno,
+                        'user_id'    => $order->user_id,
+                        'status'     => $data['status'],
+                        'msg'        => $data['note'],
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+
+                    $buyer = Customer::find($order->customer_id);
+                    $waSent = false;
+                    if ($buyer && !empty($buyer->mobile)) {
+                        $waSent = WhatsappTraits::sendtobuyerthatorderstatuschangedororderplaced(
+                            $buyer->mobile,
+                            $data['status'],
+                            $order->orderno,
+                            $data['note']
+                        );
+                    }
+
+                    Notification::make()
+                        ->title($waSent
+                            ? "Status updated to {$data['status']} & WhatsApp sent"
+                            : "Status updated to {$data['status']}")
+                        ->success()
+                        ->send();
+                }),
+        ];
+    }
 
     protected function getViewData(): array
     {

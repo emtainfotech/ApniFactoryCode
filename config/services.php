@@ -37,14 +37,30 @@ return [
     ],
 
     'payu' => [
-        'key'  => env('PAYU_KEY'),
-        'salt' => env('PAYU_SALT'),
+        'mode'      => env('PAYU_MODE', 'auto'),
+        'key'       => env('PAYU_KEY'),
+        'salt'      => env('PAYU_SALT'),
+        'prod_key'  => env('PAYU_PROD_KEY'),
+        'prod_salt' => env('PAYU_PROD_SALT'),
+        'uat_key'   => env('PAYU_UAT_KEY'),
+        'uat_salt'  => env('PAYU_UAT_SALT'),
     ],
 
     'whatsapp' => [
-        'phone_number_id' => env('WHATSAPP_PHONE_NUMBER_ID'),
-        'access_token'    => env('WHATSAPP_ACCESS_TOKEN'),
-        'api_version'     => env('WHATSAPP_API_VERSION', 'v22.0'),
+        'phone_number_id'         => env('WHATSAPP_PHONE_NUMBER_ID'),
+        'access_token'            => env('WHATSAPP_ACCESS_TOKEN'),
+        'api_version'             => env('WHATSAPP_API_VERSION', 'v22.0'),
+        'otp_template'            => env('WHATSAPP_OTP_TEMPLATE', 'app_otp_verification'),
+        'otp_language'            => env('WHATSAPP_OTP_LANG', 'en'),
+        'otp_has_button'          => env('WHATSAPP_OTP_HAS_BUTTON', true),
+        'order_status_template'   => env('WHATSAPP_ORDER_STATUS_TEMPLATE', 'order_status'),
+        'order_status_language'   => env('WHATSAPP_ORDER_STATUS_LANG', 'en'),
+        'order_received_template' => env('WHATSAPP_ORDER_RECEIVED_TEMPLATE', 'order_received'),
+        'order_received_language' => env('WHATSAPP_ORDER_RECEIVED_LANG', 'en_US'),
+        'invoice_template'        => env('WHATSAPP_INVOICE_TEMPLATE', 'invoice_uploaded_seller'),
+        'invoice_language'        => env('WHATSAPP_INVOICE_LANG', 'en_US'),
+        'welcome_template'        => env('WHATSAPP_WELCOME_TEMPLATE', ''),
+        'welcome_language'        => env('WHATSAPP_WELCOME_LANG', 'en'),
     ],
 
     'crm' => [

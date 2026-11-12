@@ -49,6 +49,7 @@ Route::post('seller/paint-pricing/apply', [PaintPricingController::class, 'apply
 Route::post('seller/paint-pricing/sku-override', [PaintPricingController::class, 'updateSingleSku']);
 Route::get('seller/paint-pricing/audit/{id}', [PaintPricingController::class, 'auditHistory']);
 });
+ Route::post('sendotp', [CustomerController::class, "sendotp"]);
  Route::post('verifyotp', [CustomerController::class, "verifyotp"]);
  Route::post('resetpassword', [CustomerController::class, "resetpassword"]);
  Route::get('statecitypincode', [AppController::class, "statecitypincode"]);
@@ -103,6 +104,7 @@ Route::get('seller/paint-pricing/audit/{id}', [PaintPricingController::class, 'a
  Route::get('coupon/{id}', [CouponController::class, "show"]);
  ///////////////////order
  Route::post('order', [OrderController::class, "placeorder"]);
+ Route::post('payuhash', [OrderController::class, "payuhash"]);
  Route::post('orderhistory', [OrderController::class, "orderhistory"]);
  Route::post('orderdetail', [OrderController::class, "orderdetailforapi"]);
  Route::post('orderstatus', [OrderController::class, "orderstatus_app"]);

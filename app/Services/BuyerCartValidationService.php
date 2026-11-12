@@ -93,6 +93,19 @@ class BuyerCartValidationService
             $company = $listing->company;
             $unitPrice = $validation['resolved_unit_price'];
 
+            if ($company) {
+                $otherCompanyCart = Cart::where('customer_id', $customerId)
+                    ->whereNotNull('company_id')
+                    ->where('company_id', '!=', $company->id)
+                    ->first();
+                if ($otherCompanyCart) {
+                    $existingName = Company::where('id', $otherCompanyCart->company_id)->value('name') ?: 'another company';
+                    throw ValidationException::withMessages([
+                        'company_id' => ["Your cart already contains items from {$existingName}. You can only order from one company at a time."],
+                    ]);
+                }
+            }
+
             // 1. Find or create parent Cart group for this customer and product
             $cart = Cart::firstOrCreate(
                 [

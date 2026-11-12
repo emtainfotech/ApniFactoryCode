@@ -140,8 +140,9 @@ class PaymentGatewayService
                     ],
                 ];
             } elseif ($gatewayName === self::GATEWAY_PAYU) {
-                $merchantKey = config('services.payu.key') ?: env('PAYU_KEY', 'Ks0wGV');
-                $salt = config('services.payu.salt') ?: env('PAYU_SALT', 'payu_salt_placeholder');
+                $payuCfg = app(PayuConfigService::class)->resolve();
+                $merchantKey = $payuCfg['key'];
+                $salt = $payuCfg['salt'];
                 $txnid = $order->orderno . '_' . Str::random(4);
                 $gatewayOrderId = $txnid;
 
@@ -153,14 +154,18 @@ class PaymentGatewayService
                 $hash = hash('sha512', $hashString);
 
                 $gatewayParams = [
-                    'key'         => $merchantKey,
-                    'txnid'       => $txnid,
-                    'amount'      => $amount,
-                    'productinfo' => $productInfo,
-                    'firstname'   => $firstName,
-                    'email'       => $email,
-                    'phone'       => $order->customer ? $order->customer->mobile : '',
-                    'hash'        => $hash,
+                    'key'              => $merchantKey,
+                    'txnid'            => $txnid,
+                    'amount'           => $amount,
+                    'productinfo'      => $productInfo,
+                    'firstname'        => $firstName,
+                    'email'            => $email,
+                    'phone'            => $order->customer ? $order->customer->mobile : '',
+                    'hash'             => $hash,
+                    'mode'             => $payuCfg['mode'],
+                    'is_uat'           => $payuCfg['is_uat'],
+                    'payu_environment' => $payuCfg['environment'],
+                    'checkout_url'     => $payuCfg['checkout_url'],
                 ];
             }
 
@@ -251,7 +256,7 @@ class PaymentGatewayService
      */
     public function verifyPayuHash(array $params, ?string $salt = null): bool
     {
-        $salt = $salt ?: config('services.payu.salt', env('PAYU_SALT', 'payu_salt_placeholder'));
+        $salt = $salt ?: app(PayuConfigService::class)->resolve()['salt'];
         $key = $params['key'] ?? '';
         $txnid = $params['txnid'] ?? '';
         $amount = $params['amount'] ?? '';

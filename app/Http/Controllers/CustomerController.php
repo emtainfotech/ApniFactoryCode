@@ -144,9 +144,23 @@ $data = [
     }
 }
      public function sendotp(Request $request){ 
-        $memberid =  $request['emailmobile']; //'919456638450';//'saxena.surbhiverma@gmail.com';//
-        $sendon =  $request['sendon'];//'email';///
+        $memberid = trim((string)($request->input('emailmobile') ?? ''));
+        $sendon = strtolower(trim((string)($request->input('sendon') ?? '')));
+        if ($sendon === '') {
+            $sendon = filter_var($memberid, FILTER_VALIDATE_EMAIL) ? 'email' : 'mobile';
+        }
+        if ($memberid === '') {
+            return response()->json(["status" => false, "code" => 400, "msg" => "Email or mobile number is required", "data" => null], 400);
+        }
+        if ($sendon === 'mobile') {
+            $digits = preg_replace('/\D+/', '', $memberid);
+            if (strlen($digits) === 12 && str_starts_with($digits, '91')) {
+                $digits = substr($digits, 2);
+            }
+            $memberid = $digits;
+        }
         $rmn = array();
+        $res = null;
             $otp = rand(1000,9999);
         $tblotp = DB::table('tbl_otp')->where('otpon',$memberid)->first();
         if(empty($tblotp)){
@@ -198,21 +212,45 @@ $data = [
                     $res = $sendemail;
                 }
                 if($sendon=='mobile'){
-                    ///////////write code to sendotp on its mobile
+                    ///////////write code to sendotp on its mobile via WhatsApp Meta template
                     $sendotp = $this->sendotponwhatsapp($memberid,$otp);
                     $res = $sendotp;
                 }
-                $rmn['otp']=$otp;
-                return json_encode(["status"=>true,"code"=>100,"msg"=>"Successfully Send","data"=>$rmn,"originalresponse"=>$res]);
+                $whatsappSent = ($sendon === 'mobile' && is_array($res)) ? (bool)($res['sent'] ?? false) : false;
+                if ($whatsappSent && app()->isProduction()) {
+                    $rmn['otp'] = null;
+                } else {
+                    $rmn['otp'] = $otp;
+                }
+                return json_encode([
+                    "status"           => true,
+                    "code"             => 100,
+                    "msg"              => $sendon === 'mobile'
+                        ? ($whatsappSent ? "OTP sent via WhatsApp" : "OTP generated (WhatsApp template awaiting Meta config)")
+                        : "Successfully Send",
+                    "whatsapp_sent"    => $whatsappSent,
+                    "data"             => $rmn,
+                    "originalresponse" => $res,
+                ]);
      }
 
     // Legacy WhatsApp OTP helper removed; configure WhatsApp credentials via config/services.php.
      public function verifyotp(Request $request){ 
-        $memberid = $request->input('emailmobile');
-        $otp = $request->input('otp');
+        $memberid = trim((string)$request->input('emailmobile', ''));
+        $otp = trim((string)$request->input('otp', ''));
 
         if (empty($memberid) || empty($otp)) {
             return response()->json(["status" => false, "code" => 400, "msg" => "Mobile/Email and OTP are required", "data" => null], 400);
+        }
+
+        if (!filter_var($memberid, FILTER_VALIDATE_EMAIL)) {
+            $digits = preg_replace('/\D+/', '', $memberid);
+            if (strlen($digits) === 12 && str_starts_with($digits, '91')) {
+                $digits = substr($digits, 2);
+            }
+            if ($digits !== '') {
+                $memberid = $digits;
+            }
         }
 
         $tblotp = DB::table('tbl_otp')->where('otpon', $memberid)->first();
@@ -294,14 +332,18 @@ $data = [
      }
 
      public function register(Request $request){ 
-        $name     = $request->input('name');
-        $mobile   = $request->input('mobile');
+        $name     = trim((string)$request->input('name', ''));
+        $rawMob   = trim((string)$request->input('mobile', ''));
+        $mobile   = preg_replace('/\D+/', '', $rawMob);
+        if (strlen($mobile) === 12 && str_starts_with($mobile, '91')) {
+            $mobile = substr($mobile, 2);
+        }
         $regby    = $request->input('regby', 'app');
-        $email    = $request->input('email');
+        $email    = trim((string)$request->input('email', ''));
         $password = $request->input('password');
 
-        if (empty($email) || empty($mobile) || empty($password)) {
-            return response()->json(["status" => false, "code" => 400, "msg" => "Name, Mobile, Email, and Password are required", "data" => null], 400);
+        if (empty($email) || strlen($mobile) < 10 || empty($password)) {
+            return response()->json(["status" => false, "code" => 400, "msg" => "Name, 10-digit Mobile, Email, and Password are required", "data" => null], 400);
         }
 
         $rmn = Customer::where('email', $email)->orWhere("mobile", $mobile)->first();
@@ -319,6 +361,10 @@ $data = [
             ];
             $customerId = Customer::insertGetId($data);
             $newCustomer = Customer::find($customerId);
+            try {
+                static::sendWelcomeRegistrationWhatsapp($mobile, $name);
+            } catch (\Throwable $e) {
+            }
             return response()->json(["status" => true, "code" => 100, "msg" => "Successfully Register", "data" => $newCustomer]);
         } else {
             return response()->json(["status" => false, "code" => 500, "msg" => "User Already Exist", "data" => $rmn]);

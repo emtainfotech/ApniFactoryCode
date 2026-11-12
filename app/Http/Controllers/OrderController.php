@@ -18,6 +18,7 @@ use App\Helper\helper;
 use App\Models\CustomerAddress;
 use Auth;
 use App\Models\Profile;
+use App\Services\PayuConfigService;
 use App\Traits\WhatsappTraits;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Response;
@@ -64,16 +65,26 @@ class OrderController extends Controller
                     "updated_at"=>now()
             ]);
         $customer = DB::table("transections")->where("order_no",$order_id)->first();
+        if (!$customer) {
+            return response()->json(["status" => false, "message" => "Transaction not found"], 404);
+        }
         $customerid = $customer->customer_id;
         $sellerid = $customer->user_id;
-        ///remove cart condition
-                if($status=="success"){
+        ///remove cart condition & mark order paid
+                if(strtolower((string)$status)=="success"){
+                    DB::table("orders")->where("orderno", $order_id)->update([
+                        "payment_status" => "paid",
+                        "paid_at"        => now(),
+                        "updated_at"     => now(),
+                    ]);
                     DB::table("cart")->where("customer_id",$customerid)->delete();
                     DB::table("cartattribute")->where("customer_id",$customerid)->delete();
                 }
             $token = Customer::where("id",$customerid)->first();
-            $tokenid = $token->firebaseid;
-          $sendnotification = $this->sendnotification($tokenid,'order_transectionsuccess',$order_id);
+            $tokenid = $token ? ($token->firebaseid ?? '') : '';
+            if ($tokenid !== '') {
+                try { $this->sendnotification($tokenid,'order_transectionsuccess',$order_id); } catch (\Throwable $e) {}
+            }
           
             $cmpmoblie = Company::where("user_id",$sellerid)->first();
             $mobile = $cmpmoblie ? $cmpmoblie->mobile : '';
@@ -95,7 +106,7 @@ class OrderController extends Controller
             
             $buyermobile = $token ? $token->mobile : '';
             if ($buyermobile) {
-                try { $this->sendtobuyerthatorderstatuschangedororderplaced($buyermobile, $buyermobile, $order_id, 'Thank You'); } catch (\Throwable $e) {}
+                try { $this->sendtobuyerthatorderstatuschangedororderplaced($buyermobile, 'Order Placed', $order_id, 'Thank You for ordering with Apni Factory.'); } catch (\Throwable $e) {}
             }
             $bodybuy = "Your Order #{$order_id} Successfully Placed. Please Check The Details in Order History.";
             $savenotificationbuy = [
@@ -155,12 +166,18 @@ class OrderController extends Controller
             "txnmethod"=>$payment_source,
             "updated_at"=>now()
             ]);
-             $customer = DB::table("transections")->where("order_no",$order_id)->first();
-        $customerid = $customer->customer_id;
-            $token = Customer::where("id",$customerid)->first();
-            $tokenid = $token->firebaseid;
-           $sendnotification = $this->sendnotification($tokenid,'order_transectionfailed',$order_id);
-        //   $sendwhatsapp = $this->sendwhatsappmsg($token->whatsappno,'ordertransection_failed',$order_id);
+        $customer = DB::table("transections")->where("order_no",$order_id)->first();
+        if ($customer) {
+            $token = Customer::where("id", $customer->customer_id)->first();
+            $tokenid = $token ? ($token->firebaseid ?? '') : '';
+            if ($tokenid !== '') {
+                try { $this->sendnotification($tokenid,'order_transectionfailed',$order_id); } catch (\Throwable $e) {}
+            }
+            $buyerPhone = $token ? ($token->mobile ?? '') : '';
+            if ($buyerPhone !== '') {
+                try { $this->sendwhatsappmsg($buyerPhone, 'ordertransection_failed', $order_id); } catch (\Throwable $e) {}
+            }
+        }
         return response()->json(["message"=>"Transections Failed !!! Please Try Again."]);
        
    }
@@ -169,6 +186,21 @@ class OrderController extends Controller
              $orderdetail =  DB::table("order_status")->where("order_id",$orderid)->get();
           return response()->json(["status"=>true,"code"=>100,"msg"=>"Successfully Show","data"=>$orderdetail]);
     }
+    public function payuhash(Request $request)
+    {
+        $res = app(PayuConfigService::class)->computeSdkHash($request->all());
+        $hashName = $res['hash_name'] ?: 'payment_hash';
+        return response()->json([
+            'status'           => true,
+            'code'             => 100,
+            'hash'             => $res['hash'],
+            $hashName          => $res['hash'],
+            'mode'             => $res['mode'],
+            'payu_environment' => $res['payu_environment'],
+            'is_uat'           => $res['is_uat'],
+        ]);
+    }
+
     public function generateHash($params, $salt) {
                 // Extract parameters or use empty string if not provided
                 $key = $params['key'];
@@ -248,14 +280,14 @@ class OrderController extends Controller
                     $attr["qty"] = $crtatrbt->qty;
                     $attr["boxpcs"] = $crtatrbt->boxpcs;
                     $attr["prprice"] = $crtatrbt->prprice;
-                    $attr["coupon"] = $crtatrbt->coupon;
-                    $attr["amntaftrcoupn"] = $crtatrbt->amntaftrcoupn;
+                    $attr["coupon"] = $crtatrbt->coupon ?? 0;
+                    $attr["amntaftrcoupn"] = $crtatrbt->amntaftrcoupn ?? $crtatrbt->totalprice;
                     $attr["unitprice"] = $crtatrbt->unitprice;
                     $attr["totalprice"] = $crtatrbt->totalprice;
                     $attr["tax"] = $crtatrbt->tax;
                     $attr["taxamount"] = $crtatrbt->taxamount;
-                    if(!empty($crtatrbt->couponname)){
-                    foreach(json_decode($crtatrbt->couponname,true) as $coupondetail){ 
+                    if(!empty($crtatrbt->couponname ?? null)){
+                    foreach((json_decode($crtatrbt->couponname,true) ?: []) as $coupondetail){ 
                         $str .= $coupondetail['code'].'('.$coupondetail['amount'].') ,';
                     }
                     }
@@ -364,27 +396,41 @@ class OrderController extends Controller
             return response()->json(["status"=>false,"code"=>500,"msg"=>"Order placement failed: ".$e->getMessage(),"data"=>null]);
         }
           $customer = Customer::where("id",$customerid)->first();
-          $salt = DB::table("Admin")->where("usedin","gateway")->where("attribute","salt")->first();
-          $key = DB::table("Admin")->where("usedin","gateway")->where("attribute","key")->first();
-          
-        // Example usage
+          $payuCfg = app(PayuConfigService::class)->resolve();
+          $formattedAmount = number_format((float)($netamount + $taxamount), 2, '.', '');
+          $productInfoStr = trim($proinfogatewy, ',');
+          if ($productInfoStr === '') {
+              $productInfoStr = 'Order_' . $orderno;
+          }
+
         $params = [
-            'key' =>$key->value,
-            'txnid' => $orderno,
-            'amount' => $netamount + $taxamount,
-            'productinfo' =>trim($proinfogatewy,','),
-            'firstname' => $customer->name,
-            'email' => $customer->email,
-            'udf1' => $producthsn->user_id,
-            'udf2' => $orderid,
-            'udf3' => $cart->id
+            'key'         => $payuCfg['key'],
+            'txnid'       => $orderno,
+            'amount'      => $formattedAmount,
+            'productinfo' => $productInfoStr,
+            'firstname'   => $customer ? ($customer->name ?: 'Buyer') : 'Buyer',
+            'email'       => $customer ? ($customer->email ?: 'buyer@apnifactory.com') : 'buyer@apnifactory.com',
+            'udf1'        => $producthsn->user_id,
+            'udf2'        => $orderid,
+            'udf3'        => $cart->id,
         ];
-        $salt = $salt->value;
-        
-        $hash = $this->generateHash($params, $salt);
-        $surl = 'https://'.$_SERVER['HTTP_HOST'].$_SERVER['REQUEST_URI'].'/transection/success';
-        $furl = 'https://'.$_SERVER['HTTP_HOST'].$_SERVER['REQUEST_URI'].'/transection/failed';
-         return response()->json(["status"=>true,"code"=>100,"msg"=>"Successfully Placed","data"=>$orderarray,"hash"=>$hash,"furl"=>$furl,"surl"=>$surl,"hashparameter"=>$params]);
+        $hash = $this->generateHash($params, $payuCfg['salt']);
+        $surl = url('/api/order/transection/success');
+        $furl = url('/api/order/transection/failed');
+         return response()->json([
+             "status"           => true,
+             "code"             => 100,
+             "msg"              => "Successfully Placed",
+             "data"             => $orderarray,
+             "hash"             => $hash,
+             "furl"             => $furl,
+             "surl"             => $surl,
+             "hashparameter"    => $params,
+             "payu_environment" => $payuCfg['environment'],
+             "is_uat"           => $payuCfg['is_uat'],
+             "payu_mode"        => $payuCfg['mode'],
+             "checkout_url"     => $payuCfg['checkout_url'],
+         ]);
       }
     
     public function orderhistory(Request $request){
@@ -837,7 +883,7 @@ class OrderController extends Controller
          $extra[1] = $request->status;
          $extra[2] = $formatted_date;
          $extra[3] = $request->msg; 
-         $sendwhatsapp = $this->sendwhatsappmsg_facebookapi('91'.$request->buyermobile,'order_status',$extra);
+         $sendwhatsapp = static::sendtobuyerthatorderstatuschangedororderplaced((string)$request->buyermobile, (string)$request->status, (string)$request->orderno, (string)$request->msg);
          ///////////////panel notification to seller
           $bodybuy = "Your Order #'.$request->orderno.' Status has changed to : '.$request->status.'. Please Check The Details in Order Detail.";
             $savenotificationbuy = array("customer_id"=>$request->userid,"title"=>"Your Order #'.$request->orderno.' Status Changed","body"=>$bodybuy,"msgread"=>0,"customertype"=>"seller");
