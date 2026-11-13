@@ -95,28 +95,50 @@ class CartController extends Controller
          return response()->json(["status"=>true,"code"=>100,"msg"=>"Successfully Show","grandtotal"=>$totalprice]);
      }
         public function increasecartqty(Request $request){ 
-         $rt=array();$granttotal=0;$cnt=0;
-         $cartid = $request->get('cartattributeid');
-         $qty = $request->get('qty');
-         if($qty==0){
-                $getcartid = DB::table("cartattribute")->where("id",$cartid)->first();
-                $caid = $getcartid->cart_id;
-                $countid = DB::table("cartattribute")->where("cart_id",$caid)->count();
-                if($countid==1){
-                 DB::table("cartattribute")->where("id",$cartid)->delete();
-                 DB::table("cart")->where("id",$caid)->delete();
-                }else{
-                 DB::table("cartattribute")->where("id",$cartid)->delete();
-                }
-                    $totalprice = 0;
-         }else{
-          $attribute = DB::table("cartattribute")->where("id",$cartid)->first();
-          $unitprice = $attribute->unitprice;
-           $totalprice = $unitprice * $qty;
-           $tae = ($totalprice * $attribute->tax)/100;
-             DB::table("cartattribute")->where("id",$cartid)->update(["qty"=>$qty,"totalprice"=>$totalprice,"taxamount"=>$tae]);
+         $cartid = $request->input('cartattributeid') ?: $request->input('cartid') ?: $request->input('id');
+         $qty = (int)($request->input('qty') !== null ? $request->input('qty') : 0);
+         $totalprice = 0;
+
+         $attribute = DB::table("cartattribute")->where("id", $cartid)->first();
+         if (!$attribute) {
+             return response()->json([
+                 "status" => false,
+                 "code" => 404,
+                 "msg" => "Cart item not found",
+                 "grandtotal" => 0.0
+             ]);
          }
-         return response()->json(["status"=>true,"code"=>100,"msg"=>"Successfully Show","grandtotal"=>$totalprice]);
+
+         if ($qty <= 0) {
+             $caid = $attribute->cart_id;
+             DB::table("cartattribute")->where("id", $cartid)->delete();
+             $remainingCount = DB::table("cartattribute")->where("cart_id", $caid)->count();
+             if ($remainingCount <= 0) {
+                 DB::table("cart")->where("id", $caid)->delete();
+             }
+             $totalprice = 0;
+         } else {
+             $unitprice = (float)$attribute->unitprice;
+             $totalprice = $unitprice * $qty;
+             $tax = (float)($attribute->tax ?: 0);
+             $tae = ($totalprice * $tax) / 100;
+             DB::table("cartattribute")->where("id", $cartid)->update([
+                 "qty" => $qty,
+                 "totalprice" => $totalprice,
+                 "taxamount" => $tae
+             ]);
+         }
+
+         $customerid = $attribute->customer_id;
+         $grandtotal = (float)DB::table("cartattribute")->where("customer_id", $customerid)->sum('totalprice');
+
+         return response()->json([
+             "status" => true,
+             "code" => 100,
+             "msg" => "Successfully Updated",
+             "grandtotal" => (float)$totalprice,
+             "cart_total" => (float)$grandtotal
+         ]);
      }
      public function checkcartconditions($customerid,$bid,$pid){
          $existing = DB::table("cart")->where("customer_id", $customerid)->first(['company_id']);
@@ -261,7 +283,7 @@ class CartController extends Controller
     
     public function usercart(Request $request){ 
         //DB::enableQueryLog();
-        $userid = $request->get('userid'); $granttotal=0.0;$netamount=$cnt=$tax=$cpnamt=0.0;$rt=json_decode('{}');
+        $userid = $request->input('userid'); $granttotal=0.0;$netamount=$cnt=$tax=$cpnamt=0.0;$rt=json_decode('{}');
           $couponbyadmin=0;$combinecoupon='0';$cgst=$igst=$sgst=0;  
         //   $cartdetail = DB::table("cart")->select("category_id","id")->where("customer_id",$userid)->groupby("category_id","id")->get();
            $cartdetail = DB::table("cart")->select("category_id")->where("customer_id",$userid)->groupby("category_id")->get();
@@ -316,6 +338,43 @@ class CartController extends Controller
                      $amountwithoutcoupn = $totalqty * $crtatrbt->prprice ;
                      $netamount = $netamount+$amountwithoutcoupn;
                     }
+
+                    // Query other available pack sizes/attributes for this product not in cart
+                    $inCartAttrIds = $cartattribut->pluck('product_attributes_id')->toArray();
+                    $otherAttrs = [];
+                    $otherRows = DB::table('product_attributes')
+                        ->leftJoin('box_packings', function($join) {
+                            $join->on('box_packings.id', '=', DB::raw('CAST(product_attributes.quantity AS UNSIGNED)'));
+                        })
+                        ->select(
+                            'product_attributes.id',
+                            'product_attributes.product_id',
+                            'product_attributes.color',
+                            'box_packings.name as pack_size',
+                            'product_attributes.price'
+                        )
+                        ->where('product_attributes.product_id', $pnme->id)
+                        ->whereNotIn('product_attributes.id', $inCartAttrIds)
+                        ->where(function($q) {
+                            $q->whereNull('product_attributes.status')
+                              ->orWhereIn('product_attributes.status', ['active', 'Active', '1']);
+                        })
+                        ->whereRaw('CAST(product_attributes.price AS DECIMAL(12,2)) > 0')
+                        ->orderBy('product_attributes.id', 'asc')
+                        ->get();
+
+                    foreach ($otherRows as $orow) {
+                        $fndclr = ShadeCard::where("id", $orow->color)->first();
+                        $otherAttrs[] = [
+                            'id' => (int)$orow->id,
+                            'product_id' => (int)$orow->product_id,
+                            'pack_size' => (string)($orow->pack_size ?: '1 Unit'),
+                            'price' => (float)$orow->price,
+                            'color' => (string)($fndclr ? $fndclr->name : ($orow->color ?: '')),
+                        ];
+                    }
+                    $catary["other_attributes"] = $otherAttrs;
+
                     array_push($proarry,$catary);
                 }
                 array_push($rt[$categoryname],$proarry);

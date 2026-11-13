@@ -57,11 +57,13 @@ class CategoryResource extends Resource
                                                 ->image()
                                                 ->directory('category'),
                 Select::make('status')
-                    ->placeholder('Select a status')
                     ->options([
+                        'Active' => 'Active',
+                        'Deactive' => 'Deactive',
                         '1' => 'Active',
                         '0' => 'Deactive',
-                    ]),
+                    ])
+                    ->default('Active'),
                 Select::make('adminstatus')
                     ->options([
                         'approved' => 'approved',
@@ -79,7 +81,11 @@ class CategoryResource extends Resource
                 Tables\Columns\ImageColumn::make('image')->square(),
                 Tables\Columns\TextColumn::make('name')->sortable()->searchable(),
                 Tables\Columns\TextColumn::make('maincategory.name'),
-                ToggleColumn::make('status'),
+                Tables\Columns\BadgeColumn::make('status')
+                    ->colors([
+                        'success' => fn ($state): bool => in_array(strtolower((string)$state), ['active', '1']),
+                        'danger'  => fn ($state): bool => !in_array(strtolower((string)$state), ['active', '1']),
+                    ]),
                 TextInputColumn::make('sequence')
                 ->type('number')
                 ->extraAttributes([

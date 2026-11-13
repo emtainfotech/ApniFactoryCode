@@ -74,6 +74,7 @@ Route::get('seller/paint-pricing/audit/{id}', [PaintPricingController::class, 'a
  ///////////cart
  Route::post('addtocart', [CartController::class, "addtocart"]);
  Route::post('increasecartqty', [CartController::class, "increasecartqty"]);
+ Route::post('decreasecartqty', [CartController::class, "increasecartqty"]);
  Route::post('usercart', [CartController::class, "usercart"]);
  Route::post('deletecart', [CartController::class, "deletecart"]);
  Route::post('emptycart', [CartController::class, "emptycart"]);

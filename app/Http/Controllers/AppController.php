@@ -97,142 +97,258 @@ class AppController extends Controller
              $slider = [];
              $advertisement = [];
          }
-        // 1. Fetch Random Products (Trending Now)
-        $randomProductsRaw = Product::whereIn("status", ["Active", "active", "1"])
-            ->inRandomOrder()
-            ->limit(10)
-            ->get();
-        $prodIds = $randomProductsRaw->pluck('id')->toArray();
-        $randomProducts = $this->formatProductCollection($randomProductsRaw);
 
-        // 2. Fetch Popular Brands
-        $brandsRaw = Brand::whereIn("status", ["Active", "active", "1"])
-            ->whereNotNull('name')
-            ->where('name', '!=', '')
-            ->inRandomOrder()
-            ->get(['id', 'name', 'image', 'company_id', 'category_id'])
-            ->unique('name')
-            ->values()
-            ->take(12);
+         $mainCatId = (int)$request->get('maincategory_id', 0);
 
-        $brands = [];
-        foreach ($brandsRaw as $b) {
-            $brands[] = [
-                'id' => $b->id,
-                'name' => $b->name,
-                'image' => $b->image ?: 'default.png',
-                'company_id' => $b->company_id ?: 0,
-                'category_id' => $b->category_id ?: 0,
-            ];
-        }
+         if ($mainCatId > 0) {
+             // Scoped query for selected Main Category (e.g. Home Cleaning, Paint & Distemper)
+             $allCategories = Category::whereIn("status", ["Active", "active", "1"])
+                 ->where('maincategory_id', $mainCatId)
+                 ->orderBy("name")
+                 ->get(['id', 'name', 'image', 'maincategory_id'])
+                 ->map(function ($cat) {
+                     return [
+                         'id' => $cat->id,
+                         'scid' => 0,
+                         'name' => $cat->name,
+                         'image' => $cat->image,
+                         'maincategory_id' => $cat->maincategory_id,
+                     ];
+                 })
+                 ->values();
 
-        // 3. Blinkit-Style Category Carousels
-        $carouselDefs = [
-            [
-                'title' => 'Wall Primers & Undercoats',
-                'subtitle' => 'Interior & Exterior Base Protection',
-                'badge' => 'Direct Factory',
-                'categories' => ['Interior Wall Primer', 'Exterior Wall Primer', 'Oil Based Primer']
-            ],
-            [
-                'title' => 'Industrial & PU Protective Finishes',
-                'subtitle' => 'Heavy-Duty 2K & 1K PU Protective Coatings',
-                'badge' => 'Industrial Grade',
-                'categories' => ['2K PU Metal Finish', '2K PU Wood Finish', 'Polyurethane Coating PU', 'Hammertone Finish']
-            ],
-            [
-                'title' => 'High Gloss & Silk Emulsions',
-                'subtitle' => 'Platinum Luxury Sheen & Metallic Emulsions',
-                'badge' => 'Top Rated',
-                'categories' => ['Metallic Paints', 'Shine Emulsion', 'Interior Emulsion Water Based', 'Exterior Emulsion Water Based']
-            ],
-            [
-                'title' => 'Enamel & Automotive Coatings',
-                'subtitle' => 'Quick Drying, Synthetic & NC Lacquers',
-                'badge' => 'High Durability',
-                'categories' => ['Enamel Paints', 'Synthetic Enamel Oil Paint', 'Fast Drying Enamel', 'NC Paints']
-            ],
-            [
-                'title' => 'Formulation Bases & Distemper',
-                'subtitle' => 'Wholesale Tinting Bases & Economy Packs',
-                'badge' => 'Best Value',
-                'categories' => ['Bases', 'Distemper', 'Distemper Bucket', 'Wood Finishes', 'Furniture Enamel']
-            ]
-        ];
+             $catIds = $allCategories->pluck('id')->toArray();
+             $activeSubCats = SubCatgory::whereIn("status", ["Active", "active", "1"])
+                 ->whereIn('category_id', $catIds)
+                 ->orderBy("name")
+                 ->get()
+                 ->map(function ($sc) use ($mainCatId) {
+                     return [
+                         'id' => (int)($sc->category_id ?: $sc->cid ?: 0),
+                         'scid' => $sc->id,
+                         'name' => $sc->name,
+                         'image' => $sc->image ?: 'default.png',
+                         'maincategory_id' => $mainCatId,
+                     ];
+                 });
 
-        $categoryCarousels = [];
-        foreach ($carouselDefs as $cDef) {
-            $catIds = Category::whereIn('name', $cDef['categories'])->pluck('id')->toArray();
-            $cProds = Product::whereIn('status', ['Active', 'active', '1'])
-                ->whereIn('category_id', $catIds)
-                ->get();
-            if ($cProds->isNotEmpty()) {
-                $categoryCarousels[] = [
-                    'title' => $cDef['title'],
-                    'subtitle' => $cDef['subtitle'],
-                    'badge' => $cDef['badge'],
-                    'products' => $this->formatProductCollection($cProds)
-                ];
-            }
-        }
+             $mergedCategories = $allCategories->concat($activeSubCats)->values();
+             $subcatIds = $activeSubCats->pluck('scid')->toArray();
 
-        // 4. Fetch More Products (Initial batch for Infinite Scroll Feed)
-        $moreProductsRaw = Product::whereIn("status", ["Active", "active", "1"])
-            ->inRandomOrder()
-            ->limit(10)
-            ->get();
-        $moreProducts = $this->formatProductCollection($moreProductsRaw);
+             $prodsQuery = Product::whereIn("status", ["Active", "active", "1"])
+                 ->where(function($q) use ($catIds, $subcatIds) {
+                     $q->whereIn('category_id', $catIds);
+                     if (!empty($subcatIds)) {
+                         $q->orWhereIn('subcategory_id', $subcatIds)
+                           ->orWhereIn('sid', $subcatIds);
+                     }
+                 });
 
-        // 5. Fetch Verified Factory Companies
-        $companiesRaw = Company::whereIn("status", ["Active", "active", "1"])
-            ->whereNotNull('name')
-            ->where('name', '!=', '')
-            ->limit(15)
-            ->get(['id', 'name', 'photo', 'city', 'state', 'minordervalue']);
-        $companies = [];
-        foreach ($companiesRaw as $comp) {
-            $companies[] = [
-                'id' => $comp->id,
-                'name' => $comp->name,
-                'photo' => $comp->photo ?: '',
-                'city' => $comp->city ?: 'India',
-                'state' => $comp->state ?: '',
-                'minordervalue' => $comp->minordervalue ? (float)$comp->minordervalue : 0.0,
-            ];
-        }
+             $randomProductsRaw = (clone $prodsQuery)->inRandomOrder()->limit(15)->get();
+             $randomProducts = $this->formatProductCollection($randomProductsRaw);
 
-        // 6. Fetch Categories and active 4th-tier Subcategories for sliders
-        $allCategories = Category::whereIn("status", ["Active", "active", "1"])
-            ->orderBy("name")
-            ->get(['id', 'name', 'image', 'maincategory_id'])
-            ->map(function ($cat) {
-                return [
-                    'id' => $cat->id,
-                    'scid' => 0,
-                    'name' => $cat->name,
-                    'image' => $cat->image,
-                    'maincategory_id' => $cat->maincategory_id,
-                ];
-            })
-            ->values();
+             $moreProductsRaw = (clone $prodsQuery)->inRandomOrder()->limit(15)->get();
+             $moreProducts = $this->formatProductCollection($moreProductsRaw);
 
-        $catMainMap = $allCategories->pluck('maincategory_id', 'id');
-        $activeSubCats = SubCatgory::whereIn("status", ["Active", "active", "1"])
-            ->orderBy("name")
-            ->get()
-            ->map(function ($sc) use ($catMainMap) {
-                $parentCatId = (int)($sc->category_id ?: $sc->cid ?: 0);
-                $mainId = (int)($sc->maincategory_id ?: $sc->mid ?: ($catMainMap->get($parentCatId) ?? 0));
-                return [
-                    'id' => $parentCatId,
-                    'scid' => $sc->id,
-                    'name' => $sc->name,
-                    'image' => $sc->image ?: 'default.png',
-                    'maincategory_id' => $mainId,
-                ];
-            });
+             $prodBrandIds = (clone $prodsQuery)->pluck('brand_id')->filter()->unique()->toArray();
+             $brandsRaw = Brand::whereIn("status", ["Active", "active", "1"])
+                 ->whereNotNull('name')
+                 ->where('name', '!=', '')
+                 ->where(function($q) use ($catIds, $prodBrandIds) {
+                     $q->whereIn('category_id', $catIds);
+                     if (!empty($prodBrandIds)) {
+                         $q->orWhereIn('id', $prodBrandIds);
+                     }
+                 })
+                 ->get(['id', 'name', 'image', 'company_id', 'category_id'])
+                 ->unique('name')
+                 ->values()
+                 ->take(12);
 
-        $mergedCategories = $allCategories->concat($activeSubCats)->values();
+             $brands = [];
+             foreach ($brandsRaw as $b) {
+                 $brands[] = [
+                     'id' => $b->id,
+                     'name' => $b->name,
+                     'image' => $b->image ?: 'default.png',
+                     'company_id' => $b->company_id ?: 0,
+                     'category_id' => $b->category_id ?: 0,
+                 ];
+             }
+
+             $userIds = (clone $prodsQuery)->pluck('user_id')->filter()->unique()->toArray();
+             $companiesRaw = Company::whereIn("status", ["Active", "active", "1"])
+                 ->whereNotNull('name')
+                 ->where('name', '!=', '')
+                 ->whereIn('user_id', $userIds)
+                 ->limit(15)
+                 ->get(['id', 'name', 'photo', 'city', 'state', 'minordervalue']);
+
+             $companies = [];
+             foreach ($companiesRaw as $comp) {
+                 $companies[] = [
+                     'id' => $comp->id,
+                     'name' => $comp->name,
+                     'photo' => $comp->photo ?: '',
+                     'city' => $comp->city ?: 'India',
+                     'state' => $comp->state ?: '',
+                     'minordervalue' => $comp->minordervalue ? (float)$comp->minordervalue : 0.0,
+                 ];
+             }
+
+             $categoryCarousels = [];
+             foreach ($allCategories->take(5) as $cRow) {
+                 $cProds = Product::whereIn('status', ['Active', 'active', '1'])
+                     ->where('category_id', $cRow['id'])
+                     ->limit(8)
+                     ->get();
+                 if ($cProds->isNotEmpty()) {
+                     $categoryCarousels[] = [
+                         'title' => $cRow['name'],
+                         'subtitle' => 'Factory Direct Selection',
+                         'badge' => 'Verified Quality',
+                         'products' => $this->formatProductCollection($cProds)
+                     ];
+                 }
+             }
+         } else {
+             // 1. Fetch Random Products (Trending Now across full catalog)
+             $randomProductsRaw = Product::whereIn("status", ["Active", "active", "1"])
+                 ->inRandomOrder()
+                 ->limit(10)
+                 ->get();
+             $prodIds = $randomProductsRaw->pluck('id')->toArray();
+             $randomProducts = $this->formatProductCollection($randomProductsRaw);
+
+             // 2. Fetch Popular Brands
+             $brandsRaw = Brand::whereIn("status", ["Active", "active", "1"])
+                 ->whereNotNull('name')
+                 ->where('name', '!=', '')
+                 ->inRandomOrder()
+                 ->get(['id', 'name', 'image', 'company_id', 'category_id'])
+                 ->unique('name')
+                 ->values()
+                 ->take(12);
+
+             $brands = [];
+             foreach ($brandsRaw as $b) {
+                 $brands[] = [
+                     'id' => $b->id,
+                     'name' => $b->name,
+                     'image' => $b->image ?: 'default.png',
+                     'company_id' => $b->company_id ?: 0,
+                     'category_id' => $b->category_id ?: 0,
+                 ];
+             }
+
+             // 3. Blinkit-Style Category Carousels
+             $carouselDefs = [
+                 [
+                     'title' => 'Wall Primers & Undercoats',
+                     'subtitle' => 'Interior & Exterior Base Protection',
+                     'badge' => 'Direct Factory',
+                     'categories' => ['Interior Wall Primer', 'Exterior Wall Primer', 'Oil Based Primer']
+                 ],
+                 [
+                     'title' => 'Industrial & PU Protective Finishes',
+                     'subtitle' => 'Heavy-Duty 2K & 1K PU Protective Coatings',
+                     'badge' => 'Industrial Grade',
+                     'categories' => ['2K PU Metal Finish', '2K PU Wood Finish', 'Polyurethane Coating PU', 'Hammertone Finish']
+                 ],
+                 [
+                     'title' => 'High Gloss & Silk Emulsions',
+                     'subtitle' => 'Platinum Luxury Sheen & Metallic Emulsions',
+                     'badge' => 'Top Rated',
+                     'categories' => ['Metallic Paints', 'Shine Emulsion', 'Interior Emulsion Water Based', 'Exterior Emulsion Water Based']
+                 ],
+                 [
+                     'title' => 'Enamel & Automotive Coatings',
+                     'subtitle' => 'Quick Drying, Synthetic & NC Lacquers',
+                     'badge' => 'High Durability',
+                     'categories' => ['Enamel Paints', 'Synthetic Enamel Oil Paint', 'Fast Drying Enamel', 'NC Paints']
+                 ],
+                 [
+                     'title' => 'Formulation Bases & Distemper',
+                     'subtitle' => 'Wholesale Tinting Bases & Economy Packs',
+                     'badge' => 'Best Value',
+                     'categories' => ['Bases', 'Distemper', 'Distemper Bucket', 'Wood Finishes', 'Furniture Enamel']
+                 ]
+             ];
+
+             $categoryCarousels = [];
+             foreach ($carouselDefs as $cDef) {
+                 $catIds = Category::whereIn('name', $cDef['categories'])->pluck('id')->toArray();
+                 $cProds = Product::whereIn('status', ['Active', 'active', '1'])
+                     ->whereIn('category_id', $catIds)
+                     ->get();
+                 if ($cProds->isNotEmpty()) {
+                     $categoryCarousels[] = [
+                         'title' => $cDef['title'],
+                         'subtitle' => $cDef['subtitle'],
+                         'badge' => $cDef['badge'],
+                         'products' => $this->formatProductCollection($cProds)
+                     ];
+                 }
+             }
+
+             // 4. Fetch More Products (Initial batch for Infinite Scroll Feed)
+             $moreProductsRaw = Product::whereIn("status", ["Active", "active", "1"])
+                 ->inRandomOrder()
+                 ->limit(10)
+                 ->get();
+             $moreProducts = $this->formatProductCollection($moreProductsRaw);
+
+             // 5. Fetch Verified Factory Companies
+             $companiesRaw = Company::whereIn("status", ["Active", "active", "1"])
+                 ->whereNotNull('name')
+                 ->where('name', '!=', '')
+                 ->limit(15)
+                 ->get(['id', 'name', 'photo', 'city', 'state', 'minordervalue']);
+             $companies = [];
+             foreach ($companiesRaw as $comp) {
+                 $companies[] = [
+                     'id' => $comp->id,
+                     'name' => $comp->name,
+                     'photo' => $comp->photo ?: '',
+                     'city' => $comp->city ?: 'India',
+                     'state' => $comp->state ?: '',
+                     'minordervalue' => $comp->minordervalue ? (float)$comp->minordervalue : 0.0,
+                 ];
+             }
+
+             // 6. Fetch Categories and active 4th-tier Subcategories for sliders
+             $allCategories = Category::whereIn("status", ["Active", "active", "1"])
+                 ->orderBy("name")
+                 ->get(['id', 'name', 'image', 'maincategory_id'])
+                 ->map(function ($cat) {
+                     return [
+                         'id' => $cat->id,
+                         'scid' => 0,
+                         'name' => $cat->name,
+                         'image' => $cat->image,
+                         'maincategory_id' => $cat->maincategory_id,
+                     ];
+                 })
+                 ->values();
+
+             $catMainMap = $allCategories->pluck('maincategory_id', 'id');
+             $activeSubCats = SubCatgory::whereIn("status", ["Active", "active", "1"])
+                 ->orderBy("name")
+                 ->get()
+                 ->map(function ($sc) use ($catMainMap) {
+                     $parentCatId = (int)($sc->category_id ?: $sc->cid ?: 0);
+                     $mainId = (int)($sc->maincategory_id ?: $sc->mid ?: ($catMainMap->get($parentCatId) ?? 0));
+                     return [
+                         'id' => $parentCatId,
+                         'scid' => $sc->id,
+                         'name' => $sc->name,
+                         'image' => $sc->image ?: 'default.png',
+                         'maincategory_id' => $mainId,
+                     ];
+                 });
+
+             $mergedCategories = $allCategories->concat($activeSubCats)->values();
+         }
 
         $rmn = [
             "slider" => $slider,
@@ -368,6 +484,26 @@ class AppController extends Controller
               $ct['image']=$cat->image;
               $ct['cid']=$cat->id;
               array_push($rmn['category'],$ct);
+          }
+          $catIds = $category->pluck('id')->toArray();
+          $subcategories = SubCatgory::whereIn("status", ["Active", "active", "1"])
+              ->where(function($q) use ($catIds, $request) {
+                  $q->whereIn("cid", $catIds)
+                    ->orWhereIn("category_id", $catIds)
+                    ->orWhere("mid", $request->get('mid'))
+                    ->orWhere("maincategory_id", $request->get('mid'));
+              })
+              ->orderBy("name")
+              ->get();
+          $rmn['subcategory'] = [];
+          foreach ($subcategories as $sc) {
+              $rmn['subcategory'][] = [
+                  'name' => $sc->name,
+                  'image' => $sc->image ?: 'default.png',
+                  'cid' => (int)($sc->cid ?: $sc->category_id ?: 0),
+                  'scid' => (int)$sc->id,
+                  'mid' => (int)($sc->mid ?: $sc->maincategory_id ?: 0),
+              ];
           }
           $company = Company::whereIn("status", ["Active", "active", "1"])->where("maincategory_id",$request->get('mid'))->orderby("id","desc")->get();
           foreach($company as $cmp){
@@ -697,12 +833,29 @@ class AppController extends Controller
               : ($scopedUserId > 0 ? (int)(Company::where('user_id', $scopedUserId)->value('id') ?: 0) : 0);
 
           $query = Product::whereIn("status", ["Active", "active", "1"]);
+
+          // Check if scoped company actually has products in this category/subcategory
           if ($scopedUserId > 0) {
-              $query->where("user_id", $scopedUserId);
+              $hasCompanyProds = (clone $query)->where("user_id", $scopedUserId)
+                  ->when($scid > 0, fn($q) => $q->where(fn($sq) => $sq->where("subcategory_id", $scid)->orWhere("sid", $scid)))
+                  ->when($scid <= 0 && $cid > 0, fn($q) => $q->where("category_id", $cid))
+                  ->exists();
+              if ($hasCompanyProds) {
+                  $query->where("user_id", $scopedUserId);
+              }
           }
+
+          // Check if brand actually has products in this category/subcategory
           if ($bid > 0) {
-              $query->where("brand_id", $bid);
+              $hasBrandProds = (clone $query)->where("brand_id", $bid)
+                  ->when($scid > 0, fn($q) => $q->where(fn($sq) => $sq->where("subcategory_id", $scid)->orWhere("sid", $scid)))
+                  ->when($scid <= 0 && $cid > 0, fn($q) => $q->where("category_id", $cid))
+                  ->exists();
+              if ($hasBrandProds) {
+                  $query->where("brand_id", $bid);
+              }
           }
+
           if ($scid > 0) {
               $query->where(function ($q) use ($scid) {
                   $q->where("subcategory_id", $scid)->orWhere("sid", $scid);
