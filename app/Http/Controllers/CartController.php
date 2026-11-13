@@ -274,12 +274,26 @@ class CartController extends Controller
                         $granttotal = DB::table("cartattribute")->where("customer_id",$userid)->sum('totalprice');
                         $cnt = DB::table("cart")->where("customer_id",$userid)->count('id');
                         return response()->json(["status"=>true,"code"=>100,"msg"=>"Added to Cart","grandtotal"=>floatval($granttotal),"counter"=>$cnt]);     
+                     } else {
+                        $addQty = (int)($atrbty['qty'] ?? 1);
+                        $newQty = (int)$checkattri->qty + $addQty;
+                        $unitprice = (float)$checkattri->unitprice;
+                        $newTotal = $unitprice * $newQty;
+                        $tax = $prod ? (float)$prod->tax : 0;
+                        $tot = ($newTotal * $tax) / 100;
+                        DB::table("cartattribute")->where("id", $checkattri->id)->update([
+                            "qty" => $newQty,
+                            "totalprice" => $newTotal,
+                            "taxamount" => $tot
+                        ]);
+                        $granttotal = DB::table("cartattribute")->where("customer_id", $userid)->sum('totalprice');
+                        $cnt = DB::table("cart")->where("customer_id", $userid)->count('id');
+                        return response()->json(["status"=>true,"code"=>100,"msg"=>"Quantity updated in Cart","grandtotal"=>floatval($granttotal),"counter"=>$cnt]);
                      }
-                    //  else{
-                    //      return response()->json(["status"=>false,"code"=>500,"msg"=>"attribute Already In Cart","grandtotal"=>0.0,"counter"=>0,"data"=>[]]);
-                    //  }
               }
-         return response()->json(["status"=>false,"code"=>500,"msg"=>"Already In Cart","grandtotal"=>0.0,"counter"=>0,"data"=>[]]);
+         $granttotal = DB::table("cartattribute")->where("customer_id", $userid)->sum('totalprice');
+         $cnt = DB::table("cart")->where("customer_id", $userid)->count('id');
+         return response()->json(["status"=>true,"code"=>100,"msg"=>"Cart updated","grandtotal"=>floatval($granttotal),"counter"=>$cnt]);
          }
      }
     
