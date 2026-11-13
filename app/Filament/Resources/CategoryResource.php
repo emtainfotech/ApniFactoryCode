@@ -60,10 +60,9 @@ class CategoryResource extends Resource
                     ->options([
                         'Active' => 'Active',
                         'Deactive' => 'Deactive',
-                        '1' => 'Active',
-                        '0' => 'Deactive',
                     ])
-                    ->default('Active'),
+                    ->default('Active')
+                    ->required(),
                 Select::make('adminstatus')
                     ->options([
                         'approved' => 'approved',

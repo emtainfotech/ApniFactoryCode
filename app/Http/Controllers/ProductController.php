@@ -268,7 +268,9 @@ class ProductController extends Controller
                    $rlt['color']= $price ? Helper::getcolorsnamebyid($price->color) : '';
                    $rlt['colorid']= $price ? $price->color : 0;
                    $quantity= $price ? BoxPacking::where("id",$price->quantity)->first() : null;
-                   $rlt['price'] = $price ? ('Rs. '.$price->price.($quantity ? '('.$quantity->name.')' : '')) : '';
+                   $numPrice = $price ? round((float)$price->price, 2) : 0;
+                   $formattedPrice = number_format($numPrice, 2, '.', '');
+                   $rlt['price'] = $price ? ('₹' . $formattedPrice . ($quantity ? ' (' . $quantity->name . ')' : '')) : '';
                    array_push($related,$rlt);
                }
               $rmn["relatedproductlist"] = $related;

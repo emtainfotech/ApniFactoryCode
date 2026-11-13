@@ -38,10 +38,11 @@ class Category extends Model
 
     public function getStatusAttribute($value)
     {
+        $isActive = empty($value) || in_array(strtolower((string)$value), ['active', '1', 'approved']);
         if (request() && request()->is('api/*')) {
-            return in_array(strtolower($value ?? ''), ['active', '1']) ? 1 : 0;
+            return $isActive ? 1 : 0;
         }
-        return $value;
+        return $isActive ? 'Active' : 'Deactive';
     }
   
 }

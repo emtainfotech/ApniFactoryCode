@@ -65,7 +65,9 @@ class CartController extends Controller
             $rlt['colorid']= $price->color;
             $quantity=BoxPacking::where("id",$price->quantity)->first();
             $qtyName = $quantity ? $quantity->name : '1 Unit';
-            $rlt['price'] = 'Rs. '.$price->price.'('.$qtyName.')';
+            $numPrice = round((float)$price->price, 2);
+            $formattedPrice = number_format($numPrice, 2, '.', '');
+            $rlt['price'] = '₹' . $formattedPrice . ' (' . $qtyName . ')';
             array_push($related,$rlt);
         }
         return response()->json(["status"=>true,"code"=>100,"msg"=>"Successfully Show","data"=>$related]);
@@ -317,14 +319,14 @@ class CartController extends Controller
                         $attr["boxpacking"] = $fndpcs ? $fndpcs->name : ($attributedetail->quantity ?? '1 Unit');
                         $fndclr = $attributedetail ? ShadeCard::where("id",$attributedetail->color)->first() : null;
                         $attr["color"] = $fndclr ? $fndclr->name : ($attributedetail->color ?? 'Standard');
-                        $attr["totalprice"] = floatval($crtatrbt->totalprice);
+                        $attr["totalprice"] = round(floatval($crtatrbt->totalprice), 2);
                          $attr["qty"] = intval($crtatrbt->qty);
                          $attr["attributeid"] = intval($crtatrbt->id);
-                         $attr["prprice"] = intval(round(floatval($crtatrbt->prprice)));
+                         $attr["prprice"] = round(floatval($crtatrbt->prprice), 2);
                          $attr["boxpcs"] = intval($crtatrbt->boxpcs);
-                         $attr["unitprice"] = floatval($crtatrbt->unitprice);
+                         $attr["unitprice"] = round(floatval($crtatrbt->unitprice), 2);
                          $attr["productattributeid"] = intval($paid);
-                         $attr["couponamount"] = floatval($crtatrbt->coupon ?? 0) * $totalqty;
+                         $attr["couponamount"] = round(floatval($crtatrbt->coupon ?? 0) * $totalqty, 2);
                           $granttotal += $crtatrbt->totalprice;
                         array_push($catary["attributedata"],$attr);
                         //   print_r($attr);
@@ -369,7 +371,7 @@ class CartController extends Controller
                             'id' => (int)$orow->id,
                             'product_id' => (int)$orow->product_id,
                             'pack_size' => (string)($orow->pack_size ?: '1 Unit'),
-                            'price' => (float)$orow->price,
+                            'price' => round((float)$orow->price, 2),
                             'color' => (string)($fndclr ? $fndclr->name : ($orow->color ?: '')),
                         ];
                     }
@@ -429,13 +431,13 @@ class CartController extends Controller
               "status"                   => true,
               "code"                     => 100,
               "msg"                      => "Successfully Show",
-              "grandtotal"               => floatval($granttotal),
-              "netamount"                => floatval($netamount),
+              "grandtotal"               => round(floatval($granttotal), 2),
+              "netamount"                => round(floatval($netamount), 2),
               "counter"                  => $cnt,
-              "cgst"                     => $cgst,
-              "sgst"                     => $sgst,
-              "igst"                     => $igst,
-              "couponbyadmin"            => floatval($couponbyadmin),
+              "cgst"                     => round(floatval($cgst), 2),
+              "sgst"                     => round(floatval($sgst), 2),
+              "igst"                     => round(floatval($igst), 2),
+              "couponbyadmin"            => round(floatval($couponbyadmin), 2),
               "combinecoupon"            => $combinecoupon,
               "company_id"               => $activeCompany ? (int)$activeCompany->id : ($firstSellerGroup ? (int)($firstSellerGroup['company_id'] ?? 0) : 0),
               "company_name"             => $activeCompany ? (string)$activeCompany->name : ($firstSellerGroup ? (string)($firstSellerGroup['company_name'] ?? '') : ''),

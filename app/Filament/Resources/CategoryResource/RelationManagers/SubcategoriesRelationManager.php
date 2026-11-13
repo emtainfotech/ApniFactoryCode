@@ -33,7 +33,8 @@ class SubcategoriesRelationManager extends RelationManager
                         'Active' => 'Active',
                         'Deactive' => 'Deactive',
                     ])
-                    ->default('Active'),
+                    ->default('Active')
+                    ->required(),
             ]);
     }
 

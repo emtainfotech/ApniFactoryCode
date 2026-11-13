@@ -118,8 +118,16 @@ class AppController extends Controller
                  ->values();
 
              $catIds = $allCategories->pluck('id')->toArray();
-             $activeSubCats = SubCatgory::whereIn("status", ["Active", "active", "1"])
-                 ->whereIn('category_id', $catIds)
+             $activeSubCats = SubCatgory::where(function($q) {
+                     $q->whereIn("status", ["Active", "active", "1"])
+                       ->orWhereNull("status");
+                 })
+                 ->where(function($q) use ($catIds, $mainCatId) {
+                     $q->whereIn('category_id', $catIds)
+                       ->orWhereIn('cid', $catIds)
+                       ->orWhere('maincategory_id', $mainCatId)
+                       ->orWhere('mid', $mainCatId);
+                 })
                  ->orderBy("name")
                  ->get()
                  ->map(function ($sc) use ($mainCatId) {
@@ -332,7 +340,10 @@ class AppController extends Controller
                  ->values();
 
              $catMainMap = $allCategories->pluck('maincategory_id', 'id');
-             $activeSubCats = SubCatgory::whereIn("status", ["Active", "active", "1"])
+             $activeSubCats = SubCatgory::where(function($q) {
+                     $q->whereIn("status", ["Active", "active", "1"])
+                       ->orWhereNull("status");
+                 })
                  ->orderBy("name")
                  ->get()
                  ->map(function ($sc) use ($catMainMap) {
@@ -612,9 +623,16 @@ class AppController extends Controller
          $scid = (int)$request->get('scid', 0);
          $prodQuery = Product::select('user_id')->whereIn("status", ["Active", "active", "1"]);
          if ($scid > 0) {
-             $prodQuery->where(function ($q) use ($scid) {
+             $hasSubcatProds = (clone $prodQuery)->where(function ($q) use ($scid) {
                  $q->where("subcategory_id", $scid)->orWhere("sid", $scid);
-             });
+             })->exists();
+             if ($hasSubcatProds) {
+                 $prodQuery->where(function ($q) use ($scid) {
+                     $q->where("subcategory_id", $scid)->orWhere("sid", $scid);
+                 });
+             } elseif ($cid > 0) {
+                 $prodQuery->where("category_id", $cid);
+             }
          } elseif ($cid > 0) {
              $prodQuery->where("category_id", $cid);
          }
@@ -709,7 +727,9 @@ class AppController extends Controller
               $subCatQuery = SubCatgory::where(function ($q) use ($cid) {
                       $q->where('category_id', $cid)->orWhere('cid', $cid);
                   })
-                  ->whereIn('status', ['Active', 'active', '1'])
+                  ->where(function($q) {
+                      $q->whereIn('status', ['Active', 'active', '1'])->orWhereNull('status');
+                  })
                   ->orderBy('name');
 
               if ($scopedUid > 0) {
@@ -724,7 +744,7 @@ class AppController extends Controller
                       ->values()
                       ->toArray();
                   $childSubCats = empty($usedScids)
-                      ? collect()
+                      ? $subCatQuery->get()
                       : $subCatQuery->whereIn('id', $usedScids)->get();
               } else {
                   $childSubCats = $subCatQuery->get();
@@ -857,9 +877,16 @@ class AppController extends Controller
           }
 
           if ($scid > 0) {
-              $query->where(function ($q) use ($scid) {
+              $hasSubcatProds = (clone $query)->where(function ($q) use ($scid) {
                   $q->where("subcategory_id", $scid)->orWhere("sid", $scid);
-              });
+              })->exists();
+              if ($hasSubcatProds) {
+                  $query->where(function ($q) use ($scid) {
+                      $q->where("subcategory_id", $scid)->orWhere("sid", $scid);
+                  });
+              } elseif ($cid > 0) {
+                  $query->where("category_id", $cid);
+              }
           } elseif ($cid > 0) {
               $query->where("category_id", $cid);
           }
