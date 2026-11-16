@@ -56,33 +56,51 @@ class ProductController extends Controller
             }
         }
 
+        // Auto-run pending migrations if column has not been added on live database yet
+        if (!\Illuminate\Support\Facades\Schema::hasColumn('products', 'has_gst_included')) {
+            try {
+                \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
+            } catch (\Throwable $e) {
+                // If migration fails, continue with fallback column checks
+            }
+        }
+
         $approvalStatus = $hasGstIncluded ? 'pending_review' : 'approved';
         $productStatus = $hasGstIncluded ? 'Deactive' : 'Active';
 
         $pary = array(
-                      "maincategory_id"=>$mid,
-                      "category_id"=>$cid,
-                      "subcategory_id"=>0,
-                      "name"=>$name,
-                      "slug"=>$slug,
-                      "title"=>$slug,
-                      "description"=>$description,
-                      "status"=>$productStatus,
-                      "approval_status"=>$approvalStatus,
-                      "has_gst_included"=>$hasGstIncluded ? 1 : 0,
-                      "submitted_at"=>$hasGstIncluded ? now() : null,
-                      "brand_id"=>$Brand,
-                      "product_id"=>$prid,
-                      "user_id"=>Auth::user()->id,
-                      "multipleimages"=>json_encode($images),
-                      "image"=>$img,
-                      "hsncode"=>$hsncode,
-                      "tax"=>$tax
+                      "maincategory_id" => $mid,
+                      "category_id"     => $cid,
+                      "subcategory_id"  => 0,
+                      "name"            => $name,
+                      "slug"            => $slug,
+                      "title"           => $slug,
+                      "description"     => $description,
+                      "status"          => $productStatus,
+                      "approval_status" => $approvalStatus,
+                      "brand_id"        => $Brand,
+                      "product_id"      => $prid,
+                      "user_id"         => Auth::user()->id,
+                      "multipleimages"  => json_encode($images),
+                      "image"           => $img,
+                      "hsncode"         => $hsncode,
+                      "tax"             => $tax
                       );
+
+        if (\Illuminate\Support\Facades\Schema::hasColumn('products', 'has_gst_included')) {
+            $pary['has_gst_included'] = $hasGstIncluded ? 1 : 0;
+        }
+        if (\Illuminate\Support\Facades\Schema::hasColumn('products', 'submitted_at')) {
+            $pary['submitted_at'] = $hasGstIncluded ? now() : null;
+        }
+
         $pid = Product::insertGetId($pary);
         
         $pricingService = app(\App\Services\PaintPricingService::class);
         $commissionRate = $pricingService->getEffectiveCommissionRate(Auth::id(), null, $cid, null, $mid);
+
+        $hasIsGstColumn = \Illuminate\Support\Facades\Schema::hasColumn('product_attributes', 'is_gst_included');
+        $hasMrpColumn = \Illuminate\Support\Facades\Schema::hasColumn('product_attributes', 'mrp');
 
         if ($request->has('boxpacking')) {
             foreach($request->boxpacking as $key=>$bxpackg){
@@ -110,13 +128,19 @@ class ProductController extends Controller
                                 "quantity"        => $bxpackg,
                                 "oldprice"        => $customerPrice,
                                 "seller_price"    => $sellerPrice,
-                                "is_gst_included" => $isGstIncluded ? 1 : 0,
                                 "commission_rate" => $commissionRate,
                                 "pack_litres"     => $packLitres,
                                 "price"           => $customerPrice,
-                                "mrp"             => $mrp,
                                 "status"          => '1',
                             );
+
+                if ($hasIsGstColumn) {
+                    $patbu['is_gst_included'] = $isGstIncluded ? 1 : 0;
+                }
+                if ($hasMrpColumn) {
+                    $patbu['mrp'] = $mrp;
+                }
+
                 ProductAttributes::insert($patbu);            
             }
         }

@@ -83,6 +83,16 @@ Route::get('/seller/signup', function (){  return view('seller.signup'); });
 Route::post('/seller/signup', [AdminController::class,"store"])->name('sellerregistration');
 ////////////////////seller routes
 Route::get('/seller/login', [AdminController::class,"login"]);
+Route::get('/run-migrations', function () {
+    try {
+        \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
+        $output = \Illuminate\Support\Facades\Artisan::output();
+        return response("<h3>Migrations Executed Successfully!</h3><pre>{$output}</pre><br><a href='/seller/product/add'>Go to Add Product</a>");
+    } catch (\Throwable $e) {
+        return response("<h3>Migration Output/Error:</h3><pre>" . $e->getMessage() . "</pre>", 500);
+    }
+});
+
 Route::group(['middleware' => ['auth']], function () { 
         Route::get('/seller/dashboard', [AdminController::class,"index"]);
         Route::get('/seller/profile', [CompanyController::class,"profile_sellerview"]);
