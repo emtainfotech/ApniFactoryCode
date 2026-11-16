@@ -80,6 +80,16 @@ class CategoryResource extends Resource
                 Tables\Columns\ImageColumn::make('image')->square(),
                 Tables\Columns\TextColumn::make('name')->sortable()->searchable(),
                 Tables\Columns\TextColumn::make('maincategory.name'),
+                TextInputColumn::make('commission_rate')
+                    ->label('Commission %')
+                    ->type('number')
+                    ->rules(['numeric', 'min:0', 'max:100'])
+                    ->extraAttributes(['style' => 'max-width: 90px;'])
+                    ->updateStateUsing(function (Category $record, $state) {
+                        $record->commission_rate = ($state !== null && $state !== '') ? (float)$state : null;
+                        $record->save();
+                        return $state;
+                    }),
                 Tables\Columns\BadgeColumn::make('status')
                     ->colors([
                         'success' => fn ($state): bool => in_array(strtolower((string)$state), ['active', '1']),

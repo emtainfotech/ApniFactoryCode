@@ -53,6 +53,16 @@ class MainCategoryResource extends Resource
                 
                 Tables\Columns\ImageColumn::make('image')->square(),
                 Tables\Columns\TextColumn::make('name')->sortable()->searchable(),
+                TextInputColumn::make('commission_rate')
+                    ->label('Commission %')
+                    ->type('number')
+                    ->rules(['numeric', 'min:0', 'max:100'])
+                    ->extraAttributes(['style' => 'max-width: 90px;'])
+                    ->updateStateUsing(function (MainCategory $record, $state) {
+                        $record->commission_rate = ($state !== null && $state !== '') ? (float)$state : null;
+                        $record->save();
+                        return $state;
+                    }),
                 ToggleColumn::make('status')->sortable(),
                 Tables\Columns\TextColumn::make('created_at')->date(),
                 TextInputColumn::make('sequence')
