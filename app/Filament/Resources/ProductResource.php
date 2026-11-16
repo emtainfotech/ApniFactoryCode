@@ -117,7 +117,6 @@ class ProductResource extends Resource
                     ->directory('product')
                     ->multiple()
                     ->image()
-                    ->reorderable()
                     ->afterStateHydrated(function ($component, $state) {
                         if (is_string($state)) {
                             $component->state(json_decode($state, true) ?: []);

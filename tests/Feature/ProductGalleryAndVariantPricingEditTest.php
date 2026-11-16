@@ -185,4 +185,19 @@ class ProductGalleryAndVariantPricingEditTest extends TestCase
         $this->assertEquals('pending_review', $this->product->approval_status);
         $this->assertEquals('Deactive', $this->product->status);
     }
+
+    /** @test */
+    public function test_filament_product_resource_form_builds_without_exception()
+    {
+        $admin = User::factory()->create([
+            'id' => 1,
+            'email' => 'admin@apnifactory.com',
+        ]);
+
+        $this->actingAs($admin);
+
+        \Livewire\Livewire::test(\App\Filament\Resources\ProductResource\Pages\EditProduct::class, [
+            'record' => $this->product->id,
+        ])->assertSuccessful();
+    }
 }

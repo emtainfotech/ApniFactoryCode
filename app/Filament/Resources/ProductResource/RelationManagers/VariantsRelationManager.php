@@ -66,10 +66,9 @@ class VariantsRelationManager extends RelationManager
                 Tables\Columns\TextColumn::make('variant_sku')->label('Variant SKU')->weight('bold')->searchable(),
                 Tables\Columns\TextColumn::make('variant_name')->searchable(),
                 Tables\Columns\TextColumn::make('pack_litres')->label('Pack Size'),
-                Tables\Columns\TextColumn::make('listings_count')
+                Tables\Columns\BadgeColumn::make('listings_count')
                     ->counts('listings')
-                    ->label('Seller Listings')
-                    ->badge(),
+                    ->label('Seller Listings'),
                 Tables\Columns\BadgeColumn::make('status')
                     ->colors([
                         'success' => 'Active',
