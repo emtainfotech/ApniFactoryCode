@@ -173,7 +173,7 @@
                                                 </p>
                                             </div>
                                             <button type="button" class="btn btn-primary btn-sm rounded-pill px-3 shadow-sm" onclick="addNewGroupStep1()">
-                                                <i class="fa-solid fa-plus me-1"></i> + Create New Group
+                                                <i class="fa-solid fa-plus me-1"></i> Create Group
                                             </button>
                                         </div>
                                         <div class="card-body p-3">
@@ -219,7 +219,7 @@
 let categoryShades = [];
 let categoryPackings = [];
 let step1Groups = [];
-let step1GroupCounter = 0;
+let activePickerGroupId = null;
 
 $("document").ready(function(){
     $("#brand").change(function(){ 
@@ -247,17 +247,17 @@ $("document").ready(function(){
                 categoryShades = response.shades || [];
                 categoryPackings = response.packings || [];
 
-                // Initialize Group 1 with all shades and all packings
-                step1GroupCounter = 0;
+                // Initialize Group 1: By default, pack sizes and color shades are UNCHECKED
                 step1Groups = [
                     {
                         id: 's1_grp_1',
                         name: 'Group 1',
-                        enabled: true, // checkmarked group
-                        pack_ids: categoryPackings.map(p => p.id),
-                        shades: categoryShades.map(s => s.id)
+                        enabled: true,
+                        pack_ids: [],
+                        shades: []
                     }
                 ];
+                activePickerGroupId = 's1_grp_1';
 
                 renderStep1Groups();
                 $("#step1GroupSection").show();
@@ -280,27 +280,21 @@ function getAssignedShadesAcrossGroups(excludeGroupId = null) {
     return assigned;
 }
 
-// Add New Group in Step 1
+// "Create Group" action
 function addNewGroupStep1() {
-    step1GroupCounter++;
     const newId = 's1_grp_' + Date.now();
     const newName = 'Group ' + (step1Groups.length + 1);
 
-    // Initial pack sizes (default all checked for the group)
-    const allPackIds = categoryPackings.map(p => p.id);
-
-    // Find unassigned shades
-    const assigned = getAssignedShadesAcrossGroups(null);
-    const unassignedShades = categoryShades.filter(s => !assigned.has(s.id)).map(s => s.id);
-
+    // Default unchecked sizes & shades for newly created group
     step1Groups.push({
         id: newId,
         name: newName,
         enabled: true,
-        pack_ids: allPackIds,
-        shades: unassignedShades
+        pack_ids: [],
+        shades: []
     });
 
+    activePickerGroupId = newId; // Open the shade picker for this newly created group
     renderStep1Groups();
 }
 
@@ -315,6 +309,7 @@ function removeStep1Group(groupId) {
     if (!confirm(`Are you sure you want to remove '${target.name}'?`)) return;
 
     step1Groups = step1Groups.filter(g => g.id !== groupId);
+    if (activePickerGroupId === groupId) activePickerGroupId = null;
     renderStep1Groups();
 }
 
@@ -360,23 +355,35 @@ function clearAllPacksForGroup(groupId) {
     }
 }
 
-function toggleStep1Shade(groupId, shadeId, isChecked) {
+function toggleShadePicker(groupId) {
+    activePickerGroupId = (activePickerGroupId === groupId ? null : groupId);
+    renderStep1Groups();
+}
+
+function addShadeToGroup(groupId, shadeId) {
     shadeId = parseInt(shadeId);
     const grp = step1Groups.find(g => g.id === groupId);
     if (!grp) return;
 
-    if (isChecked) {
-        // Remove shade from any other group first (NON-REPETITION)
-        step1Groups.forEach(g => {
-            if (g.id !== groupId) {
-                g.shades = g.shades.filter(sid => parseInt(sid) !== shadeId);
-            }
-        });
-        if (!grp.shades.includes(shadeId)) grp.shades.push(shadeId);
-    } else {
-        grp.shades = grp.shades.filter(sid => parseInt(sid) !== shadeId);
-    }
+    // Remove from any other group first (strict non-repetition)
+    step1Groups.forEach(g => {
+        if (g.id !== groupId) {
+            g.shades = g.shades.filter(sid => parseInt(sid) !== shadeId);
+        }
+    });
 
+    if (!grp.shades.includes(shadeId)) {
+        grp.shades.push(shadeId);
+    }
+    renderStep1Groups();
+}
+
+function removeShadeFromGroup(groupId, shadeId) {
+    shadeId = parseInt(shadeId);
+    const grp = step1Groups.find(g => g.id === groupId);
+    if (!grp) return;
+
+    grp.shades = grp.shades.filter(sid => parseInt(sid) !== shadeId);
     renderStep1Groups();
 }
 
@@ -387,7 +394,6 @@ function selectAllAvailableShadesForGroup(groupId) {
     const assignedToOthers = getAssignedShadesAcrossGroups(groupId);
     const available = categoryShades.filter(s => !assignedToOthers.has(s.id)).map(s => s.id);
     grp.shades = available;
-
     renderStep1Groups();
 }
 
@@ -399,6 +405,18 @@ function clearAllShadesForGroup(groupId) {
     }
 }
 
+function filterPickerShades(groupId, query) {
+    const q = (query || '').toLowerCase().trim();
+    const container = document.getElementById('picker_chips_' + groupId);
+    if (!container) return;
+
+    const chips = container.querySelectorAll('[data-shade-name]');
+    chips.forEach(chip => {
+        const name = chip.getAttribute('data-shade-name') || '';
+        chip.style.display = (!q || name.includes(q)) ? 'inline-flex' : 'none';
+    });
+}
+
 // Render Step 1 Group Cards
 function renderStep1Groups() {
     const container = document.getElementById('step1GroupsContainer');
@@ -408,6 +426,12 @@ function renderStep1Groups() {
 
     step1Groups.forEach((group, gIdx) => {
         const assignedToOthers = getAssignedShadesAcrossGroups(group.id);
+
+        // ONLY shades NOT in any other group are available to pick!
+        const availableShades = categoryShades.filter(s => !assignedToOthers.has(s.id) && !group.shades.includes(s.id));
+
+        // Shades included in this group
+        const includedShades = categoryShades.filter(s => group.shades.includes(s.id));
 
         html += `
         <div class="card border step1-group-card mb-3 shadow-sm" id="card_${group.id}">
@@ -443,11 +467,11 @@ function renderStep1Groups() {
             </div>
 
             <div class="card-body p-3">
-                <!-- 1. Checkmark Pack Sizes for this Group -->
+                <!-- 1. Checkmark Pack Sizes for this Group (Unchecked by default) -->
                 <div class="mb-3">
                     <div class="d-flex flex-wrap justify-content-between align-items-center mb-1">
                         <label class="small fw-bold text-dark mb-0">
-                            <i class="fa-solid fa-box text-secondary me-1"></i>Checkmark Pack Sizes for this Group:
+                            <i class="fa-solid fa-box text-secondary me-1"></i>Select Pack Sizes for this Group:
                         </label>
                         <div>
                             <button type="button" class="btn btn-link btn-sm p-0 text-decoration-none me-2" onclick="selectAllPacksForGroup('${group.id}')">Select All</button>
@@ -468,35 +492,76 @@ function renderStep1Groups() {
                     </div>
                 </div>
 
-                <!-- 2. Checkmark Shades for this Group (Non-repeating) -->
+                <!-- 2. Color Shades in this Group: ONLY SHOWS INCLUDED SHADES -->
                 <div>
-                    <div class="d-flex flex-wrap justify-content-between align-items-center mb-1">
+                    <div class="d-flex flex-wrap justify-content-between align-items-center mb-2">
                         <label class="small fw-bold text-dark mb-0">
-                            <i class="fa-solid fa-palette text-primary me-1"></i>Checkmark Color Shades for this Group (Non-repeating):
+                            <i class="fa-solid fa-palette text-primary me-1"></i>Included Color Shades in ${escapeHtml(group.name)} (${group.shades.length}):
                         </label>
-                        <div>
-                            <button type="button" class="btn btn-link btn-sm p-0 text-decoration-none me-2" onclick="selectAllAvailableShadesForGroup('${group.id}')">Select All Available</button>
-                            <button type="button" class="btn btn-link btn-sm p-0 text-decoration-none text-danger" onclick="clearAllShadesForGroup('${group.id}')">Clear</button>
+                        <div class="d-flex align-items-center gap-2">
+                            <button type="button" class="btn btn-outline-primary btn-sm py-0 px-2" style="font-size: 0.78rem;" 
+                                onclick="toggleShadePicker('${group.id}')">
+                                <i class="fa-solid fa-plus me-1"></i> Add / Pick Shades (${availableShades.length} Available)
+                            </button>
+                            ${group.shades.length > 0 ? `
+                                <button type="button" class="btn btn-link btn-sm p-0 text-decoration-none text-danger" style="font-size: 0.78rem;" 
+                                    onclick="clearAllShadesForGroup('${group.id}')">Remove All</button>
+                            ` : ''}
                         </div>
                     </div>
 
-                    <div class="d-flex flex-wrap gap-1 p-2 bg-light rounded border" style="max-height: 200px; overflow-y: auto;">
-                        ${categoryShades.map(s => {
-                            const isChecked = group.shades.includes(s.id);
-                            const otherGroup = assignedToOthers.get(s.id);
-                            const isDisabled = !isChecked && Boolean(otherGroup);
+                    <!-- List of Included Shades Only (Does not show unincluded shades) -->
+                    <div class="p-2 bg-white rounded border mb-2" style="min-height: 48px;">
+                        ${includedShades.length === 0 ? `
+                            <div class="text-muted small fst-italic py-2 text-center">
+                                No color shades included yet. Click <strong>"+ Add / Pick Shades"</strong> to select shades for ${escapeHtml(group.name)}.
+                            </div>
+                        ` : `
+                            <div class="d-flex flex-wrap gap-1 align-items-center">
+                                ${includedShades.map(s => `
+                                    <span class="shade-pill d-inline-flex align-items-center bg-light border rounded-pill px-2 py-1 shadow-sm small">
+                                        <span class="dot rounded-circle me-1" style="width: 12px; height: 12px; background-color: ${s.hexcode}; display: inline-block; border: 1px solid rgba(0,0,0,0.15);"></span>
+                                        <span class="fw-semibold text-dark me-1">${escapeHtml(s.name)}</span>
+                                        <button type="button" class="btn-close" style="font-size: 0.65rem;" onclick="removeShadeFromGroup('${group.id}', ${s.id})" title="Remove from group"></button>
+                                    </span>
+                                `).join('')}
+                            </div>
+                        `}
+                    </div>
 
-                            return `
-                                <label class="shade-check-chip ${isDisabled ? 'disabled' : ''}" title="${isDisabled ? 'Already in ' + otherGroup : ''}">
-                                    <input type="checkbox" class="form-check-input me-1" value="${s.id}" 
-                                        ${isChecked ? 'checked' : ''} ${isDisabled ? 'disabled' : ''} 
-                                        onchange="toggleStep1Shade('${group.id}', ${s.id}, this.checked)">
-                                    <span class="dot" style="background-color: ${s.hexcode};"></span>
-                                    <span>${escapeHtml(s.name)}</span>
-                                    ${isDisabled ? `<span class="badge bg-secondary ms-1" style="font-size:0.65rem;">in ${otherGroup}</span>` : ''}
-                                </label>
-                            `;
-                        }).join('')}
+                    <!-- Expandable Shade Picker: ONLY SHOWS SHADES NOT IN ANY OTHER GROUP -->
+                    <div id="picker_${group.id}" class="shade-picker-box p-3 bg-light rounded border mb-2" style="${activePickerGroupId === group.id ? 'display:block;' : 'display:none;'}">
+                        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2 pb-2 border-bottom">
+                            <div class="small fw-bold text-dark">
+                                Select Available Shades for ${escapeHtml(group.name)}:
+                                <span class="badge bg-secondary ms-1">${availableShades.length} Available</span>
+                            </div>
+                            <div class="d-flex align-items-center gap-2">
+                                <input type="text" class="form-control form-control-sm" placeholder="Search available shades..." 
+                                    style="max-width: 180px;" oninput="filterPickerShades('${group.id}', this.value)">
+                                ${availableShades.length > 0 ? `
+                                    <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2" onclick="selectAllAvailableShadesForGroup('${group.id}')">Add All Available</button>
+                                ` : ''}
+                                <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2" onclick="toggleShadePicker('${group.id}')">Close</button>
+                            </div>
+                        </div>
+
+                        ${availableShades.length === 0 ? `
+                            <div class="text-muted small fst-italic py-2 text-center">
+                                All category shades are already assigned to other groups. Remove shades from other groups to make them available here.
+                            </div>
+                        ` : `
+                            <div class="d-flex flex-wrap gap-1" id="picker_chips_${group.id}" style="max-height: 200px; overflow-y: auto;">
+                                ${availableShades.map(s => `
+                                    <label class="shade-check-chip cursor-pointer" data-shade-name="${escapeHtml(s.name).toLowerCase()}">
+                                        <input type="checkbox" class="form-check-input me-1" value="${s.id}" 
+                                            onchange="addShadeToGroup('${group.id}', ${s.id})">
+                                        <span class="dot" style="background-color: ${s.hexcode};"></span>
+                                        <span>${escapeHtml(s.name)}</span>
+                                    </label>
+                                `).join('')}
+                            </div>
+                        `}
                     </div>
                 </div>
             </div>
@@ -519,7 +584,6 @@ function escapeHtml(text) {
 
 // Validate and populate on submit
 function validateStep1Form(event) {
-    // Collect enabled checkmark groups
     const enabledGroups = step1Groups.filter(g => g.enabled);
 
     if (enabledGroups.length === 0) {
@@ -533,16 +597,16 @@ function validateStep1Form(event) {
     enabledGroups.forEach(grp => {
         if (grp.shades.length === 0) {
             hasEmptyGroup = true;
-            emptyGroupName = `${grp.name} has no color shades checkmarked.`;
+            emptyGroupName = `${grp.name} has no color shades selected. Please add at least one shade.`;
         }
         if (grp.pack_ids.length === 0) {
             hasEmptyGroup = true;
-            emptyGroupName = `${grp.name} has no pack sizes checkmarked.`;
+            emptyGroupName = `${grp.name} has no pack sizes selected. Please select at least one pack size.`;
         }
     });
 
     if (hasEmptyGroup) {
-        alert(emptyGroupName + ' Please checkmark both shades and pack sizes for enabled groups.');
+        alert(emptyGroupName);
         return false;
     }
 
