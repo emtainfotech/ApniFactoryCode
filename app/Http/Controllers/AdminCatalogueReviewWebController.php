@@ -99,8 +99,11 @@ class AdminCatalogueReviewWebController extends Controller
         try {
             $this->approvalService->approveProduct($product, auth()->user(), $request->input('notes'));
 
-            return redirect()->route('admin.catalogue.reviews')
-                ->with('success', "Product '{$product->name}' has been approved and published to the live marketplace.");
+            $msg = "Product '{$product->name}' has been approved and moved to Review History.";
+            if ($request->headers->has('referer')) {
+                return back()->with('success', $msg);
+            }
+            return redirect()->route('admin.catalogue.reviews')->with('success', $msg);
         } catch (ValidationException $e) {
             $msg = collect($e->errors())->flatten()->first() ?: 'Product approval failed validation.';
             return back()->with('error', $msg);

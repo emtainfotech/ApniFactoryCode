@@ -153,15 +153,26 @@ class AdminCommissionCategoryTreeController extends Controller
                 $affectedSubcategories = 1;
             }
 
+            // Automatically recalculate and update all products' display prices based on new commission rate
+            $pricingService = app(\App\Services\PaintPricingService::class);
+            $syncResult = $pricingService->syncDisplayPricesForCommissionChange($level, $id, $rate, $cascade);
+
             DB::commit();
+
+            $msg = "Commission rate for '{$entityName}' updated to " . ($rate !== null ? "{$rate}%" : 'Inherited') . ($cascade ? " (Cascaded to {$affectedCategories} categories & {$affectedSubcategories} subcategories)" : '');
+            if ($syncResult['skus_updated'] > 0) {
+                $msg .= ". Updated display prices for {$syncResult['products_updated']} product(s) ({$syncResult['skus_updated']} SKUs).";
+            }
 
             return response()->json([
                 'status'                 => true,
-                'message'                => "Commission rate for '{$entityName}' updated to " . ($rate !== null ? "{$rate}%" : 'Inherited') . ($cascade ? " (Cascaded to {$affectedCategories} categories & {$affectedSubcategories} subcategories)" : ''),
+                'message'                => $msg,
                 'commission_rate'        => $rate,
                 'cascade'                => $cascade,
                 'affected_categories'    => $affectedCategories,
                 'affected_subcategories' => $affectedSubcategories,
+                'products_updated'       => $syncResult['products_updated'],
+                'skus_updated'           => $syncResult['skus_updated'],
             ]);
         } catch (\Throwable $e) {
             DB::rollBack();

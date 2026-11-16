@@ -117,6 +117,86 @@ class PaintPricingService
     }
 
     /**
+     * Update all products' display prices when an admin changes a category/maincategory commission rate.
+     * Formula: Display Price = round(Factory Price * (1 + new_commission / 100), 2)
+     */
+    public function syncDisplayPricesForCommissionChange(string $level, int $id, ?float $rate = null, bool $cascade = false): array
+    {
+        $productQuery = Product::query();
+
+        if ($level === 'main') {
+            if ($cascade) {
+                $catIds = \App\Models\Category::where('maincategory_id', $id)->orWhere('mid', $id)->pluck('id')->toArray();
+                $productQuery->where(function ($q) use ($id, $catIds) {
+                    $q->where('maincategory_id', $id)
+                      ->orWhereIn('category_id', $catIds);
+                });
+            } else {
+                $productQuery->where('maincategory_id', $id);
+            }
+        } elseif ($level === 'category') {
+            if ($cascade) {
+                $subcatIds = \App\Models\SubCatgory::where('category_id', $id)->orWhere('cid', $id)->pluck('id')->toArray();
+                $productQuery->where(function ($q) use ($id, $subcatIds) {
+                    $q->where('category_id', $id)
+                      ->orWhereIn('subcategory_id', $subcatIds);
+                });
+            } else {
+                $productQuery->where('category_id', $id);
+            }
+        } elseif ($level === 'subcategory') {
+            $productQuery->where('subcategory_id', $id);
+        }
+
+        $products = $productQuery->with('product_attributes')->get();
+
+        $updatedProductsCount = 0;
+        $updatedSkusCount = 0;
+
+        foreach ($products as $product) {
+            $effectiveRate = $this->getEffectiveCommissionRate(
+                $product->user_id,
+                $product->id,
+                $product->category_id,
+                $product->subcategory_id,
+                $product->maincategory_id
+            );
+
+            $hasUpdates = false;
+            foreach ($product->product_attributes as $attr) {
+                $factoryPrice = $attr->seller_price;
+                if ($factoryPrice === null || $factoryPrice <= 0) {
+                    $factoryPrice = $attr->oldprice ?: $attr->price;
+                }
+
+                if ($factoryPrice > 0) {
+                    $newDisplayPrice = round((float)$factoryPrice * (1 + ($effectiveRate / 100)), 2);
+
+                    $attrUpdates = [
+                        'price' => $newDisplayPrice,
+                    ];
+                    if (\Illuminate\Support\Facades\Schema::hasColumn('product_attributes', 'seller_price') && empty($attr->seller_price)) {
+                        $attrUpdates['seller_price'] = $factoryPrice;
+                    }
+
+                    $attr->update($attrUpdates);
+                    $updatedSkusCount++;
+                    $hasUpdates = true;
+                }
+            }
+
+            if ($hasUpdates) {
+                $updatedProductsCount++;
+            }
+        }
+
+        return [
+            'products_updated' => $updatedProductsCount,
+            'skus_updated'     => $updatedSkusCount,
+        ];
+    }
+
+    /**
      * Query SKUs matching the provided scope.
      *
      * $scope format:

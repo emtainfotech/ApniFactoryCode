@@ -3,6 +3,7 @@
 namespace App\Filament\Pages;
 
 use App\Models\Product;
+use App\Models\ProductReviewHistory;
 use Filament\Pages\Page;
 
 class ProductReviewBucket extends Page
@@ -23,6 +24,9 @@ class ProductReviewBucket extends Page
     {
         $count = Product::where('has_gst_included', 1)
             ->whereIn('approval_status', ['pending_review', 'resubmitted'])
+            ->whereHas('product_attributes', function ($q) {
+                $q->where('is_gst_included', 1)->orWhere('is_gst_included', '1');
+            })
             ->count();
 
         return $count > 0 ? "Pending : {$count}" : null;
@@ -35,14 +39,61 @@ class ProductReviewBucket extends Page
 
     public function getViewData(): array
     {
-        $products = Product::where('has_gst_included', 1)
+        // 1. Pending Products with ONLY GST-included SKUs
+        $pendingProducts = Product::where('has_gst_included', 1)
             ->whereIn('approval_status', ['pending_review', 'resubmitted'])
-            ->with(['brand', 'category', 'user.company', 'product_attributes.boxPacking', 'product_attributes.shadeCard'])
+            ->whereHas('product_attributes', function ($q) {
+                $q->where('is_gst_included', 1)->orWhere('is_gst_included', '1');
+            })
+            ->with([
+                'brand',
+                'category',
+                'user.company',
+                'product_attributes' => function ($q) {
+                    $q->where(function ($sub) {
+                        $sub->where('is_gst_included', 1)->orWhere('is_gst_included', '1');
+                    })->with(['boxPacking', 'shadeCard']);
+                }
+            ])
             ->orderBy('id', 'desc')
             ->get();
 
+        // 2. Review History & Audit Logs
+        $historyLogs = ProductReviewHistory::with(['product.brand', 'product.category', 'company', 'reviewer', 'seller'])
+            ->orderBy('id', 'desc')
+            ->take(50)
+            ->get();
+
+        // 3. Approved / Reviewed Products that had GST review
+        $approvedProducts = Product::where('approval_status', 'approved')
+            ->where(function ($q) {
+                $q->where('has_gst_included', 1)
+                  ->orWhereNotNull('reviewed_at');
+            })
+            ->whereHas('product_attributes', function ($q) {
+                $q->where('is_gst_included', 1)->orWhere('is_gst_included', '1');
+            })
+            ->with([
+                'brand',
+                'category',
+                'user.company',
+                'product_attributes' => function ($q) {
+                    $q->where(function ($sub) {
+                        $sub->where('is_gst_included', 1)->orWhere('is_gst_included', '1');
+                    })->with(['boxPacking', 'shadeCard']);
+                }
+            ])
+            ->orderBy('reviewed_at', 'desc')
+            ->orderBy('updated_at', 'desc')
+            ->take(20)
+            ->get();
+
         return [
-            'products' => $products,
+            'products'         => $pendingProducts,
+            'pendingCount'     => $pendingProducts->count(),
+            'historyLogs'      => $historyLogs,
+            'approvedProducts' => $approvedProducts,
+            'historyCount'     => $historyLogs->count(),
         ];
     }
 }

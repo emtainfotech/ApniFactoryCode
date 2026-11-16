@@ -61,6 +61,7 @@ class MainCategoryResource extends Resource
                     ->updateStateUsing(function (MainCategory $record, $state) {
                         $record->commission_rate = ($state !== null && $state !== '') ? (float)$state : null;
                         $record->save();
+                        app(\App\Services\PaintPricingService::class)->syncDisplayPricesForCommissionChange('main', $record->id, $record->commission_rate, true);
                         return $state;
                     }),
                 ToggleColumn::make('status')->sortable(),

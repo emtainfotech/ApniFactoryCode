@@ -88,6 +88,7 @@ class CategoryResource extends Resource
                     ->updateStateUsing(function (Category $record, $state) {
                         $record->commission_rate = ($state !== null && $state !== '') ? (float)$state : null;
                         $record->save();
+                        app(\App\Services\PaintPricingService::class)->syncDisplayPricesForCommissionChange('category', $record->id, $record->commission_rate, true);
                         return $state;
                     }),
                 Tables\Columns\BadgeColumn::make('status')
