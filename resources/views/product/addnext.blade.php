@@ -70,6 +70,12 @@
         color: #dc3545;
         font-weight: bold;
     }
+    .display-price-blocked {
+        background-color: #e9ecef !important;
+        cursor: not-allowed !important;
+        color: #495057 !important;
+        font-weight: 700 !important;
+    }
 </style>
 
 <!--start page wrapper -->
@@ -96,18 +102,18 @@
                 <div class="d-flex flex-wrap justify-content-between align-items-center pb-3 border-bottom mb-4">
                     <div>
                         <h4 class="mb-1 text-dark fw-bold">
-                            <i class="fa-solid fa-layer-group text-primary me-2"></i>Shade Group Pricing & Rate Matrix
+                            <i class="fa-solid fa-layer-group text-primary me-2"></i>Configure Shade Groups Pricing
                         </h4>
                         <p class="text-muted mb-0 small">
-                            Configure Asian Paints style shade groups (e.g. Gr-0 Whites, Gr-1 Standard, Gr-2 Accent). Enter Factory Price once per group & packing size; display prices calculate automatically just below each group.
+                            All groups checkmarked on Step 1 are shown below. Enter Factory Price per group & pack size. Display price is locked/blocked from manual editing and calculated automatically.
                         </p>
                     </div>
                     <div class="text-end mt-2 mt-md-0 d-flex align-items-center gap-2">
                         <span class="badge bg-light-primary text-primary px-3 py-2 fs-6 rounded-pill border border-primary">
                             <i class="fa-solid fa-percent me-1"></i> Category Commission: <strong>{{ number_format($effectiveCommission, 2) }}%</strong>
                         </span>
-                        <button type="button" class="btn btn-primary btn-sm rounded-pill px-3 shadow-sm" id="btnAddNewGroup" onclick="addNewShadeGroup()">
-                            <i class="fa-solid fa-plus me-1"></i> Add New Shade Group
+                        <button type="button" class="btn btn-outline-primary btn-sm rounded-pill px-3" onclick="addNewShadeGroup()">
+                            <i class="fa-solid fa-plus me-1"></i> + Add Another Group
                         </button>
                     </div>
                 </div>
@@ -117,12 +123,10 @@
                     <div class="d-flex align-items-start">
                         <div class="fs-4 text-info me-3 mt-1"><i class="fa-solid fa-circle-info"></i></div>
                         <div class="small">
-                            <strong>How Shade Grouping Works:</strong>
+                            <strong>Pricing & Admin Review Guidelines:</strong>
                             <ul class="mb-0 mt-1 ps-3">
-                                <li><strong>Single Price Entry:</strong> All shades assigned to a group automatically share the same factory price per pack size.</li>
-                                <li><strong>Editable Group Names:</strong> Default names are <code>Group 1</code>, <code>Group 2</code>, etc. You can rename them (e.g. <code>Gr-0 Whites</code>, <code>Gr-1 Deep</code>).</li>
-                                <li><strong>Non-Repeating Shades:</strong> A color shade can belong to <em>only one group</em>. Assigning a shade to a new group removes it from other groups automatically.</li>
-                                <li><strong>Display Price Just Below Factory Price:</strong> Automatically calculated as <code>Factory Price + {{ number_format($effectiveCommission, 2) }}%</code>. You can also edit it.</li>
+                                <li><strong>Factory Price:</strong> Base manufacturing rate you receive for all shades in this group.</li>
+                                <li><strong>Display Price (Blocked / Non-Editable):</strong> Display price is strictly locked and cannot be edited. It calculates automatically as <code>Factory Price + {{ number_format($effectiveCommission, 2) }}%</code> commission.</li>
                                 <li><strong>GST Included:</strong> If GST is included, specify <strong>How much GST (%)</strong> (e.g. 18%, 28%, 12%, 5%). Products with GST included land in the Admin Review Bucket for approval.</li>
                             </ul>
                         </div>
@@ -154,19 +158,6 @@
                                 </div>
                                 <div class="upload__img-wrap mt-2"></div>
                             </div>
-                        </div>
-                    </div>
-
-                    <!-- Unassigned Shades Pool (Alert) -->
-                    <div id="unassignedShadesBanner" class="card border-warning bg-light-warning mb-4" style="display: none;">
-                        <div class="card-body py-2 px-3 d-flex flex-wrap align-items-center justify-content-between gap-2">
-                            <div class="d-flex align-items-center gap-2">
-                                <i class="fa-solid fa-triangle-exclamation text-warning fs-5"></i>
-                                <span class="small fw-semibold text-dark">
-                                    <span id="unassignedCount">0</span> shades are not assigned to any group yet.
-                                </span>
-                            </div>
-                            <div id="unassignedPillsContainer" class="d-flex flex-wrap align-items-center gap-1"></div>
                         </div>
                     </div>
 
@@ -211,24 +202,48 @@ const packIds = Object.keys(allPacks);
 const commissionRate = parseFloat("{{ $effectiveCommission }}") || 25.00;
 const defaultTaxRate = parseFloat("{{ $defaultTax }}") || 18.00;
 
-// Groups array
-let groups = [
-    {
-        id: 'group_1',
-        name: 'Group 1',
-        shades: allShades.map(s => s.id), // Initially all selected shades belong to Group 1
-        is_gst_included: false,
-        gst_rate: defaultTaxRate,
-        packs: {} // pack_id => { seller_price, price, mrp }
-    }
-];
+// Groups incoming from Step 1 checkmarked groups
+const step1Incoming = @json($step1Groups ?? []);
 
-// Initialize packs default prices
-packIds.forEach(pid => {
-    groups[0].packs[pid] = { seller_price: '', price: '', mrp: '' };
-});
+let groups = [];
 
-let groupCounter = 1;
+if (step1Incoming && step1Incoming.length > 0) {
+    groups = step1Incoming.map((g, idx) => {
+        const packsMap = {};
+        const gPackIds = (g.pack_ids && g.pack_ids.length > 0) ? g.pack_ids.map(String) : packIds;
+        gPackIds.forEach(pid => {
+            packsMap[pid] = { seller_price: '', price: '', mrp: '' };
+        });
+
+        return {
+            id: g.id || ('group_' + (idx + 1)),
+            name: g.name || ('Group ' + (idx + 1)),
+            shades: (g.shades || []).map(Number),
+            pack_ids: gPackIds.map(Number),
+            is_gst_included: false,
+            gst_rate: defaultTaxRate,
+            packs: packsMap
+        };
+    });
+} else {
+    // Default fallback: 1 group with all selected shades & packs
+    const defaultPacks = {};
+    packIds.forEach(pid => {
+        defaultPacks[pid] = { seller_price: '', price: '', mrp: '' };
+    });
+
+    groups = [
+        {
+            id: 'group_1',
+            name: 'Group 1',
+            shades: allShades.map(s => s.id),
+            pack_ids: packIds.map(Number),
+            is_gst_included: false,
+            gst_rate: defaultTaxRate,
+            packs: defaultPacks
+        }
+    ];
+}
 
 // Helper: Get shades assigned to any group EXCEPT the given groupId
 function getAssignedShadeIds(excludeGroupId = null) {
@@ -241,7 +256,7 @@ function getAssignedShadeIds(excludeGroupId = null) {
     return assigned;
 }
 
-// Helper: Calculate Display Price
+// Helper: Calculate Display Price strictly from factory price
 function calcDisplayPrice(factoryPrice) {
     const val = parseFloat(factoryPrice);
     if (isNaN(val) || val <= 0) return '';
@@ -254,40 +269,15 @@ function renderGroups() {
     if (!container) return;
 
     let html = '';
-
-    // Check for unassigned shades
-    const allAssigned = getAssignedShadeIds(null);
-    const unassigned = allShades.filter(s => !allAssigned.has(s.id));
-    const unassignedBanner = document.getElementById('unassignedShadesBanner');
-    const unassignedCountEl = document.getElementById('unassignedCount');
-    const unassignedPillsContainer = document.getElementById('unassignedPillsContainer');
-
-    if (unassignedBanner) {
-        if (unassigned.length > 0) {
-            unassignedBanner.style.display = 'block';
-            unassignedCountEl.innerText = unassigned.length;
-            unassignedPillsContainer.innerHTML = unassigned.map(s => `
-                <span class="shade-pill bg-white">
-                    <span class="shade-dot" style="background-color: ${s.hexcode};"></span>
-                    ${s.name}
-                </span>
-            `).join('');
-        } else {
-            unassignedBanner.style.display = 'none';
-        }
-    }
-
     let hasAnyGst = false;
 
     groups.forEach((group, gIdx) => {
         if (group.is_gst_included) hasAnyGst = true;
 
-        // Shades assigned to this group
         const groupShades = allShades.filter(s => group.shades.includes(s.id));
-
-        // Available shades that can be added to this group (unassigned shades)
         const otherAssigned = getAssignedShadeIds(group.id);
         const availableToAdd = allShades.filter(s => !otherAssigned.has(s.id) && !group.shades.includes(s.id));
+        const groupPackIds = (group.pack_ids && group.pack_ids.length > 0) ? group.pack_ids.map(String) : packIds;
 
         html += `
         <div class="card border group-card mb-4 shadow-sm" id="card_${group.id}">
@@ -391,10 +381,10 @@ function renderGroups() {
                     <table class="table table-bordered align-middle mb-0 text-center" style="width: 100%;">
                         <thead class="table-dark">
                             <tr>
-                                <th style="width: 200px; text-align: left;" class="ps-3">Pricing Tier</th>
-                                ${packIds.map(pid => `
+                                <th style="width: 220px; text-align: left;" class="ps-3">Pricing Tier</th>
+                                ${groupPackIds.map(pid => `
                                     <th style="min-width: 120px;">
-                                        <div class="fw-bold">${escapeHtml(allPacks[pid])}</div>
+                                        <div class="fw-bold">${escapeHtml(allPacks[pid] || 'Pack #' + pid)}</div>
                                     </th>
                                 `).join('')}
                             </tr>
@@ -406,7 +396,7 @@ function renderGroups() {
                                     <span class="badge bg-secondary me-1 tier-badge">1. Factory Price</span>
                                     <div class="small text-muted fw-normal">Base manufacturing rate you receive</div>
                                 </td>
-                                ${packIds.map(pid => {
+                                ${groupPackIds.map(pid => {
                                     const pVal = group.packs[pid] ? group.packs[pid].seller_price : '';
                                     return `
                                         <td>
@@ -422,23 +412,26 @@ function renderGroups() {
                                 }).join('')}
                             </tr>
 
-                            <!-- ROW 2: Display Price (Auto-calculated, Placed JUST BELOW Factory Price!) -->
-                            <tr style="background-color: #f0f7ff;">
+                            <!-- ROW 2: Display Price (Auto-calculated, BLOCKED & NOT EDITABLE) -->
+                            <tr style="background-color: #f8f9fa;">
                                 <td class="text-start ps-3 fw-bold text-primary">
                                     <span class="badge bg-primary me-1 tier-badge">2. Display Price</span>
-                                    <div class="small text-muted fw-normal">+${commissionRate}% comm. (Editable)</div>
+                                    <span class="badge bg-light text-secondary border ms-1" style="font-size:0.68rem;"><i class="fa-solid fa-lock me-1"></i>Blocked</span>
+                                    <div class="small text-muted fw-normal">+${commissionRate}% comm. (Auto-calculated)</div>
                                 </td>
-                                ${packIds.map(pid => {
+                                ${groupPackIds.map(pid => {
                                     const dVal = group.packs[pid] ? group.packs[pid].price : '';
                                     return `
                                         <td>
                                             <div class="input-group input-group-sm">
-                                                <span class="input-group-text bg-light-primary text-primary fw-bold">₹</span>
-                                                <input type="number" step="0.01" min="0" class="form-control form-control-sm text-end fw-bold text-primary display-input" 
+                                                <span class="input-group-text bg-light text-muted fw-bold">₹</span>
+                                                <input type="number" step="0.01" class="form-control form-control-sm text-end fw-bold text-dark display-price-blocked" 
                                                     id="disp_${group.id}_${pid}"
                                                     value="${dVal !== undefined ? dVal : ''}" 
                                                     placeholder="Auto" 
-                                                    oninput="handleDisplayPriceChange('${group.id}', '${pid}', this.value)" required>
+                                                    readonly 
+                                                    tabindex="-1"
+                                                    required>
                                             </div>
                                         </td>
                                     `;
@@ -451,7 +444,7 @@ function renderGroups() {
                                     <span class="badge bg-light text-dark border me-1 tier-badge">3. MRP Price</span>
                                     <div class="small text-muted fw-normal">Maximum Retail Price (Optional)</div>
                                 </td>
-                                ${packIds.map(pid => {
+                                ${groupPackIds.map(pid => {
                                     const mVal = group.packs[pid] ? group.packs[pid].mrp : '';
                                     return `
                                         <td>
@@ -491,24 +484,22 @@ function renderGroups() {
 
 // Group Actions
 function addNewShadeGroup() {
-    groupCounter++;
     const newId = 'group_' + Date.now();
     const newName = 'Group ' + (groups.length + 1);
 
-    // Initial packs map
     const packsMap = {};
     packIds.forEach(pid => {
         packsMap[pid] = { seller_price: '', price: '', mrp: '' };
     });
 
-    // Find any unassigned shades to place in new group
     const assigned = getAssignedShadeIds(null);
     const unassignedShades = allShades.filter(s => !assigned.has(s.id)).map(s => s.id);
 
     groups.push({
         id: newId,
         name: newName,
-        shades: unassignedShades, // Can be empty or unassigned shades
+        shades: unassignedShades,
+        pack_ids: packIds.map(Number),
         is_gst_included: false,
         gst_rate: defaultTaxRate,
         packs: packsMap
@@ -561,7 +552,6 @@ function updateGroupGstRate(groupId, rateVal) {
 
 function addShadeToGroup(groupId, shadeId) {
     shadeId = parseInt(shadeId);
-    // Remove shade from ANY other group first (ensuring NON-REPETITION)
     groups.forEach(g => {
         g.shades = g.shades.filter(sid => parseInt(sid) !== shadeId);
     });
@@ -582,7 +572,7 @@ function removeShadeFromGroup(groupId, shadeId) {
     renderGroups();
 }
 
-// Pricing Input Handlers
+// Pricing Input Handlers: Auto-calculates blocked display price
 function handleFactoryPriceChange(groupId, packId, val) {
     const grp = groups.find(g => g.id === groupId);
     if (!grp) return;
@@ -592,20 +582,13 @@ function handleFactoryPriceChange(groupId, packId, val) {
     }
     grp.packs[packId].seller_price = val;
 
-    // Auto-calculate Display Price directly below Factory Price!
+    // Auto-calculate Display Price directly below Factory Price (Locked / Non-editable)
     const displayVal = calcDisplayPrice(val);
     grp.packs[packId].price = displayVal;
 
     const dispInput = document.getElementById(`disp_${groupId}_${packId}`);
     if (dispInput) {
         dispInput.value = displayVal;
-    }
-}
-
-function handleDisplayPriceChange(groupId, packId, val) {
-    const grp = groups.find(g => g.id === groupId);
-    if (grp && grp.packs[packId]) {
-        grp.packs[packId].price = val;
     }
 }
 
@@ -628,26 +611,17 @@ function escapeHtml(text) {
 
 // Form Submission Handler
 function handleFormSubmit(event) {
-    // 1. Verify every group that has shades has valid factory prices
     let hasError = false;
     let errorMessage = '';
 
-    // Check if any shades are unassigned
-    const assignedIds = getAssignedShadeIds(null);
-    const unassigned = allShades.filter(s => !assignedIds.has(s.id));
-    if (unassigned.length > 0) {
-        if (!confirm(`Warning: ${unassigned.length} color shade(s) are not assigned to any group. Do you want to proceed without pricing them?`)) {
-            return false;
-        }
-    }
-
     groups.forEach(grp => {
         if (grp.shades.length > 0) {
-            packIds.forEach(pid => {
+            const gPackIds = (grp.pack_ids && grp.pack_ids.length > 0) ? grp.pack_ids.map(String) : packIds;
+            gPackIds.forEach(pid => {
                 const sp = grp.packs[pid] ? grp.packs[pid].seller_price : '';
                 if (!sp || parseFloat(sp) <= 0) {
                     hasError = true;
-                    errorMessage = `Please enter a valid Factory Price for '${allPacks[pid]}' in '${grp.name}'.`;
+                    errorMessage = `Please enter a valid Factory Price for '${allPacks[pid] || 'Pack #' + pid}' in '${grp.name}'.`;
                 }
             });
         }
@@ -663,6 +637,7 @@ function handleFormSubmit(event) {
         group_id: g.id,
         name: g.name,
         shades: g.shades,
+        pack_ids: g.pack_ids,
         is_gst_included: g.is_gst_included ? 1 : 0,
         gst_rate: g.gst_rate || defaultTaxRate,
         packs: g.packs
@@ -678,9 +653,10 @@ function handleFormSubmit(event) {
         const isGst = grp.is_gst_included ? 1 : 0;
         const gstRate = grp.gst_rate;
         const gName = grp.name;
+        const gPackIds = (grp.pack_ids && grp.pack_ids.length > 0) ? grp.pack_ids.map(String) : packIds;
 
         grp.shades.forEach(shadeId => {
-            packIds.forEach(packId => {
+            gPackIds.forEach(packId => {
                 const pData = grp.packs[packId] || {};
                 const sPrice = pData.seller_price || 0;
                 const dPrice = pData.price || calcDisplayPrice(sPrice);

@@ -35,6 +35,9 @@ class Helper {
           $data["mid_name"] = Helper::getmaincatname($list->mid);
           $data["cid_name"] = Helper::getcatname($list->category_id);
           $data["listdata"] = Helper::getshadecardlistbycatforajax($list->category_id);
+          $ids = [$list->mid, 0];
+          $data["shades"] = ShadeCard::whereIn("status",["1", "Active", 1])->where("category_id",$list->category_id)->get(['id', 'name', 'hexcode']);
+          $data["packings"] = BoxPacking::whereIn("status",["1", "Active", 1])->whereIN("maincategory_id",$ids)->orderby("maincategory_id", "desc")->get(['id', 'name']);
           return $data;
      }
  public static function getmaincat(){

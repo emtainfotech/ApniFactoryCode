@@ -286,15 +286,18 @@
                                                     <td class="text-start ps-2 fw-bold text-dark">Factory Price (₹)</td>
                                                     @foreach($distinctPackIds as $pid)
                                                         <td>
-                                                            <input type="number" step="0.01" min="0" name="packs[{{ $pid }}][seller_price]" class="form-control form-control-sm text-end" placeholder="0.00">
+                                                            <input type="number" step="0.01" min="0" name="packs[{{ $pid }}][seller_price]" id="new_grp_fact_{{ $pid }}" oninput="calcNewGroupDisplayPrice('{{ $pid }}')" class="form-control form-control-sm text-end" placeholder="0.00">
                                                         </td>
                                                     @endforeach
                                                 </tr>
                                                 <tr>
-                                                    <td class="text-start ps-2 fw-bold text-primary">Display Price (₹)</td>
+                                                    <td class="text-start ps-2 fw-bold text-primary">
+                                                        Display Price (₹)
+                                                        <div class="small text-muted fw-normal" style="font-size: 10px;">(Locked)</div>
+                                                    </td>
                                                     @foreach($distinctPackIds as $pid)
                                                         <td>
-                                                            <input type="number" step="0.01" min="0" name="packs[{{ $pid }}][price]" class="form-control form-control-sm text-end text-primary fw-bold" placeholder="Auto">
+                                                            <input type="number" step="0.01" min="0" name="packs[{{ $pid }}][price]" id="new_grp_disp_{{ $pid }}" class="form-control form-control-sm text-end text-primary fw-bold" placeholder="Auto" readonly tabindex="-1" style="background-color: #e9ecef !important; cursor: not-allowed; color: #495057 !important;">
                                                         </td>
                                                     @endforeach
                                                 </tr>
@@ -465,11 +468,11 @@
                                                 @endforeach
                                             </tr>
 
-                                            <!-- ROW 2: Display Price (Auto-calculated, Placed JUST BELOW Factory Price!) -->
+                                            <!-- ROW 2: Display Price (Auto-calculated, Placed JUST BELOW Factory Price - Locked/Blocked from Manual Edit) -->
                                             <tr style="background-color: #f0f7ff;">
                                                 <td class="text-start ps-3 fw-bold text-primary">
                                                     <span class="badge bg-primary me-1 tier-badge">2. Display Price</span>
-                                                    <div class="small text-muted fw-normal">+{{ number_format($commissionRate, 2) }}% comm. (Editable)</div>
+                                                    <div class="small text-muted fw-normal">+{{ number_format($commissionRate, 2) }}% comm. (Locked)</div>
                                                 </td>
                                                 @foreach($groupPackIds as $pid)
                                                     @php
@@ -484,7 +487,8 @@
                                                                 id="disp_edit_{{ $groupId }}_{{ $pid }}"
                                                                 class="form-control form-control-sm text-end fw-bold text-primary" 
                                                                 value="{{ $dispP }}" 
-                                                                placeholder="Auto" required>
+                                                                placeholder="Auto" required readonly tabindex="-1"
+                                                                style="background-color: #e9ecef !important; cursor: not-allowed; color: #495057 !important;">
                                                         </div>
                                                     </td>
                                                 @endforeach
@@ -624,7 +628,7 @@
                                     <td>
                                         <div class="input-group input-group-sm">
                                             <span class="input-group-text bg-light-primary text-primary fw-bold">₹</span>
-                                            <input type="number" step="0.01" min="0" value="{{ $bxp->price }}" name="price" id="display_price{{$bxp->id}}" class="form-control display-price-input fw-bold text-primary" placeholder="Display Price">
+                                            <input type="number" step="0.01" min="0" value="{{ $bxp->price }}" name="price" id="display_price{{$bxp->id}}" class="form-control display-price-input fw-bold text-primary" placeholder="Display Price" readonly tabindex="-1" style="background-color: #e9ecef !important; cursor: not-allowed; color: #495057 !important;">
                                         </div>
                                     </td>
                                     <td>
@@ -695,7 +699,7 @@
                                     <td>
                                         <div class="input-group input-group-sm">
                                             <span class="input-group-text bg-light-primary text-primary fw-bold">₹</span>
-                                            <input type="number" step="0.01" min="0" name="price" id="new_display_price" class="form-control fw-bold text-primary" placeholder="Display Price" required>
+                                            <input type="number" step="0.01" min="0" name="price" id="new_display_price" class="form-control fw-bold text-primary" placeholder="Auto" required readonly tabindex="-1" style="background-color: #e9ecef !important; cursor: not-allowed; color: #495057 !important;">
                                         </div>
                                     </td>
                                     <td>
@@ -830,6 +834,21 @@
         if (!isNaN(val) && val > 0) {
             const calculated = val * (1 + (categoryCommissionRate / 100));
             dispInput.value = (Math.round(calculated * 100) / 100).toFixed(2);
+        }
+    }
+
+    // Auto-calculate Display Price for New Group Modal (Locked / Non-editable)
+    function calcNewGroupDisplayPrice(packId) {
+        const factInput = document.getElementById(`new_grp_fact_${packId}`);
+        const dispInput = document.getElementById(`new_grp_disp_${packId}`);
+        if (!factInput || !dispInput) return;
+
+        const val = parseFloat(factInput.value);
+        if (!isNaN(val) && val > 0) {
+            const calculated = val * (1 + (categoryCommissionRate / 100));
+            dispInput.value = (Math.round(calculated * 100) / 100).toFixed(2);
+        } else {
+            dispInput.value = '';
         }
     }
 

@@ -157,6 +157,9 @@ Route::group(['middleware' => ['auth']], function () {
             $data['commissionRate'] = $commissionRate;
             $data['mainCategory'] = \App\Models\MainCategory::find($mainCatId);
             $data['category'] = \App\Models\Category::find($catId);
+            $data['step1Groups'] = !empty($request->input('selected_groups_json')) 
+                ? (is_string($request->input('selected_groups_json')) ? json_decode($request->input('selected_groups_json'), true) : $request->input('selected_groups_json')) 
+                : [];
 
             return view('product.addnext', $data);
         });

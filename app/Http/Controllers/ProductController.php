@@ -474,14 +474,23 @@ class ProductController extends Controller
             ];
         }
 
-        $pUpdate = ['shade_groups' => $updatedStoredGroups];
+        $pUpdate = [];
+        if (\Illuminate\Support\Facades\Schema::hasColumn('products', 'shade_groups')) {
+            $pUpdate['shade_groups'] = $updatedStoredGroups;
+        }
         if ($isGstIncluded) {
-            $pUpdate['has_gst_included'] = 1;
+            if (\Illuminate\Support\Facades\Schema::hasColumn('products', 'has_gst_included')) {
+                $pUpdate['has_gst_included'] = 1;
+            }
             $pUpdate['approval_status'] = 'pending_review';
             $pUpdate['status'] = 'Deactive';
-            $pUpdate['submitted_at'] = now();
+            if (\Illuminate\Support\Facades\Schema::hasColumn('products', 'submitted_at')) {
+                $pUpdate['submitted_at'] = now();
+            }
         }
-        $product->update($pUpdate);
+        if (!empty($pUpdate)) {
+            $product->update($pUpdate);
+        }
 
         // Audit Log
         \App\Models\ProductReviewHistory::create([
@@ -752,12 +761,17 @@ class ProductController extends Controller
         ]);
 
         if ($isGst) {
-            $product->update([
-                'has_gst_included' => 1,
+            $gstUpdate = [
                 'approval_status'  => 'pending_review',
                 'status'           => 'Deactive',
-                'submitted_at'     => now(),
-            ]);
+            ];
+            if (\Illuminate\Support\Facades\Schema::hasColumn('products', 'has_gst_included')) {
+                $gstUpdate['has_gst_included'] = 1;
+            }
+            if (\Illuminate\Support\Facades\Schema::hasColumn('products', 'submitted_at')) {
+                $gstUpdate['submitted_at'] = now();
+            }
+            $product->update($gstUpdate);
         }
 
         \App\Models\ProductReviewHistory::create([
