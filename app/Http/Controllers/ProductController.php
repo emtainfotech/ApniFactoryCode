@@ -34,10 +34,14 @@ class ProductController extends Controller
       $images = [];
       $img = 'product/default.jpg';
       if($files=$request->file('images')){
+        $targetDir = storage_path('app/public/product');
+        if (!file_exists($targetDir)) {
+            @mkdir($targetDir, 0775, true);
+        }
         foreach($files as $key=>$file){
             $ext = $file->getClientOriginalExtension() ?: 'jpg';
             $fname = time() . '_' . uniqid() . '.' . $ext;
-            $file->move('storage/app/public/product', $fname);
+            $file->move($targetDir, $fname);
             $images[]='product/'.$fname;
             if($key==0){$img = 'product/'.$fname;}
             }
@@ -262,18 +266,44 @@ class ProductController extends Controller
   }
     public function editview($id,Request $request){
         $data['title'] = 'Edit Product';
-        $pro = Product::where('id',$id)->first();
+        $pro = Product::where('id',$id)->firstOrFail();
         $data['detail'] = $pro;
         $data['shadecard'] = ShadeCard::where('category_id',$pro->category_id)->get();
         $query =  ProductAttributes::where("product_id",$id);
-         if ($request->filled('srchshade')) { $query = $query->where("color", $request->input('srchshade'));  }
-          $data['attributelist'] = $query->get();
+        if ($request->filled('srchshade')) { $query = $query->where("color", $request->input('srchshade'));  }
+        $data['attributelist'] = $query->get();
+
+        $pricingService = app(\App\Services\PaintPricingService::class);
+        $commissionRate = $pricingService->getEffectiveCommissionRate(
+            Auth::id(),
+            null,
+            $pro->category_id,
+            null,
+            $pro->maincategory_id
+        );
+        $data['commissionRate'] = $commissionRate;
+        $data['companydetail'] = Company::where('user_id', Auth::id())->first();
+
         return view('product.edit',$data);
   }
      public function productdetail(Request $request){ 
          $rt=array();$rmn["sellerdetail"]=array();
-             $rmn = Product::where("id",$request->get('productid'))->first();
-             $rmn['multipleimages'] = json_decode($rmn->multipleimages);
+         $rmn = Product::where("id",$request->get('productid'))->first();
+         if (!$rmn) {
+             return response()->json(['status' => false, 'message' => 'Product not found'], 404);
+         }
+
+         $images = [];
+         if (!empty($rmn->multipleimages)) {
+             $decoded = is_string($rmn->multipleimages) ? json_decode($rmn->multipleimages, true) : $rmn->multipleimages;
+             if (is_array($decoded)) {
+                 $images = array_values(array_filter(array_map('strval', $decoded)));
+             }
+         }
+         if (empty($images) && !empty($rmn->image)) {
+             $images = [(string)$rmn->image];
+         }
+         $rmn['multipleimages'] = $images;
              $attribute = ProductAttributes::where("product_id",$request->get('productid'))->where("color",$request->get('colorid'))->get();
               if ($attribute->isEmpty()) {
                   $firstColor = ProductAttributes::where("product_id", $request->get('productid'))->value('color');
@@ -398,11 +428,15 @@ class ProductController extends Controller
 
     // 3. Process and upload NEW images if any were added
     if ($request->hasFile('new_images')) {
+        $targetDir = storage_path('app/public/product');
+        if (!file_exists($targetDir)) {
+            @mkdir($targetDir, 0775, true);
+        }
         foreach ($request->file('new_images') as $file) {
             if ($file->isValid()) {
-                // Save image to your storage path
-                $filename = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
-                $file->move('storage/app/public/product/', $filename); // Change to match your env('imagepath') architecture
+                // Save image to universal storage path
+                $filename = time() . '_' . uniqid() . '.' . ($file->getClientOriginalExtension() ?: 'jpg');
+                $file->move($targetDir, $filename);
                 
                 // Add new filename to our final tracking array
                 $finalImages[] = 'product/'.$filename;

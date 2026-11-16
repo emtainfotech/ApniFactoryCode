@@ -62,3 +62,4 @@ class CommissionManager extends Page
         ];
     }
 }
+

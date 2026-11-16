@@ -14,6 +14,10 @@
     RewriteCond %{REQUEST_URI} (.+)/$
     RewriteRule ^ %1 [L,R=301]
 
+    # Normalize storage/app/public requests to storage
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteRule ^storage/app/public/(.*)$ storage/$1 [L]
+
     # Send Requests To Front Controller...
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteCond %{REQUEST_FILENAME} !-f

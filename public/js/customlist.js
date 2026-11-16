@@ -124,21 +124,58 @@ function checkallitsrow(id){
                               }                    
                                        
         function updateattributeprice(id){
-              var price = $("#price"+id).val();
+              var factoryPrice = $("#factory_price"+id).length ? $("#factory_price"+id).val() : $("#price"+id).val();
+              var displayPrice = $("#display_price"+id).length ? $("#display_price"+id).val() : $("#price"+id).val();
+              var isGstIncluded = $("#gst_included"+id).is(':checked') ? 1 : 0;
+              var mrp = $("#mrp"+id).length ? $("#mrp"+id).val() : '';
               var _token   = $('meta[name="csrf-token"]').attr('content');
+
               $.ajax({
                 type: 'POST',
-                url: '../../updateattributeprice',
+                url: '/seller/updateattributeprice',
                 data:{
-                      aid:id,
-                      price:price,
+                      aid: id,
+                      seller_price: factoryPrice,
+                      price: displayPrice,
+                      is_gst_included: isGstIncluded,
+                      mrp: mrp,
                       _token: _token
                     },
                 dataType: "json",
                 success:function(response){
-                    if(response.status==true){alert("Successfully Updated");}else{alert("Something went wrong");}
-                         }
-                      });
+                    if(response.status==true){
+                        var msg = "Pricing successfully updated!";
+                        if(isGstIncluded == 1){
+                            msg += "\n\n(Product routed to Admin Review Bucket for display price verification)";
+                        }
+                        alert(msg);
+                    }else{
+                        alert("Update failed: " + (response.message || "Something went wrong"));
+                    }
+                },
+                error: function(xhr){
+                    $.ajax({
+                        type: 'POST',
+                        url: '../../updateattributeprice',
+                        data:{
+                              aid: id,
+                              seller_price: factoryPrice,
+                              price: displayPrice,
+                              is_gst_included: isGstIncluded,
+                              mrp: mrp,
+                              _token: _token
+                            },
+                        dataType: "json",
+                        success:function(response){
+                            if(response.status==true){alert("Pricing successfully updated!");}
+                            else{alert("Update failed");}
+                        },
+                        error: function(){
+                            alert("Network error: Could not update pricing.");
+                        }
+                    });
+                }
+              });
         }           
                     
                                        

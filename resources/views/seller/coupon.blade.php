@@ -129,7 +129,7 @@
                                               @foreach($list as $key=>$lt)
                                          <tr>
                                              <td>{{$key+1}}</td>
-                                              <td><img src="{{ env('imagepath').'/'.$lt->image }}" width="100px"/></td>
+                                              <td><img src="{{ Helper::imageUrl($lt->image) }}" onerror="this.onerror=null;this.src='{{ asset('img/Apni-Factory-3.png') }}';" width="100px"/></td>
                                              <td>{{substr($lt->code, 0, 15)}}</td>
                                              <td>{{substr($lt->name, 0, 15)}}</td>
                                              <td>{{$lt->type}}</td>

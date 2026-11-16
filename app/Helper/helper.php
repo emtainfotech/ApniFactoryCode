@@ -26,13 +26,17 @@ class Helper {
      private static $orderStatusCache = [];
 
      public static function getmidcidbybid(){
-          $bid = $_REQUEST['bid'];
-     $list=Brand::where("id",$bid)->first();
-     $data["mid"]=$list->mid;
-     $data["cid"]=$list->category_id;
-     $data["listdata"] = Helper::getshadecardlistbycatforajax($list->category_id);
-     if(empty($list)){return '';}else{return $data;}
- }
+          $bid = $_REQUEST['bid'] ?? null;
+          if (empty($bid)) return '';
+          $list=Brand::where("id",$bid)->first();
+          if(empty($list)){return '';}
+          $data["mid"]=$list->mid;
+          $data["cid"]=$list->category_id;
+          $data["mid_name"] = Helper::getmaincatname($list->mid);
+          $data["cid_name"] = Helper::getcatname($list->category_id);
+          $data["listdata"] = Helper::getshadecardlistbycatforajax($list->category_id);
+          return $data;
+     }
  public static function getmaincat(){
      $list=MainCategory::whereIn("status",["1", "Active", 1])->get();
      return $list;
@@ -237,5 +241,56 @@ class Helper {
          "customertype"=>$usertype );
          $rt=DB::table("notifications")->insert($arymsg);
          if($rt){ return true;}
+ }
+
+ /**
+  * Resolves any image path or filename to a clean, universally accessible web URL.
+  * Strips duplicate storage/app/public prefixes and handles fallback gracefully.
+  */
+ public static function imageUrl($path = null) {
+     if (empty($path)) {
+         return asset('img/Apni-Factory-3.png');
+     }
+
+     $trimmed = trim((string)$path);
+     if (empty($trimmed)) {
+         return asset('img/Apni-Factory-3.png');
+     }
+
+     if (str_starts_with($trimmed, 'http://') || str_starts_with($trimmed, 'https://')) {
+         return $trimmed;
+     }
+
+     $clean = ltrim($trimmed, '/');
+     $clean = preg_replace('#^(storage/|app/public/)+#', '', $clean);
+
+     if (file_exists(public_path('upload/' . $clean))) {
+         return asset('upload/' . $clean);
+     }
+
+     return url('/storage/' . $clean);
+ }
+
+ /**
+  * Returns a clean array of image filenames/URLs for a given product model.
+  */
+ public static function productGallery($product) {
+     $gallery = [];
+     if (!empty($product->multipleimages)) {
+         $decoded = is_string($product->multipleimages) ? json_decode($product->multipleimages, true) : $product->multipleimages;
+         if (is_array($decoded)) {
+             foreach ($decoded as $item) {
+                 if (!empty($item)) {
+                     $gallery[] = (string)$item;
+                 }
+             }
+         }
+     }
+
+     if (empty($gallery) && !empty($product->image)) {
+         $gallery[] = (string)$product->image;
+     }
+
+     return $gallery;
  }
 }

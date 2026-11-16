@@ -89,38 +89,23 @@ $(".checkAll").click(function(){ alert('45645');
 							  </div>
 							  <div class="row">
                               <div class="mb-3 col-md-4">
-                                <label for="inputProductType" class="form-label">Product Brand</label>
+                                <label for="brand" class="form-label">Product Brand</label>
                                 <select class="form-select" id="brand" name="brand" required>
                                     <option value="">Select Brand</option>
                                     @foreach(Helper::getbrand() as $bid)
-                                    <option value="{{$bid->id}}" {{ old('brand', $step1Data['brand'] ?? '') == $bid->id ? 'selected' : '' }}>{{$bid->name}}(@php echo $cat = Helper::getcatname($bid->category_id); @endphp)</option>
-                                    @endforeach
-                                  </select>
-                              </div>
-                            <?php /*
-                              <div class="mb-3 col-md-4">
-                                <label for="inputProductType" class="form-label">Main Category</label>
-                                <select class="form-select" id="maincategoryforajaxforproduct" name="maincategory" required>
-                                    <option value="">Select Main Category</option>
-                                     @foreach(Helper::getmaincat() as $mid)
-                                    <option value="{{$mid->id}}">{{$mid->name}}</option>
+                                    <option value="{{$bid->id}}" {{ old('brand', $step1Data['brand'] ?? '') == $bid->id ? 'selected' : '' }}>{{$bid->name}} ({{ Helper::getcatname($bid->category_id) }})</option>
                                     @endforeach
                                   </select>
                               </div>
                               <div class="mb-3 col-md-4">
-                                <label for="inputProductType" class="form-label"> Category</label>
-                                <!--onchange="getmaincatbybrand(this.value)" -->
-                               <select class="form-select" id="subcatforajax" name="category"  required>
-                                    <option></option>
-                                    <option value="1">OIL PAINT</option>
-                                    <option value="2">WATER BASED PRIMER</option>
-                                    <option value="3">Taps</option>
-                                    <option value="3">Floor Cleaner</option>
-                                    <option value="1">DISTEMPER</option>
-                                  </select>
+                                <label class="form-label">Main Category</label>
+                                <input type="text" class="form-control" id="maincategory_display" readonly placeholder="Auto-populated from Brand" style="background-color: #f8f9fa;">
+                              </div>
+                              <div class="mb-3 col-md-4">
+                                <label class="form-label">Category</label>
+                                <input type="text" class="form-control" id="category_display" readonly placeholder="Auto-populated from Brand" style="background-color: #f8f9fa;">
                               </div>
                               </div>
-                              */  ?>
 							  <div class="row">
 							<div class="mb-3 col-md-6">
 								<label for="inputProductTitle" class="form-label">Product HSN Number</label>

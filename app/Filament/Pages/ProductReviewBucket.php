@@ -46,3 +46,4 @@ class ProductReviewBucket extends Page
         ];
     }
 }
+

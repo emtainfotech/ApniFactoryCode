@@ -92,7 +92,7 @@
                                              @foreach($list as $key=>$lt)
                                          <tr>
                                              <td>{{$key+1}}</td>
-                                             <td><img src="{{ env('imagepath').'/'.$lt->image }}" width="100px"/></td>
+                                             <td><img src="{{ Helper::imageUrl($lt->image) }}" onerror="this.onerror=null;this.src='{{ asset('img/Apni-Factory-3.png') }}';" width="100px"/></td>
                                              <td>{{Helper::getmaincatname($lt->maincategory_id)}}</td>
                                              <td>{{$lt->name}}</td>
                                              <td>@if($lt->status==1) <b class="text-success">Active</b>@else <b class="text-danger">Deactive</b>@endif</td>

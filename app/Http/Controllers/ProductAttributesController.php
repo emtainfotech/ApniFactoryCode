@@ -3,16 +3,72 @@
 namespace App\Http\Controllers;
 
 use App\Models\ProductAttributes;
+use App\Models\Product;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 use DB;
 class ProductAttributesController extends Controller
 {
     
  public function updateattributeprice(Request $request){
-     $id=$request->aid;
-     $price=$request->price;
-     $up = ProductAttributes::where("id",$id)->update(["price"=>$price]);
-     return json_encode(["status"=>true]);
+     $id = $request->aid;
+     $sellerPrice = $request->input('seller_price', $request->input('price'));
+     $displayPrice = $request->input('price');
+     $isGstIncluded = $request->boolean('is_gst_included') || $request->input('is_gst_included') == '1' || $request->input('is_gst_included') === 1 ? 1 : 0;
+     $mrp = $request->input('mrp', null);
+
+     $attr = ProductAttributes::find($id);
+     if (!$attr) {
+         return response()->json(['status' => false, 'message' => 'Variant not found'], 404);
+     }
+
+     $updateData = ['price' => $displayPrice];
+     if (Schema::hasColumn('product_attributes', 'seller_price')) {
+         $updateData['seller_price'] = $sellerPrice;
+     }
+     if (Schema::hasColumn('product_attributes', 'is_gst_included')) {
+         $updateData['is_gst_included'] = $isGstIncluded;
+     }
+     if (Schema::hasColumn('product_attributes', 'mrp')) {
+         $updateData['mrp'] = $mrp;
+     }
+     if (!empty($mrp) && Schema::hasColumn('product_attributes', 'oldprice')) {
+         $updateData['oldprice'] = $mrp;
+     }
+
+     $attr->update($updateData);
+
+     // If GST is included, route product to admin review bucket
+     if ($isGstIncluded) {
+         $product = Product::find($attr->product_id);
+         if ($product) {
+             $pUpdate = [];
+             if (Schema::hasColumn('products', 'has_gst_included')) {
+                 $pUpdate['has_gst_included'] = 1;
+             }
+             if (Schema::hasColumn('products', 'approval_status')) {
+                 $pUpdate['approval_status'] = 'pending_review';
+             }
+             if (Schema::hasColumn('products', 'status')) {
+                 $pUpdate['status'] = 'Deactive';
+             }
+             if (Schema::hasColumn('products', 'submitted_at')) {
+                 $pUpdate['submitted_at'] = now();
+             }
+             if (!empty($pUpdate)) {
+                 $product->update($pUpdate);
+             }
+         }
+     }
+
+     return response()->json([
+         'status' => true,
+         'message' => 'Successfully Updated',
+         'is_gst_included' => $isGstIncluded,
+         'seller_price' => $sellerPrice,
+         'price' => $displayPrice,
+         'mrp' => $mrp
+     ]);
  }
     /**
      * Display a listing of the resource.
@@ -44,18 +100,56 @@ class ProductAttributesController extends Controller
     {
         $color = $request->colorid;
         $packing = $request->packingid;
-        $price = $request->price;
+        $sellerPrice = $request->input('seller_price', $request->input('price'));
+        $displayPrice = $request->input('price');
+        $mrp = $request->input('mrp', $displayPrice);
         $proid = $request->productid;
-        //  `product_attributes`(`id`, `product_id`, `color`, `quantity`, `oldprice`, `price`
+        $isGstIncluded = $request->boolean('is_gst_included') || $request->input('is_gst_included') == '1' || $request->input('is_gst_included') === 1 ? 1 : 0;
+
         $pray = array(
-                        "product_id"=>$proid,
-                        "color"=>$color,
-                        "quantity"=>$packing,
-                        "oldprice"=>$price,
-                        "price"=>$price
-                    );
+            "product_id" => $proid,
+            "color" => $color,
+            "quantity" => $packing,
+            "oldprice" => $mrp ?: $displayPrice,
+            "price" => $displayPrice,
+        );
+
+        if (Schema::hasColumn('product_attributes', 'seller_price')) {
+            $pray['seller_price'] = $sellerPrice;
+        }
+        if (Schema::hasColumn('product_attributes', 'is_gst_included')) {
+            $pray['is_gst_included'] = $isGstIncluded;
+        }
+        if (Schema::hasColumn('product_attributes', 'mrp')) {
+            $pray['mrp'] = $mrp;
+        }
+
         ProductAttributes::insert($pray);
-            return back()->withErrors(["Successfully Added"]);
+
+        // If GST is included, route product to admin review bucket
+        if ($isGstIncluded) {
+            $product = Product::find($proid);
+            if ($product) {
+                $pUpdate = [];
+                if (Schema::hasColumn('products', 'has_gst_included')) {
+                    $pUpdate['has_gst_included'] = 1;
+                }
+                if (Schema::hasColumn('products', 'approval_status')) {
+                    $pUpdate['approval_status'] = 'pending_review';
+                }
+                if (Schema::hasColumn('products', 'status')) {
+                    $pUpdate['status'] = 'Deactive';
+                }
+                if (Schema::hasColumn('products', 'submitted_at')) {
+                    $pUpdate['submitted_at'] = now();
+                }
+                if (!empty($pUpdate)) {
+                    $product->update($pUpdate);
+                }
+            }
+        }
+
+        return back()->with('success', 'Product attribute successfully added!');
     }
 
     /**

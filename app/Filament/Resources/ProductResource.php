@@ -110,8 +110,22 @@ class ProductResource extends Resource
                         '20' => '20%',
                     ]),
                      TextInput::make('hsncode'),
-                FileUpload::make('image')->label('Image')
+                FileUpload::make('image')->label('Primary Image')
                                                 ->directory('product'),
+                FileUpload::make('multipleimages')
+                    ->label('Gallery Images (Multiple Photos)')
+                    ->directory('product')
+                    ->multiple()
+                    ->image()
+                    ->reorderable()
+                    ->afterStateHydrated(function ($component, $state) {
+                        if (is_string($state)) {
+                            $component->state(json_decode($state, true) ?: []);
+                        }
+                    })
+                    ->dehydrateStateUsing(function ($state) {
+                        return is_array($state) ? json_encode(array_values(array_filter($state))) : $state;
+                    }),
                 RichEditor::make('description'),
                 TextInput::make('slug')->disabled()
                                     ->required()
@@ -175,7 +189,7 @@ class ProductResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\ImageColumn::make('image')->square(),
+                Tables\Columns\ImageColumn::make('image')->square()->getStateUsing(fn ($record) => !empty($record->image) ? $record->image : (is_array(json_decode($record->multipleimages, true)) ? (json_decode($record->multipleimages, true)[0] ?? null) : null)),
                 Tables\Columns\TextColumn::make('name')->sortable()->searchable()->weight('bold'),
                 Tables\Columns\TextColumn::make('brand.name')->sortable()->searchable(),
                 Tables\Columns\TextColumn::make('category.name')->sortable()->searchable(),

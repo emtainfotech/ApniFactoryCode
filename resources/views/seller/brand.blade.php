@@ -154,7 +154,7 @@ td {
                                         @foreach($list as $key=>$lt)
                                          <tr>
                                              <td>{{$key+1}}</td>
-                                              <td><img src="{{ env('imagepath').'/'.$lt->image }}" width="100px"/>
+                                              <td><img src="{{ Helper::imageUrl($lt->image) }}" onerror="this.onerror=null;this.src='{{ asset('img/Apni-Factory-3.png') }}';" width="100px"/>
                                       <form action="{{ route('seller.brand.update-image') }}" method="POST" enctype="multipart/form-data" class="mt-1">
                 @csrf
                 @method('PUT')

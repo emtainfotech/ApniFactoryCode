@@ -48,26 +48,54 @@ Route::get('/livewire/livewire.js', function () {
     return (new \Livewire\Controllers\LivewireJavaScriptAssets)->source();
 });
 
-Route::get('/storage/app/public/{path}', function ($path) {
-    $filePath = storage_path('app/public/' . $path);
-    if (file_exists($filePath) && is_file($filePath)) {
-        return response()->file($filePath);
-    }
-    abort(404);
-})->where('path', '.*');
+// Universal image serving handler with multi-path resolution and placeholder fallback
+$serveStorageFile = function ($path) {
+    $clean = ltrim($path, '/');
+    $clean = preg_replace('#^(storage/|app/public/)+#', '', $clean);
 
-Route::get('/storage/{path}', function ($path) {
-    if (str_starts_with($path, 'app/public/')) {
-        $path = substr($path, strlen('app/public/'));
+    $candidates = [
+        storage_path('app/public/' . $clean),
+        public_path('storage/' . $clean),
+        base_path('storage/app/public/' . $clean),
+        storage_path('app/public/product/' . basename($clean)),
+        public_path('storage/app/public/' . $clean),
+        public_path('upload/' . $clean),
+        public_path('uploads/' . $clean),
+        public_path($clean),
+        base_path($clean),
+    ];
+
+    foreach ($candidates as $filePath) {
+        if (!empty($filePath) && file_exists($filePath) && is_file($filePath)) {
+            return response()->file($filePath, [
+                'Cache-Control' => 'public, max-age=86400',
+            ]);
+        }
     }
-    $filePath = storage_path('app/public/' . $path);
-    if (file_exists($filePath) && is_file($filePath)) {
-        return response()->file($filePath);
+
+    // Graceful fallback to default logo/placeholder so no page gets broken image icons
+    $fallbacks = [
+        public_path('img/Apni-Factory-3.png'),
+        storage_path('app/public/default.png'),
+        public_path('img/avatar-2.png'),
+    ];
+    foreach ($fallbacks as $fallback) {
+        if (file_exists($fallback) && is_file($fallback)) {
+            return response()->file($fallback, [
+                'Content-Type' => 'image/png',
+                'Cache-Control' => 'public, max-age=3600',
+            ]);
+        }
     }
+
     abort(404);
-})->where('path', '.*');
+};
+
+Route::get('/storage/app/public/{path}', $serveStorageFile)->where('path', '.*');
+Route::get('/storage/{path}', $serveStorageFile)->where('path', '.*');
 
 Route::post('/seller/getmidcidbybid', [Helper::class,"getmidcidbybid"]);
+Route::post('/getmidcidbybid', [Helper::class,"getmidcidbybid"]);
 Route::get('/', function () {
     return view('welcome');
 });

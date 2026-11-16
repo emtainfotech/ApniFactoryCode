@@ -101,7 +101,7 @@
                                             @foreach($list as $key=>$lt)
                                          <tr>
                                              <td>{{$key+1}}</td>
-                                              <td><img src="{{ env('imagepath').'/'.$lt->image }}" width="100px"/></td>
+                                              <td><img src="{{ Helper::imageUrl($lt->image) }}" onerror="this.onerror=null;this.src='{{ asset('img/Apni-Factory-3.png') }}';" width="100px"/></td>
                                              <td>{{$lt->name}}</td>
                                              <td>{{$lt->hexcode}}</td>
                                              <td>{{date("d-m-Y",strtotime($lt->created_at))}}</td>
