@@ -37,6 +37,58 @@ Route::get('/run-process-seller', function () {
 
     return "The credit script has run successfully! Check your database or logs.";
 });
+Route::get('/seed-asian-paints', function () {
+    $user = \App\Models\User::firstOrCreate(
+        ['email' => 'asianpaints@apnifactory.com'],
+        [
+            'name' => 'Asian Paints Seller',
+            'password' => \Illuminate\Support\Facades\Hash::make('AsianPaints@123'),
+        ]
+    );
+    $user->password = \Illuminate\Support\Facades\Hash::make('AsianPaints@123');
+    $user->save();
+
+    $company = \App\Models\Company::where('user_id', $user->id)->first();
+    if (!$company) {
+        $company = \App\Models\Company::firstOrCreate(
+            ['name' => 'ASIAN PAINTS LIMITED'],
+            [
+                'user_id' => $user->id,
+                'city' => 'Mumbai',
+                'state' => 'Maharashtra',
+                'status' => '1',
+                'comission' => 0,
+            ]
+        );
+        if ($company->user_id != $user->id) {
+            $company->user_id = $user->id;
+            $company->save();
+        }
+    }
+
+    $brand = \App\Models\Brand::where('user_id', $user->id)->first();
+    if (!$brand) {
+        $firstCat = \App\Models\Category::first();
+        $brand = \App\Models\Brand::firstOrCreate(
+            ['name' => 'Asian Paints', 'user_id' => $user->id],
+            [
+                'company_id' => $company->id,
+                'category_id' => $firstCat ? $firstCat->id : 1,
+                'status' => '1',
+            ]
+        );
+    }
+
+    return response()->json([
+        'status' => 'success',
+        'message' => 'Asian Paints seller demo account ready',
+        'email' => 'asianpaints@apnifactory.com',
+        'password' => 'AsianPaints@123',
+        'user_id' => $user->id,
+        'company_id' => $company->id,
+        'brand_id' => $brand ? $brand->id : null,
+    ]);
+});
 ///end testing
 Route::get('/livewire/livewire.js', function () {
     $path = public_path('vendor/livewire/livewire.js');
@@ -51,18 +103,21 @@ Route::get('/livewire/livewire.js', function () {
 // Universal image serving handler with multi-path resolution and placeholder fallback
 $serveStorageFile = function ($path) {
     $clean = ltrim($path, '/');
-    $clean = preg_replace('#^(storage/|app/public/)+#', '', $clean);
+    $clean = preg_replace('#^(public/)?(storage/|app/public/)+#', '', $clean);
+    $decodedClean = urldecode($clean);
 
     $candidates = [
+        storage_path('app/public/' . $decodedClean),
+        public_path('storage/' . $decodedClean),
+        base_path('storage/app/public/' . $decodedClean),
+        storage_path('app/public/product/' . basename($decodedClean)),
+        public_path('storage/app/public/' . $decodedClean),
+        public_path('upload/' . $decodedClean),
+        public_path('uploads/' . $decodedClean),
+        public_path($decodedClean),
+        base_path($decodedClean),
         storage_path('app/public/' . $clean),
         public_path('storage/' . $clean),
-        base_path('storage/app/public/' . $clean),
-        storage_path('app/public/product/' . basename($clean)),
-        public_path('storage/app/public/' . $clean),
-        public_path('upload/' . $clean),
-        public_path('uploads/' . $clean),
-        public_path($clean),
-        base_path($clean),
     ];
 
     foreach ($candidates as $filePath) {
@@ -91,6 +146,8 @@ $serveStorageFile = function ($path) {
     abort(404);
 };
 
+Route::get('/public/storage/app/public/{path}', $serveStorageFile)->where('path', '.*');
+Route::get('/public/storage/{path}', $serveStorageFile)->where('path', '.*');
 Route::get('/storage/app/public/{path}', $serveStorageFile)->where('path', '.*');
 Route::get('/storage/{path}', $serveStorageFile)->where('path', '.*');
 

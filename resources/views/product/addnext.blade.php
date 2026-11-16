@@ -158,6 +158,24 @@
                                 </div>
                                 <div class="upload__img-wrap mt-2"></div>
                             </div>
+                            <hr class="my-3 text-muted">
+                            <div class="row g-2">
+                                <div class="col-md-6">
+                                    <label class="form-label small fw-semibold text-muted">
+                                        <i class="fa-solid fa-mobile-screen me-1 text-primary"></i> Home Screen Display Image (Optional)
+                                    </label>
+                                    <input type="file" name="home_image" id="home_image" class="form-control form-control-sm" accept="image/*">
+                                    <small class="text-muted d-block mt-1">If not selected, the first uploaded product image will be used on the App home screen.</small>
+                                </div>
+                                <div class="col-md-6 d-flex align-items-center">
+                                    <div class="form-check form-switch mt-2">
+                                        <input class="form-check-input" type="checkbox" name="show_on_home" value="1" id="show_on_home" checked>
+                                        <label class="form-check-label fw-semibold text-dark small" for="show_on_home">
+                                            Feature & display this product on Customer Mobile App Home Screen
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
 

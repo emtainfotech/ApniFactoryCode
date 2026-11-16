@@ -252,7 +252,7 @@ class Helper {
 
  /**
   * Resolves any image path or filename to a clean, universally accessible web URL.
-  * Strips duplicate storage/app/public prefixes and handles fallback gracefully.
+  * Strips duplicate storage/app/public prefixes, properly encodes spaces, and handles fallback gracefully.
   */
  public static function imageUrl($path = null) {
      if (empty($path)) {
@@ -260,26 +260,30 @@ class Helper {
      }
 
      $trimmed = trim((string)$path);
-     if (empty($trimmed)) {
+     if (empty($trimmed) || $trimmed === 'default.png' || $trimmed === 'null') {
          return asset('img/Apni-Factory-3.png');
      }
 
      if (str_starts_with($trimmed, 'http://') || str_starts_with($trimmed, 'https://')) {
-         return $trimmed;
+         return str_replace(' ', '%20', $trimmed);
      }
 
      $clean = ltrim($trimmed, '/');
      $clean = preg_replace('#^(storage/|app/public/)+#', '', $clean);
 
      if (file_exists(public_path('upload/' . $clean))) {
-         return asset('upload/' . $clean);
+         return str_replace(' ', '%20', asset('upload/' . $clean));
      }
 
-     return url('/storage/' . $clean);
+     $parts = explode('/', $clean);
+     $encodedParts = array_map('rawurlencode', $parts);
+     $encodedClean = implode('/', $encodedParts);
+
+     return url('/storage/' . $encodedClean);
  }
 
  /**
-  * Returns a clean array of image filenames/URLs for a given product model.
+  * Returns a clean array of image filenames for a given product model.
   */
  public static function productGallery($product) {
      $gallery = [];
@@ -299,5 +303,22 @@ class Helper {
      }
 
      return $gallery;
+ }
+
+ /**
+  * Returns a clean array of absolute, ready-to-render image URLs for a given product model.
+  */
+ public static function productGalleryUrls($product) {
+     $items = self::productGallery($product);
+     $urls = [];
+     foreach ($items as $item) {
+         if (!empty($item)) {
+             $urls[] = self::imageUrl($item);
+         }
+     }
+     if (empty($urls)) {
+         $urls[] = asset('img/Apni-Factory-3.png');
+     }
+     return $urls;
  }
 }

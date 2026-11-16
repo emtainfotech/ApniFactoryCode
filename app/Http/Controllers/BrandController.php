@@ -99,32 +99,57 @@ class BrandController extends Controller
         $mid = $request->maincategory;
         $name = $request->name;
         $addby = Auth::user()->id;  
-        $cmp = Company::where("user_id",$addby)->first();
+        $cmp = Company::where("user_id", $addby)->first();
+        if (!$cmp) {
+            $user = Auth::user();
+            $cmp = Company::create([
+                'user_id' => $addby,
+                'name' => $user->name ?: ($name . ' Company'),
+                'status' => '1',
+                'comission' => 0,
+            ]);
+        }
         $cmpid = $cmp->id;
         $status = '1';
         $cid = $request->subcat;
-        $nt=0;
+        $nt = 0;
         $trade = $request->tno;
-        $file = $request->file('image');
-                 $fname=$file->getClientOriginalName();
-            $file->move('storage/app/public/brand',$fname);
-            $images='brand/'.$fname;
-        foreach($request->category as $cat){
-            $check = Brand::where("user_id",$addby)->where("name",$name)->where("category_id",$cat)->first();
-            if(empty($check)){
-            $array = array("category_id"=>$cat,
-                            "mid"=>$mid,
-                            "name"=>$name,
-                            "company_id"=>$cmpid,
-                            "status"=>$status,
-                            "user_id"=>$addby,
-                            "image"=>$images,
-                            "trademarkno"=>$trade,
-                            "type"=>"Processing");
-            Brand::insert($array);        
-            }else{ $nt++; }
+
+        $images = 'brand/default.png';
+        if ($request->hasFile('image')) {
+            $file = $request->file('image');
+            if ($file && $file->isValid()) {
+                $targetDir = storage_path('app/public/brand');
+                if (!file_exists($targetDir)) {
+                    @mkdir($targetDir, 0775, true);
+                }
+                $fname = time() . '_' . rand(10, 99999) . '.' . ($file->getClientOriginalExtension() ?: 'jpg');
+                $file->move($targetDir, $fname);
+                $images = 'brand/' . $fname;
+            }
         }
-        return back()->withErrors(["Successfully Added"]);
+
+        $cats = is_array($request->category) ? $request->category : ($request->filled('category') ? [$request->category] : []);
+        foreach($cats as $cat){
+            $check = Brand::where("user_id", $addby)->where("name", $name)->where("category_id", $cat)->first();
+            if(empty($check)){
+                $array = array(
+                    "category_id" => $cat,
+                    "mid"         => $mid,
+                    "name"        => $name,
+                    "company_id"  => $cmpid,
+                    "status"      => $status,
+                    "user_id"     => $addby,
+                    "image"       => $images,
+                    "trademarkno" => $trade,
+                    "type"        => "Processing"
+                );
+                Brand::insert($array);        
+            } else { 
+                $nt++; 
+            }
+        }
+        return back()->with('success', 'Brand successfully added!');
     }
 
     /**

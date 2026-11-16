@@ -39,6 +39,9 @@
                             <strong class="text-success"><i class="fa fa-key me-1"></i> Quick 1-Click Login:</strong>
                         </div>
                         <div class="d-flex flex-wrap gap-2">
+                            <button type="button" class="btn btn-sm btn-danger text-white fw-bold" onclick="fillCredentials('asianpaints@apnifactory.com', 'AsianPaints@123')">
+                                <i class="fa fa-paint-roller me-1"></i> Asian Paints Seller Demo
+                            </button>
                             <button type="button" class="btn btn-sm btn-success text-white fw-bold" onclick="fillCredentials('seller@apnifactory.local', 'password123')">
                                 <i class="fa fa-store me-1"></i> Demo Seller (14 Products)
                             </button>
@@ -47,7 +50,7 @@
                             </button>
                         </div>
                         <div class="mt-2 text-dark small">
-                            <strong>Seller:</strong> <code>seller@apnifactory.local</code> | <strong>Password:</strong> <code>password123</code>
+                            <strong>Asian Paints Seller:</strong> <code>asianpaints@apnifactory.com</code> | <strong>Password:</strong> <code>AsianPaints@123</code>
                         </div>
                     </div>
 

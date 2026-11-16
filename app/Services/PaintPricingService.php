@@ -146,6 +146,11 @@ class PaintPricingService
             }
         } elseif ($level === 'subcategory') {
             $productQuery->where('subcategory_id', $id);
+        } elseif ($level === 'company') {
+            $company = \App\Models\Company::find($id);
+            if ($company) {
+                $productQuery->where('user_id', $company->user_id);
+            }
         }
 
         $products = $productQuery->with('product_attributes')->get();

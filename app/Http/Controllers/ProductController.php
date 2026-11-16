@@ -87,6 +87,22 @@ class ProductController extends Controller
         $approvalStatus = $hasGstIncluded ? 'pending_review' : 'approved';
         $productStatus = $hasGstIncluded ? 'Deactive' : 'Active';
 
+        $homeImage = null;
+        if ($request->hasFile('home_image')) {
+            $hfile = $request->file('home_image');
+            if ($hfile->isValid()) {
+                $targetDir = storage_path('app/public/product');
+                if (!file_exists($targetDir)) {
+                    @mkdir($targetDir, 0775, true);
+                }
+                $hname = time() . '_home_' . uniqid() . '.' . ($hfile->getClientOriginalExtension() ?: 'jpg');
+                $hfile->move($targetDir, $hname);
+                $homeImage = 'product/' . $hname;
+            }
+        } elseif ($request->filled('home_image')) {
+            $homeImage = $request->input('home_image');
+        }
+
         $pary = array(
                       "maincategory_id" => $mid,
                       "category_id"     => $cid,
@@ -102,6 +118,8 @@ class ProductController extends Controller
                       "user_id"         => Auth::user()->id,
                       "multipleimages"  => json_encode($images),
                       "image"           => $img,
+                      "home_image"      => $homeImage ?: $img,
+                      "show_on_home"    => $request->has('show_on_home') ? ($request->show_on_home ? 1 : 0) : 1,
                       "hsncode"         => $hsncode,
                       "tax"             => $tax
                       );
@@ -825,7 +843,9 @@ class ProductController extends Controller
          if (empty($images) && !empty($rmn->image)) {
              $images = [(string)$rmn->image];
          }
-         $rmn['multipleimages'] = $images;
+         // Map to full universal URLs so mobile app and web clients load them without broken icons
+         $rmn['multipleimages'] = array_values(array_map([Helper::class, 'imageUrl'], $images));
+         $rmn['image'] = Helper::imageUrl($rmn->image);
              $attribute = ProductAttributes::where("product_id",$request->get('productid'))->where("color",$request->get('colorid'))->get();
               if ($attribute->isEmpty()) {
                   $firstColor = ProductAttributes::where("product_id", $request->get('productid'))->value('color');
@@ -970,8 +990,27 @@ class ProductController extends Controller
     }
 
     // 4. Save back to the database as a JSON string
-    $detail->multipleimages = json_encode(array_values($finalImages));
+    $detail->multipleimages = array_values($finalImages);
     $detail->image = $fnlimgs;
+
+    if ($request->hasFile('home_image')) {
+        $targetDir = storage_path('app/public/product');
+        if (!file_exists($targetDir)) {
+            @mkdir($targetDir, 0775, true);
+        }
+        $hfile = $request->file('home_image');
+        if ($hfile->isValid()) {
+            $hname = time() . '_home_' . uniqid() . '.' . ($hfile->getClientOriginalExtension() ?: 'jpg');
+            $hfile->move($targetDir, $hname);
+            $detail->home_image = 'product/' . $hname;
+        }
+    } elseif ($request->filled('home_image_choice')) {
+        $detail->home_image = $request->input('home_image_choice');
+    }
+
+    if ($request->has('show_on_home')) {
+        $detail->show_on_home = $request->show_on_home ? 1 : 0;
+    }
 
     if ($request->filled('name')) {
         $detail->name = $request->name;

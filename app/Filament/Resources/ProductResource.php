@@ -125,6 +125,15 @@ class ProductResource extends Resource
                     ->dehydrateStateUsing(function ($state) {
                         return is_array($state) ? json_encode(array_values(array_filter($state))) : $state;
                     }),
+                FileUpload::make('home_image')
+                    ->label('Home Screen Display Image (Optional)')
+                    ->directory('product')
+                    ->image()
+                    ->helperText('Specific image shown on the mobile app Home Screen card. Leave empty to use Primary Image.'),
+                Forms\Components\Toggle::make('show_on_home')
+                    ->label('Display Product on Home Screen')
+                    ->default(true)
+                    ->helperText('Whether this product is featured and visible on the customer home screen feed.'),
                 RichEditor::make('description'),
                 TextInput::make('slug')->disabled()
                                     ->required()
@@ -188,7 +197,7 @@ class ProductResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\ImageColumn::make('image')->square()->getStateUsing(fn ($record) => !empty($record->image) ? $record->image : (is_array(json_decode($record->multipleimages, true)) ? (json_decode($record->multipleimages, true)[0] ?? null) : null)),
+                Tables\Columns\ImageColumn::make('image')->square()->getStateUsing(fn ($record) => !empty($record->home_image) ? $record->home_image : (!empty($record->image) ? $record->image : ($record->multipleimages[0] ?? null))),
                 Tables\Columns\TextColumn::make('name')->sortable()->searchable()->weight('bold'),
                 Tables\Columns\TextColumn::make('brand.name')->sortable()->searchable(),
                 Tables\Columns\TextColumn::make('category.name')->sortable()->searchable(),

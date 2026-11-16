@@ -104,6 +104,15 @@ class CompanyResource extends Resource
             ->columns([
                 Tables\Columns\TextColumn::make('name')->sortable()->searchable(),
                 Tables\Columns\TextColumn::make('user.name')->sortable()->searchable(),
+                Tables\Columns\TextInputColumn::make('comission')
+                    ->label('Commission %')
+                    ->rules(['numeric', 'min:0', 'max:100'])
+                    ->updateStateUsing(function ($record, $state) {
+                        $record->comission = ($state !== null && $state !== '') ? (float)$state : 0;
+                        $record->save();
+                        app(\App\Services\PaintPricingService::class)->syncDisplayPricesForCommissionChange('company', $record->id, (float)$record->comission);
+                        return $record->comission;
+                    }),
                 Tables\Columns\TextColumn::make('mobile')->searchable(),
                 Tables\Columns\TextColumn::make('city')->searchable(),
                 Tables\Columns\TextColumn::make('created_at')->date(),

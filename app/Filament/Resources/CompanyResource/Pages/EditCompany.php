@@ -16,4 +16,12 @@ class EditCompany extends EditRecord
             Actions\DeleteAction::make(),
         ];
     }
+
+    protected function afterSave(): void
+    {
+        $company = $this->record;
+        if ($company && $company->user_id) {
+            app(\App\Services\PaintPricingService::class)->syncDisplayPricesForCommissionChange('company', $company->id, (float)($company->comission ?? 0));
+        }
+    }
 }

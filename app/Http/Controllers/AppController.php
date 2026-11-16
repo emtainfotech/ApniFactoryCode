@@ -178,7 +178,7 @@ class AppController extends Controller
                  $brands[] = [
                      'id' => $b->id,
                      'name' => $b->name,
-                     'image' => $b->image ?: 'default.png',
+                     'image' => Helper::imageUrl($b->image),
                      'company_id' => $b->company_id ?: 0,
                      'category_id' => $b->category_id ?: 0,
                  ];
@@ -197,7 +197,7 @@ class AppController extends Controller
                  $companies[] = [
                      'id' => $comp->id,
                      'name' => $comp->name,
-                     'photo' => $comp->photo ?: '',
+                     'photo' => Helper::imageUrl($comp->photo),
                      'city' => $comp->city ?: 'India',
                      'state' => $comp->state ?: '',
                      'minordervalue' => $comp->minordervalue ? (float)$comp->minordervalue : 0.0,
@@ -243,7 +243,7 @@ class AppController extends Controller
                  $brands[] = [
                      'id' => $b->id,
                      'name' => $b->name,
-                     'image' => $b->image ?: 'default.png',
+                     'image' => Helper::imageUrl($b->image),
                      'company_id' => $b->company_id ?: 0,
                      'category_id' => $b->category_id ?: 0,
                  ];
@@ -317,7 +317,7 @@ class AppController extends Controller
                  $companies[] = [
                      'id' => $comp->id,
                      'name' => $comp->name,
-                     'photo' => $comp->photo ?: '',
+                     'photo' => Helper::imageUrl($comp->photo),
                      'city' => $comp->city ?: 'India',
                      'state' => $comp->state ?: '',
                      'minordervalue' => $comp->minordervalue ? (float)$comp->minordervalue : 0.0,
@@ -441,10 +441,13 @@ class AppController extends Controller
             $packSize = $attr && $attr->pack_size ? (string)$attr->pack_size : '';
             $comp = isset($companiesByUserId[(int)$p->user_id]) ? $companiesByUserId[(int)$p->user_id] : null;
 
+            $displayImg = (!empty($p->home_image) && $p->home_image !== 'default.png') ? $p->home_image : $p->image;
+
             $out[] = [
                 'id' => $p->id,
                 'name' => $p->name,
-                'image' => $p->image ?: 'default.png',
+                'image' => Helper::imageUrl($displayImg),
+                'home_image' => Helper::imageUrl($p->home_image ?: $p->image),
                 'category_id' => $p->category_id ?: 0,
                 'category_name' => Helper::getcatname($p->category_id),
                 'brand_id' => $p->brand_id ?: 0,
@@ -452,7 +455,7 @@ class AppController extends Controller
                 'company_id' => $comp ? (int)$comp->id : 0,
                 'company_name' => $comp ? (string)$comp->name : '',
                 'company_city' => $comp ? ($comp->city ?: 'India') : 'India',
-                'company_photo' => $comp ? ($comp->photo ?: '') : '',
+                'company_photo' => $comp && $comp->photo ? Helper::imageUrl($comp->photo) : asset('img/Apni-Factory-3.png'),
                 'price' => $price,
                 'oldprice' => $oldPrice,
                 'color_id' => $colorId,
@@ -469,7 +472,10 @@ class AppController extends Controller
         $exclude = $request->get('exclude');
         $excludeIds = is_array($exclude) ? $exclude : (is_string($exclude) && strlen($exclude) > 0 ? explode(',', $exclude) : []);
 
-        $query = Product::whereIn("status", ["Active", "active", "1"]);
+        $query = Product::whereIn("status", ["Active", "active", "1"])
+            ->where(function($q) {
+                $q->whereNull('show_on_home')->orWhere('show_on_home', 1);
+            });
         if (!empty($excludeIds)) {
             $query->whereNotIn('id', $excludeIds);
         }

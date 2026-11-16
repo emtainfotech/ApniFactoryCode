@@ -198,9 +198,29 @@
                                     @endforeach
                                 @endif
                             </div>
-                            <div class="mt-2">
-                                <label for="new_images" class="form-label small text-muted">Add More Images:</label>
-                                <input type="file" name="new_images[]" id="new_images" class="form-control form-control-sm" multiple accept="image/*">
+                            <div class="row g-2 mt-2">
+                                <div class="col-md-6">
+                                    <label for="new_images" class="form-label small text-muted">Add More Gallery Images:</label>
+                                    <input type="file" name="new_images[]" id="new_images" class="form-control form-control-sm" multiple accept="image/*">
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="home_image" class="form-label small text-muted">Custom Home Screen Display Image (Optional):</label>
+                                    <input type="file" name="home_image" id="home_image" class="form-control form-control-sm" accept="image/*">
+                                    @if(!empty($detail->home_image))
+                                        <div class="mt-1 d-flex align-items-center gap-2">
+                                            <span class="small text-muted">Current Home Image:</span>
+                                            <img src="{{ Helper::imageUrl($detail->home_image) }}" width="36" height="36" class="rounded border" style="object-fit: cover;">
+                                        </div>
+                                    @endif
+                                </div>
+                                <div class="col-12 mt-2">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" name="show_on_home" value="1" id="show_on_home" {{ ($detail->show_on_home ?? 1) ? 'checked' : '' }}>
+                                        <label class="form-check-label fw-semibold text-dark small" for="show_on_home">
+                                            <i class="fa-solid fa-house-chimney text-primary me-1"></i> Feature & display this product on Customer Mobile App Home Screen
+                                        </label>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 

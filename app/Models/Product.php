@@ -20,6 +20,8 @@ class Product extends Model
         'capacity',
         'description',
         'multipleimages',
+        'home_image',
+        'show_on_home',
         'status',
         'approval_status',
         'has_gst_included',
@@ -129,10 +131,43 @@ class Product extends Model
         'shade_groups'      => 'array',
         'multipleimages'    => 'array',
         'has_gst_included'  => 'boolean',
+        'show_on_home'      => 'boolean',
         'submitted_at'      => 'datetime',
         'reviewed_at'       => 'datetime',
         'last_validated_at' => 'datetime',
     ];
+
+    public function getMultipleimagesAttribute($value)
+    {
+        if (is_array($value)) {
+            return array_values(array_filter($value));
+        }
+        if (empty($value)) {
+            return [];
+        }
+        while (is_string($value)) {
+            $decoded = json_decode($value, true);
+            if (json_last_error() === JSON_ERROR_NONE) {
+                $value = $decoded;
+            } else {
+                break;
+            }
+        }
+        return is_array($value) ? array_values(array_filter($value)) : [];
+    }
+
+    public function setMultipleimagesAttribute($value)
+    {
+        if (is_string($value)) {
+            $decoded = json_decode($value, true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                $value = $decoded;
+            } else {
+                $value = array_filter(array_map('trim', explode(',', $value)));
+            }
+        }
+        $this->attributes['multipleimages'] = json_encode(is_array($value) ? array_values(array_filter($value)) : []);
+    }
 
     public function getStatusAttribute($value)
     {

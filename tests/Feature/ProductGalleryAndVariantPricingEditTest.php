@@ -129,7 +129,7 @@ class ProductGalleryAndVariantPricingEditTest extends TestCase
         $data = $res['data'];
         $this->assertIsArray($data['multipleimages']);
         $this->assertCount(2, $data['multipleimages']);
-        $this->assertEquals('product/gallery1.jpg', $data['multipleimages'][0]);
+        $this->assertStringContainsString('storage/product/gallery1.jpg', $data['multipleimages'][0]);
 
         // 2. With empty multipleimages
         $this->product->update(['multipleimages' => null]);
@@ -141,7 +141,7 @@ class ProductGalleryAndVariantPricingEditTest extends TestCase
         $data2 = $res2['data'];
         $this->assertIsArray($data2['multipleimages']);
         $this->assertCount(1, $data2['multipleimages']);
-        $this->assertEquals('product/royal_main.jpg', $data2['multipleimages'][0]);
+        $this->assertStringContainsString('storage/product/royal_main.jpg', $data2['multipleimages'][0]);
     }
 
     public function test_seller_can_update_attribute_variant_pricing_with_gst_and_routes_to_review()
@@ -189,10 +189,15 @@ class ProductGalleryAndVariantPricingEditTest extends TestCase
     /** @test */
     public function test_filament_product_resource_form_builds_without_exception()
     {
-        $admin = User::factory()->create([
-            'id' => 1,
-            'email' => 'admin@apnifactory.com',
-        ]);
+        $admin = User::find(1);
+        if (!$admin) {
+            $admin = User::create([
+                'id' => 1,
+                'name' => 'Admin',
+                'email' => 'admin@apnifactory.com',
+                'password' => bcrypt('password'),
+            ]);
+        }
 
         $this->actingAs($admin);
 
