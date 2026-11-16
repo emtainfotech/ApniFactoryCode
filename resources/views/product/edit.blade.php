@@ -21,7 +21,7 @@
     });
 
     // Available pack sizes for this product
-    $distinctPackIds = !empty($attributelist) ? $attributelist->pluck('quantity')->unique()->filter()->values()->all() : [];
+    $distinctPackIds = !empty($distinctPackIds) ? $distinctPackIds : (!empty($attributelist) ? $attributelist->pluck('quantity')->unique()->filter()->values()->all() : []);
     if (empty($distinctPackIds) && !empty($boxPackings)) {
         $distinctPackIds = $boxPackings->pluck('id')->take(6)->all();
     }
@@ -145,14 +145,23 @@
                         <div class="col-md-4">
                             <label class="form-label fw-semibold">Category</label>
                             <select class="form-select" id="subcatforajax" name="category">
-                                <option value="{{$detail->category_id}}">{{Helper::getcatname($detail->category_id)}}</option>
+                                @php
+                                    $catsForMain = Helper::getcatbymid($detail->maincategory_id) ?: [];
+                                @endphp
+                                @if(!empty($catsForMain) && count($catsForMain) > 0)
+                                    @foreach($catsForMain as $catItem)
+                                        <option value="{{$catItem->id}}" {{ $detail->category_id == $catItem->id ? 'selected' : '' }}>{{$catItem->name}}</option>
+                                    @endforeach
+                                @else
+                                    <option value="{{$detail->category_id}}">{{Helper::getcatname($detail->category_id)}}</option>
+                                @endif
                             </select>
                         </div>
                         <div class="col-md-4">
                             <label class="form-label fw-semibold">Product Status</label>
                             <select class="form-select" name="status">
-                                <option value="1" {{ $detail->status == '1' || $detail->status == 'Active' ? 'selected' : '' }}>Active</option>
-                                <option value="0" {{ $detail->status == '0' || $detail->status == 'Deactive' ? 'selected' : '' }}>Deactive</option>
+                                <option value="Active" {{ $detail->status == 'Active' || $detail->status == '1' ? 'selected' : '' }}>Active</option>
+                                <option value="Deactive" {{ $detail->status == 'Deactive' || $detail->status == '0' ? 'selected' : '' }}>Deactive</option>
                             </select>
                         </div>
                         <div class="col-md-6">
@@ -534,195 +543,7 @@
         </div>
 
         <!-- ======================================================== -->
-        <!-- SECTION 2: INDIVIDUAL VARIANTS & FILTERABLE TABLE       -->
-        <!-- ======================================================== -->
-        <div class="card shadow-sm border-0 mb-4">
-            <div class="card-body p-4">
-                <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
-                    <div>
-                        <h5 class="card-title mb-1 fw-bold text-dark">Individual Variant SKU List</h5>
-                        <p class="text-muted small mb-0">View or fine-tune individual variant SKUs and add custom pack/color combinations.</p>
-                    </div>
-                    <div class="d-flex align-items-center gap-2">
-                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="copyFirstPriceToAll()" title="Copy first factory price to all shades of matching pack size">
-                            <i class="fa fa-copy me-1"></i> Copy First Price to All Shades
-                        </button>
-                    </div>
-                </div>
-                <hr/>
-
-                <form method="GET" class="row align-items-end g-2 mb-3">
-                    @csrf
-                    <div class="form-group col-md-3">
-                        <label for="srchshade" class="form-label small fw-semibold">Filter by Shade Card:</label>
-                        <select class="form-select form-select-sm" id="srchshade" name="srchshade">
-                            <option value="">All Shades</option>
-                            @foreach($shadecard as $colr)
-                                <option value="{{$colr->id}}" {{ request('srchshade') == $colr->id ? 'selected' : '' }}>{{$colr->name}}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div class="form-group col-md-2">
-                        <button type="submit" class="btn btn-warning btn-sm w-100">Filter</button>
-                    </div>
-                    @if(request('srchshade'))
-                    <div class="form-group col-md-2">
-                        <a href="{{ route('product.edit', $detail->id) }}" class="btn btn-outline-secondary btn-sm w-100">Reset</a>
-                    </div>
-                    @endif
-                </form>
-
-                <div class="table-responsive">
-                    <table class="table table-hover table-striped table-bordered align-middle mb-0" style="width:100%" id="variantsPricingTable">
-                        <thead class="table-dark">
-                            <tr>
-                                <th>Packing</th>
-                                <th>Color / Shade</th>
-                                <th>Group</th>
-                                <th style="min-width: 140px;">Factory Price (₹)</th>
-                                <th class="text-center" style="min-width: 130px;">GST Included?</th>
-                                <th style="min-width: 150px;">Display Price (+{{ number_format($commissionRate ?? 0, 2) }}%)</th>
-                                <th style="min-width: 120px;">MRP Price (₹)</th>
-                                <th style="min-width: 130px;" class="text-center">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @if(!empty($attributelist) && count($attributelist) > 0)
-                            @foreach($attributelist as $bxp)
-                                @php
-                                    $packName = Helper::getboxpackingnamebyid($bxp->quantity);
-                                    $colorName = Helper::getcolorsnamebyid($bxp->color);
-                                    $factPrice = $bxp->seller_price ?: $bxp->price;
-                                    $isGst = (int)($bxp->is_gst_included ?? 0);
-                                    $gRate = $bxp->gst_rate ?: $defaultTax;
-                                @endphp
-                                <tr data-row-id="{{ $bxp->id }}" data-pack-id="{{ $bxp->quantity }}" data-pack-name="{{ $packName }}">
-                                    <td>
-                                        <span class="badge bg-light text-dark border px-2 py-1 fw-bold">
-                                            {{ $packName }}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <span class="fw-semibold text-dark">{{ $colorName }}</span>
-                                    </td>
-                                    <td>
-                                        <span class="badge bg-light-primary text-primary border">
-                                            {{ $bxp->group_name ?: 'Default' }}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <div class="input-group input-group-sm">
-                                            <span class="input-group-text">₹</span>
-                                            <input type="number" step="0.01" min="0" value="{{ $factPrice }}" name="seller_price" id="factory_price{{$bxp->id}}" class="form-control factory-price-input" oninput="calculateDisplayPrice('{{$bxp->id}}')" placeholder="Factory Price">
-                                        </div>
-                                    </td>
-                                    <td class="text-center">
-                                        <div class="form-check d-flex justify-content-center align-items-center gap-1 mb-0">
-                                            <input type="checkbox" class="form-check-input gst-checkbox" id="gst_included{{$bxp->id}}" value="1" {{ $isGst === 1 ? 'checked' : '' }}>
-                                            <label class="form-check-label small text-muted" for="gst_included{{$bxp->id}}">
-                                                Incl. GST ({{ $gRate }}%)
-                                            </label>
-                                            <input type="hidden" id="gst_rate{{$bxp->id}}" value="{{ $gRate }}">
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div class="input-group input-group-sm">
-                                            <span class="input-group-text bg-light-primary text-primary fw-bold">₹</span>
-                                            <input type="number" step="0.01" min="0" value="{{ $bxp->price }}" name="price" id="display_price{{$bxp->id}}" class="form-control display-price-input fw-bold text-primary" placeholder="Display Price" readonly tabindex="-1" style="background-color: #e9ecef !important; cursor: not-allowed; color: #495057 !important;">
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div class="input-group input-group-sm">
-                                            <span class="input-group-text">₹</span>
-                                            <input type="number" step="0.01" min="0" value="{{ $bxp->mrp ?? $bxp->oldprice ?? '' }}" name="mrp" id="mrp{{$bxp->id}}" class="form-control mrp-input" placeholder="Optional">
-                                        </div>
-                                    </td>
-                                    <td class="text-center">
-                                        <div class="btn-group btn-group-sm" role="group">
-                                            <button type="button" class="btn btn-success" onClick="updateattributeprice('{{$bxp->id}}')" title="Save updated pricing for this variant">
-                                                <i class="fa fa-save me-1"></i> Update
-                                            </button>
-                                            <form action="{{ route('product.filter.delete', $bxp->id) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete this variant?');" style="display:inline;">
-                                                @csrf
-                                                @method('DELETE')
-                                                <input type="hidden" name="attributid" value="{{$bxp->id}}">
-                                                <button type="submit" class="btn btn-danger" title="Delete variant">
-                                                    <i class="fa fa-trash"></i>
-                                                </button>
-                                            </form>
-                                        </div>
-                                    </td>
-                                </tr>
-                            @endforeach
-                            @else
-                                <tr>
-                                    <td colspan="8" class="text-center text-muted py-3">No variants found. Add a variant below.</td>
-                                </tr>
-                            @endif
-
-                            <!-- Add New Variant Row -->
-                            <tr class="table-info">
-                                <form method="post" action="{{route('product.addproductattribute')}}">
-                                    @csrf
-                                    <input type="hidden" name="productid" value="{{$detail->id}}">
-                                    <td>
-                                        <select class="form-select form-select-sm" name="packingid" id="new_packingid" required>
-                                            <option value="">Select Packing</option>
-                                            @foreach(Helper::getboxpacking() as $boxpck)
-                                                <option value="{{$boxpck->id}}">{{$boxpck->name}}</option>
-                                            @endforeach
-                                        </select>
-                                    </td>
-                                    <td>
-                                        <select class="form-select form-select-sm" name="colorid" id="new_colorid" required>
-                                            <option value="">Select Color</option>
-                                            @foreach($shadecard as $colr)
-                                                <option value="{{$colr->id}}">{{$colr->name}}</option>
-                                            @endforeach
-                                        </select>
-                                    </td>
-                                    <td>
-                                        <span class="badge bg-secondary">Custom</span>
-                                    </td>
-                                    <td>
-                                        <div class="input-group input-group-sm">
-                                            <span class="input-group-text">₹</span>
-                                            <input type="number" step="0.01" min="0" name="seller_price" id="new_factory_price" class="form-control" placeholder="Factory Price" required oninput="calculateNewDisplayPrice()">
-                                        </div>
-                                    </td>
-                                    <td class="text-center">
-                                        <div class="form-check d-flex justify-content-center align-items-center gap-1 mb-0">
-                                            <input type="checkbox" name="is_gst_included" id="new_gst_included" value="1" class="form-check-input">
-                                            <label class="form-check-label small text-muted" for="new_gst_included">Incl. GST</label>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div class="input-group input-group-sm">
-                                            <span class="input-group-text bg-light-primary text-primary fw-bold">₹</span>
-                                            <input type="number" step="0.01" min="0" name="price" id="new_display_price" class="form-control fw-bold text-primary" placeholder="Auto" required readonly tabindex="-1" style="background-color: #e9ecef !important; cursor: not-allowed; color: #495057 !important;">
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div class="input-group input-group-sm">
-                                            <span class="input-group-text">₹</span>
-                                            <input type="number" step="0.01" min="0" name="mrp" id="new_mrp" class="form-control" placeholder="Optional">
-                                        </div>
-                                    </td>
-                                    <td class="text-center">
-                                        <button type="submit" class="btn btn-primary btn-sm w-100">
-                                            <i class="fa fa-plus me-1"></i> Add SKU
-                                        </button>
-                                    </td>
-                                </form>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-
-        <!-- ======================================================== -->
-        <!-- SECTION 3: PRODUCT PRICE REVISION & REVIEW AUDIT HISTORY -->
+        <!-- SECTION 2: PRODUCT PRICE REVISION & REVIEW AUDIT HISTORY (MOVED TO TOP OF SHADES TABLE) -->
         <!-- ======================================================== -->
         <div class="card shadow-sm border-0 mb-4">
             <div class="card-body p-4">
@@ -801,6 +622,273 @@
                         </tbody>
                     </table>
                 </div>
+            </div>
+        </div>
+
+        <!-- ======================================================== -->
+        <!-- SECTION 3: INDIVIDUAL VARIANTS & FILTERABLE TABLE       -->
+        <!-- ======================================================== -->
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-body p-4">
+                <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
+                    <div>
+                        <h5 class="card-title mb-1 fw-bold text-dark">Individual Variant SKU List</h5>
+                        <p class="text-muted small mb-0">View or fine-tune individual variant SKUs. Use the quick add form on top to add custom pack/color combinations.</p>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="copyFirstPriceToAll()" title="Copy first factory price to all shades of matching pack size">
+                            <i class="fa fa-copy me-1"></i> Copy First Price to All Shades
+                        </button>
+                    </div>
+                </div>
+
+                <!-- ADD NEW VARIANT / SKU (MOVED TO TOP) -->
+                <div class="card border border-primary border-opacity-25 bg-light mb-4 shadow-sm">
+                    <div class="card-body p-3">
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <div class="fw-bold text-primary small">
+                                <i class="fa fa-plus-circle me-1"></i> Add New Shade / SKU Combination (Top Form)
+                            </div>
+                            <span class="badge bg-light-primary text-primary border border-primary small" style="font-size: 11px;">
+                                Display Price (+{{ number_format($commissionRate ?? 0, 2) }}%) Auto-Calculated & Locked
+                            </span>
+                        </div>
+                        <form method="post" action="{{route('product.addproductattribute')}}">
+                            @csrf
+                            <input type="hidden" name="productid" value="{{$detail->id}}">
+                            <div class="row g-2 align-items-end">
+                                <div class="col-md-2 col-6">
+                                    <label class="form-label small fw-semibold mb-1">Select Packing <span class="text-danger">*</span></label>
+                                    <select class="form-select form-select-sm" name="packingid" id="new_packingid" required>
+                                        <option value="">Choose Packing</option>
+                                        @foreach(Helper::getboxpacking() as $boxpck)
+                                            <option value="{{$boxpck->id}}">{{$boxpck->name}}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div class="col-md-3 col-6">
+                                    <label class="form-label small fw-semibold mb-1">Select Color / Shade <span class="text-danger">*</span></label>
+                                    <select class="form-select form-select-sm" name="colorid" id="new_colorid" required>
+                                        <option value="">Choose Color / Shade</option>
+                                        @foreach($shadecard as $colr)
+                                            <option value="{{$colr->id}}" data-hex="{{ $colr->hexcode }}">{{$colr->name}} {{ $colr->hexcode ? "({$colr->hexcode})" : '' }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div class="col-md-2 col-6">
+                                    <label class="form-label small fw-semibold mb-1">Factory Price (₹) <span class="text-danger">*</span></label>
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text">₹</span>
+                                        <input type="number" step="0.01" min="0" name="seller_price" id="new_factory_price" class="form-control" placeholder="0.00" required oninput="calculateNewDisplayPrice()">
+                                    </div>
+                                </div>
+                                <div class="col-md-2 col-6">
+                                    <label class="form-label small fw-semibold mb-1">Display Price (₹) <span class="text-muted">(Locked)</span></label>
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text bg-light-primary text-primary fw-bold">₹</span>
+                                        <input type="number" step="0.01" min="0" name="price" id="new_display_price" class="form-control fw-bold text-primary" placeholder="Auto" required readonly tabindex="-1" style="background-color: #e9ecef !important; cursor: not-allowed; color: #495057 !important;">
+                                    </div>
+                                </div>
+                                <div class="col-md-1 col-6">
+                                    <label class="form-label small fw-semibold mb-1">MRP (₹)</label>
+                                    <input type="number" step="0.01" min="0" name="mrp" id="new_mrp" class="form-control form-control-sm" placeholder="Optional">
+                                </div>
+                                <div class="col-md-2 col-6 d-flex align-items-center gap-2">
+                                    <div class="form-check mb-0">
+                                        <input type="checkbox" name="is_gst_included" id="new_gst_included" value="1" class="form-check-input">
+                                        <label class="form-check-label small" for="new_gst_included">Incl. GST</label>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary btn-sm px-3 fw-bold flex-grow-1">
+                                        <i class="fa fa-plus me-1"></i> Add SKU
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- FILTER BAR & PAGINATION CONTROLS -->
+                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3 bg-light p-3 rounded border">
+                    <form method="GET" class="d-flex flex-wrap align-items-center gap-2 mb-0">
+                        <div class="d-flex align-items-center gap-1">
+                            <label for="srchshade" class="form-label small fw-semibold mb-0 text-nowrap">Shade:</label>
+                            <select class="form-select form-select-sm" id="srchshade" name="srchshade" style="min-width: 140px;">
+                                <option value="">All Shades</option>
+                                @foreach($shadecard as $colr)
+                                    <option value="{{$colr->id}}" {{ request('srchshade') == $colr->id ? 'selected' : '' }}>{{$colr->name}}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div class="d-flex align-items-center gap-1">
+                            <label for="srchpack" class="form-label small fw-semibold mb-0 text-nowrap">Pack Size:</label>
+                            <select class="form-select form-select-sm" id="srchpack" name="srchpack" style="min-width: 130px;">
+                                <option value="">All Packs</option>
+                                @foreach(Helper::getboxpacking() as $bp)
+                                    <option value="{{$bp->id}}" {{ request('srchpack') == $bp->id ? 'selected' : '' }}>{{$bp->name}}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div class="d-flex align-items-center gap-1">
+                            <label for="per_page" class="form-label small fw-semibold mb-0 text-nowrap">Show:</label>
+                            <select class="form-select form-select-sm" id="per_page" name="per_page" onchange="this.form.submit()" style="width: 75px;">
+                                <option value="15" {{ ($perPage ?? 25) == 15 ? 'selected' : '' }}>15</option>
+                                <option value="25" {{ ($perPage ?? 25) == 25 ? 'selected' : '' }}>25</option>
+                                <option value="50" {{ ($perPage ?? 25) == 50 ? 'selected' : '' }}>50</option>
+                                <option value="100" {{ ($perPage ?? 25) == 100 ? 'selected' : '' }}>100</option>
+                            </select>
+                        </div>
+
+                        <button type="submit" class="btn btn-warning btn-sm px-3 fw-semibold">
+                            <i class="fa fa-filter me-1"></i> Filter
+                        </button>
+
+                        @if(request('srchshade') || request('srchpack') || request('per_page'))
+                            <a href="{{ route('product.edit', $detail->id) }}" class="btn btn-outline-secondary btn-sm">
+                                <i class="fa fa-times me-1"></i> Reset
+                            </a>
+                        @endif
+                    </form>
+
+                    <div class="d-flex align-items-center gap-2">
+                        @if($attributelist instanceof \Illuminate\Pagination\LengthAwarePaginator)
+                            <span class="badge bg-white text-dark border px-3 py-2 small">
+                                Showing <strong>{{ $attributelist->firstItem() ?? 0 }}</strong> - <strong>{{ $attributelist->lastItem() ?? 0 }}</strong> of <strong>{{ $attributelist->total() }}</strong> Variants
+                            </span>
+                        @endif
+                    </div>
+                </div>
+
+                @if($attributelist instanceof \Illuminate\Pagination\LengthAwarePaginator && $attributelist->hasPages())
+                    <div class="d-flex justify-content-end mb-2">
+                        {{ $attributelist->links('pagination::bootstrap-5') }}
+                    </div>
+                @endif
+
+                <div class="table-responsive">
+                    <table class="table table-hover table-striped table-bordered align-middle mb-0" style="width:100%" id="variantsPricingTable">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Packing</th>
+                                <th>Color / Shade</th>
+                                <th>Group</th>
+                                <th style="min-width: 140px;">Factory Price (₹)</th>
+                                <th class="text-center" style="min-width: 130px;">GST Included?</th>
+                                <th style="min-width: 150px;">Display Price (+{{ number_format($commissionRate ?? 0, 2) }}%)</th>
+                                <th style="min-width: 120px;">MRP Price (₹)</th>
+                                <th style="min-width: 130px;" class="text-center">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if(!empty($attributelist) && count($attributelist) > 0)
+                            @foreach($attributelist as $bxp)
+                                @php
+                                    $packName = Helper::getboxpackingnamebyid($bxp->quantity);
+                                    $colorName = Helper::getcolorsnamebyid($bxp->color);
+                                    $factPrice = $bxp->seller_price ?: $bxp->price;
+                                    $isGst = (int)($bxp->is_gst_included ?? 0);
+                                    $gRate = $bxp->gst_rate ?: $defaultTax;
+
+                                    $hex = trim(Helper::getcolorshexcodebyid($bxp->color) ?: '');
+                                    if (!empty($hex) && !str_starts_with($hex, '#')) {
+                                        $hex = '#' . $hex;
+                                    }
+                                @endphp
+                                <tr data-row-id="{{ $bxp->id }}" data-pack-id="{{ $bxp->quantity }}" data-pack-name="{{ $packName }}">
+                                    <td>
+                                        <span class="badge bg-light text-dark border px-2 py-1 fw-bold">
+                                            {{ $packName }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="d-flex align-items-center gap-2">
+                                            @if(!empty($hex))
+                                                @php
+                                                    $cleanHex = ltrim($hex, '#');
+                                                    $r = hexdec(substr($cleanHex, 0, 2) ?: 'ff');
+                                                    $g = hexdec(substr($cleanHex, 2, 2) ?: 'ff');
+                                                    $b = hexdec(substr($cleanHex, 4, 2) ?: 'ff');
+                                                    $yiq = (($r * 299) + ($g * 587) + ($b * 114)) / 1000;
+                                                    $textColor = ($yiq >= 140) ? '#111827' : '#ffffff';
+                                                @endphp
+                                                <div class="d-inline-flex align-items-center gap-2 px-2 py-1 rounded shadow-sm border" style="background-color: {{ $hex }}; color: {{ $textColor }}; min-width: 140px;">
+                                                    <span class="fw-bold">{{ $colorName }}</span>
+                                                    <span class="badge" style="background: rgba(0,0,0,0.22); color: inherit; font-family: monospace; font-size: 11px;">{{ $hex }}</span>
+                                                </div>
+                                            @else
+                                                <span class="fw-semibold text-dark">{{ $colorName }}</span>
+                                            @endif
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-light-primary text-primary border">
+                                            {{ $bxp->group_name ?: 'Default' }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="input-group input-group-sm">
+                                            <span class="input-group-text">₹</span>
+                                            <input type="number" step="0.01" min="0" value="{{ $factPrice }}" name="seller_price" id="factory_price{{$bxp->id}}" class="form-control factory-price-input" oninput="calculateDisplayPrice('{{$bxp->id}}')" placeholder="Factory Price">
+                                        </div>
+                                    </td>
+                                    <td class="text-center">
+                                        <div class="form-check d-flex justify-content-center align-items-center gap-1 mb-0">
+                                            <input type="checkbox" class="form-check-input gst-checkbox" id="gst_included{{$bxp->id}}" value="1" {{ $isGst === 1 ? 'checked' : '' }}>
+                                            <label class="form-check-label small text-muted" for="gst_included{{$bxp->id}}">
+                                                Incl. GST ({{ $gRate }}%)
+                                            </label>
+                                            <input type="hidden" id="gst_rate{{$bxp->id}}" value="{{ $gRate }}">
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="input-group input-group-sm">
+                                            <span class="input-group-text bg-light-primary text-primary fw-bold">₹</span>
+                                            <input type="number" step="0.01" min="0" value="{{ $bxp->price }}" name="price" id="display_price{{$bxp->id}}" class="form-control display-price-input fw-bold text-primary" placeholder="Display Price" readonly tabindex="-1" style="background-color: #e9ecef !important; cursor: not-allowed; color: #495057 !important;">
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="input-group input-group-sm">
+                                            <span class="input-group-text">₹</span>
+                                            <input type="number" step="0.01" min="0" value="{{ $bxp->mrp ?? $bxp->oldprice ?? '' }}" name="mrp" id="mrp{{$bxp->id}}" class="form-control mrp-input" placeholder="Optional">
+                                        </div>
+                                    </td>
+                                    <td class="text-center">
+                                        <div class="btn-group btn-group-sm" role="group">
+                                            <button type="button" class="btn btn-success" onClick="updateattributeprice('{{$bxp->id}}')" title="Save updated pricing for this variant">
+                                                <i class="fa fa-save me-1"></i> Update
+                                            </button>
+                                            <form action="{{ route('product.filter.delete', $bxp->id) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete this variant?');" style="display:inline;">
+                                                @csrf
+                                                @method('DELETE')
+                                                <input type="hidden" name="attributid" value="{{$bxp->id}}">
+                                                <button type="submit" class="btn btn-danger" title="Delete variant">
+                                                    <i class="fa fa-trash"></i>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                            @endforeach
+                            @else
+                                <tr>
+                                    <td colspan="8" class="text-center text-muted py-4">No variants found matching criteria. Use the quick add form above to add variants.</td>
+                                </tr>
+                            @endif
+                        </tbody>
+                    </table>
+                </div>
+
+                @if($attributelist instanceof \Illuminate\Pagination\LengthAwarePaginator && $attributelist->hasPages())
+                    <div class="d-flex justify-content-between align-items-center mt-3 pt-2 border-top">
+                        <div class="text-muted small">
+                            Showing page {{ $attributelist->currentPage() }} of {{ $attributelist->lastPage() }} (Total {{ $attributelist->total() }} variants)
+                        </div>
+                        <div>
+                            {{ $attributelist->links('pagination::bootstrap-5') }}
+                        </div>
+                    </div>
+                @endif
             </div>
         </div>
 
@@ -942,6 +1030,81 @@
         });
 
         alert("Copied base prices across " + appliedCount + " variant shade rows! Click [Update] on rows or submit to save.");
+    }
+
+    // AJAX: Update single attribute variant pricing with robust validation and feedback
+    function updateattributeprice(id) {
+        const btn = (typeof event !== 'undefined' && event) ? (event.currentTarget || event.target) : null;
+        let origHtml = '';
+        if (btn) {
+            origHtml = btn.innerHTML;
+            btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Saving...';
+            btn.disabled = true;
+        }
+
+        const factoryInput = document.getElementById('factory_price' + id);
+        const displayInput = document.getElementById('display_price' + id);
+        const gstCheckbox = document.getElementById('gst_included' + id);
+        const gstRateInput = document.getElementById('gst_rate' + id);
+        const mrpInput = document.getElementById('mrp' + id);
+
+        const factoryVal = factoryInput ? factoryInput.value.trim() : '';
+        let displayVal = displayInput ? displayInput.value.trim() : '';
+        const isGst = gstCheckbox && gstCheckbox.checked ? 1 : 0;
+        const gstRate = gstRateInput ? gstRateInput.value : 18;
+        const mrpVal = mrpInput ? mrpInput.value.trim() : '';
+
+        if (!factoryVal || parseFloat(factoryVal) <= 0) {
+            alert('Please enter a valid Factory Price greater than 0.');
+            if (btn) { btn.innerHTML = origHtml; btn.disabled = false; }
+            return;
+        }
+
+        if (!displayVal || parseFloat(displayVal) <= 0) {
+            displayVal = (parseFloat(factoryVal) * (1 + (categoryCommissionRate / 100))).toFixed(2);
+            if (displayInput) displayInput.value = displayVal;
+        }
+
+        const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '{{ csrf_token() }}';
+
+        fetch('/seller/updateattributeprice', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': token
+            },
+            body: JSON.stringify({
+                aid: id,
+                seller_price: factoryVal,
+                price: displayVal,
+                is_gst_included: isGst,
+                gst_rate: gstRate,
+                mrp: mrpVal,
+                _token: token
+            })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (btn) { btn.innerHTML = origHtml; btn.disabled = false; }
+            if (data.status) {
+                let msg = 'Pricing successfully updated!';
+                if (isGst == 1) {
+                    msg += '\n\n(Product routed to Admin Review Bucket for display price verification)';
+                }
+                alert(msg);
+                if (displayInput && data.price) {
+                    displayInput.value = parseFloat(data.price).toFixed(2);
+                }
+            } else {
+                alert('Update failed: ' + (data.message || 'Something went wrong'));
+            }
+        })
+        .catch(err => {
+            if (btn) { btn.innerHTML = origHtml; btn.disabled = false; }
+            console.error(err);
+            alert('Error updating pricing. Please check connection and try again.');
+        });
     }
 </script>
 @endsection

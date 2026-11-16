@@ -124,16 +124,24 @@ function checkallitsrow(id){
                               }                    
                                        
         function updateattributeprice(id){
-              var factoryPrice = $("#factory_price"+id).length ? $("#factory_price"+id).val() : $("#price"+id).val();
+              var factoryPrice = $("#factory_price"+id).length ? $("#factory_price"+id).val() : ($("#seller_price"+id).length ? $("#seller_price"+id).val() : $("#price"+id).val());
               var displayPrice = $("#display_price"+id).length ? $("#display_price"+id).val() : $("#price"+id).val();
               var isGstIncluded = $("#gst_included"+id).is(':checked') ? 1 : 0;
               var gstRate = $("#gst_rate"+id).length ? $("#gst_rate"+id).val() : null;
               var mrp = $("#mrp"+id).length ? $("#mrp"+id).val() : '';
-              var _token   = $('meta[name="csrf-token"]').attr('content');
+              var _token = $('meta[name="csrf-token"]').attr('content') || '';
+
+              if (!factoryPrice || parseFloat(factoryPrice) <= 0) {
+                  alert("Please enter a valid Factory Price.");
+                  return;
+              }
 
               $.ajax({
                 type: 'POST',
                 url: '/seller/updateattributeprice',
+                headers: {
+                    'X-CSRF-TOKEN': _token
+                },
                 data:{
                       aid: id,
                       seller_price: factoryPrice,
@@ -151,31 +159,15 @@ function checkallitsrow(id){
                             msg += "\n\n(Product routed to Admin Review Bucket for display price verification)";
                         }
                         alert(msg);
+                        if (response.price && $("#display_price"+id).length) {
+                            $("#display_price"+id).val(parseFloat(response.price).toFixed(2));
+                        }
                     }else{
                         alert("Update failed: " + (response.message || "Something went wrong"));
                     }
                 },
                 error: function(xhr){
-                    $.ajax({
-                        type: 'POST',
-                        url: '../../updateattributeprice',
-                        data:{
-                              aid: id,
-                              seller_price: factoryPrice,
-                              price: displayPrice,
-                              is_gst_included: isGstIncluded,
-                              mrp: mrp,
-                              _token: _token
-                            },
-                        dataType: "json",
-                        success:function(response){
-                            if(response.status==true){alert("Pricing successfully updated!");}
-                            else{alert("Update failed");}
-                        },
-                        error: function(){
-                            alert("Network error: Could not update pricing.");
-                        }
-                    });
+                    alert("Network error: Could not update pricing. Please try again.");
                 }
               });
         }           

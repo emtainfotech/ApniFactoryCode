@@ -51,6 +51,10 @@ class Helper {
      foreach($list as $lt){ $listop .= '<option value="'.$lt->id.'">'.$lt->name.'</option>';}
      return json_encode($listop);
  }
+ public static function getcatbymid($mid){
+     if (empty($mid)) return [];
+     return \App\Models\Category::where("maincategory_id", $mid)->whereIn("status", ["1", "Active", 1])->get();
+ }
  public static function getmaincatname($mid){
      if(empty($mid)) return '';
      if (!array_key_exists($mid, self::$mainCatCache)) {

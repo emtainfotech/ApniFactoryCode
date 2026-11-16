@@ -350,9 +350,25 @@ class ProductController extends Controller
         $pro = Product::where('id',$id)->firstOrFail();
         $data['detail'] = $pro;
         $data['shadecard'] = ShadeCard::where('category_id',$pro->category_id)->get();
-        $query =  ProductAttributes::where("product_id",$id);
-        if ($request->filled('srchshade')) { $query = $query->where("color", $request->input('srchshade'));  }
-        $data['attributelist'] = $query->get();
+
+        // Get distinct pack IDs across ALL product attributes (independent of pagination)
+        $allAttributes = ProductAttributes::where("product_id", $id)->get();
+        $data['distinctPackIds'] = $allAttributes->pluck('quantity')->unique()->filter()->values()->all();
+
+        // Paginator for variant list
+        $query = ProductAttributes::where("product_id", $id)->orderBy('id', 'asc');
+        if ($request->filled('srchshade')) { 
+            $query = $query->where("color", $request->input('srchshade'));  
+        }
+        if ($request->filled('srchpack')) { 
+            $query = $query->where("quantity", $request->input('srchpack'));  
+        }
+        $perPage = (int)$request->input('per_page', 25);
+        if ($perPage < 5 || $perPage > 200) {
+            $perPage = 25;
+        }
+        $data['attributelist'] = $query->paginate($perPage)->withQueryString();
+        $data['perPage'] = $perPage;
 
         $pricingService = app(\App\Services\PaintPricingService::class);
         $commissionRate = $pricingService->getEffectiveCommissionRate(
@@ -956,16 +972,32 @@ class ProductController extends Controller
     // 4. Save back to the database as a JSON string
     $detail->multipleimages = json_encode(array_values($finalImages));
     $detail->image = $fnlimgs;
-    $detail->name = $request->name;
-    $detail->brand_id = $request->brand;
-    $detail->maincategory_id = $request->maincategory;
-    $detail->category_id = $request->category;
-    $detail->status = $request->status;
-    $detail->description = $request->details;
-      $detail->hsncode = $request->hsncode;
+
+    if ($request->filled('name')) {
+        $detail->name = $request->name;
+    }
+    if ($request->filled('brand')) {
+        $detail->brand_id = $request->brand;
+    }
+    if ($request->filled('maincategory')) {
+        $detail->maincategory_id = $request->maincategory;
+    }
+    if ($request->filled('category')) {
+        $detail->category_id = $request->category;
+    }
+    if ($request->filled('status')) {
+        $st = (string)$request->status;
+        $detail->status = ($st === '1' || strtolower($st) === 'active') ? 'Active' : 'Deactive';
+    }
+    if ($request->has('details')) {
+        $detail->description = $request->details;
+    }
+    if ($request->has('hsncode')) {
+        $detail->hsncode = $request->hsncode;
+    }
     $detail->save();
 
-    return redirect()->back()->with('success', 'Product images updated successfully!');
+    return redirect()->back()->with('success', 'Product details and images updated successfully!');
 }
  public function destroyFilter($id)
 {
