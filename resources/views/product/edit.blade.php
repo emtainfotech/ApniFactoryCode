@@ -762,7 +762,7 @@
 
                 @if($attributelist instanceof \Illuminate\Pagination\LengthAwarePaginator && $attributelist->hasPages())
                     <div class="d-flex justify-content-end mb-2">
-                        {{ $attributelist->links('pagination::bootstrap-5') }}
+                        {{ $attributelist->links('pagination::bootstrap-4') }}
                     </div>
                 @endif
 
@@ -885,7 +885,7 @@
                             Showing page {{ $attributelist->currentPage() }} of {{ $attributelist->lastPage() }} (Total {{ $attributelist->total() }} variants)
                         </div>
                         <div>
-                            {{ $attributelist->links('pagination::bootstrap-5') }}
+                            {{ $attributelist->links('pagination::bootstrap-4') }}
                         </div>
                     </div>
                 @endif

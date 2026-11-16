@@ -200,4 +200,26 @@ class ProductGalleryAndVariantPricingEditTest extends TestCase
             'record' => $this->product->id,
         ])->assertSuccessful();
     }
+
+    /** @test */
+    public function test_seller_edit_product_page_renders_with_paginator_without_exception()
+    {
+        $this->actingAs($this->seller);
+
+        for ($i = 0; $i < 30; $i++) {
+            ProductAttributes::create([
+                'product_id' => $this->product->id,
+                'quantity' => $this->packing->id,
+                'color' => $this->shade->id,
+                'seller_price' => 100 + $i,
+                'price' => 110 + $i,
+                'status' => '1',
+            ]);
+        }
+
+        $response = $this->get('/seller/product/edit/' . $this->product->id . '?per_page=15');
+        $response->assertStatus(200);
+        $response->assertSee('Individual Variant SKU List');
+        $response->assertSee('pagination');
+    }
 }
