@@ -121,8 +121,54 @@ class AdminCatalogueReviewWebController extends Controller
 
         $product = Product::findOrFail($id);
         $attributesData = $request->input('attributes', []);
+        $groupsData = $request->input('groups', []);
 
         $updatedCount = 0;
+
+        // 1. Group-level pricing update
+        if (!empty($groupsData) && is_array($groupsData)) {
+            $pricingService = app(\App\Services\PaintPricingService::class);
+            $existingGroups = $pricingService->formatShadeGroupsForProduct($product);
+
+            foreach ($groupsData as $gKey => $gVal) {
+                $groupName = $gVal['name'] ?? $gKey;
+                $packs = $gVal['packs'] ?? [];
+
+                $matchedShades = [];
+                foreach ($existingGroups as $eg) {
+                    if (strcasecmp($eg['name'], $groupName) === 0 || ($eg['group_id'] ?? '') === $gKey) {
+                        $matchedShades = (array)($eg['shades'] ?? []);
+                        break;
+                    }
+                }
+
+                foreach ($packs as $packId => $pData) {
+                    $updates = [];
+                    if (isset($pData['price']) && is_numeric($pData['price'])) {
+                        $updates['price'] = round((float)$pData['price'], 2);
+                    }
+                    if (isset($pData['seller_price']) && is_numeric($pData['seller_price'])) {
+                        $updates['seller_price'] = round((float)$pData['seller_price'], 2);
+                    }
+                    if (isset($pData['mrp'])) {
+                        $updates['mrp'] = is_numeric($pData['mrp']) ? round((float)$pData['mrp'], 2) : null;
+                    }
+
+                    if (!empty($updates)) {
+                        $q = \App\Models\ProductAttributes::where('product_id', $product->id)->where('quantity', $packId);
+                        if (!empty($matchedShades)) {
+                            $q->whereIn('color', $matchedShades);
+                        } else {
+                            $q->where('group_name', $groupName);
+                        }
+                        $count = $q->update($updates);
+                        $updatedCount += $count;
+                    }
+                }
+            }
+        }
+
+        // 2. Individual attribute update
         foreach ($attributesData as $attrId => $vals) {
             $attr = \App\Models\ProductAttributes::where('product_id', $product->id)->find($attrId);
             if ($attr) {

@@ -49,9 +49,24 @@ class ProductController extends Controller
         $proid = Product::orderBy('id','desc')->first();
         $prid = empty($proid) ? 1 : $proid->id + 1;
 
-        // Check if any attribute has GST included
+        // Parse shade groups JSON if provided from Step 2
+        $shadeGroupsInput = $request->input('shade_groups_data');
+        $parsedGroups = null;
+        if (!empty($shadeGroupsInput)) {
+            $parsedGroups = is_string($shadeGroupsInput) ? json_decode($shadeGroupsInput, true) : (is_array($shadeGroupsInput) ? $shadeGroupsInput : null);
+        }
+
+        // Check if any group or attribute has GST included
         $hasGstIncluded = false;
-        if ($request->has('is_gst_included')) {
+        if (!empty($parsedGroups) && is_array($parsedGroups)) {
+            foreach ($parsedGroups as $grp) {
+                if (!empty($grp['is_gst_included']) && ((int)$grp['is_gst_included'] === 1 || $grp['is_gst_included'] === '1' || $grp['is_gst_included'] === true)) {
+                    $hasGstIncluded = true;
+                    break;
+                }
+            }
+        }
+        if (!$hasGstIncluded && $request->has('is_gst_included')) {
             foreach ((array)$request->is_gst_included as $gstVal) {
                 if ((int)$gstVal === 1 || $gstVal === '1' || $gstVal === true) {
                     $hasGstIncluded = true;
@@ -61,7 +76,7 @@ class ProductController extends Controller
         }
 
         // Auto-run pending migrations if column has not been added on live database yet
-        if (!\Illuminate\Support\Facades\Schema::hasColumn('products', 'has_gst_included')) {
+        if (!\Illuminate\Support\Facades\Schema::hasColumn('products', 'has_gst_included') || !\Illuminate\Support\Facades\Schema::hasColumn('products', 'shade_groups')) {
             try {
                 \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
             } catch (\Throwable $e) {
@@ -97,6 +112,9 @@ class ProductController extends Controller
         if (\Illuminate\Support\Facades\Schema::hasColumn('products', 'submitted_at')) {
             $pary['submitted_at'] = $hasGstIncluded ? now() : null;
         }
+        if (!empty($parsedGroups) && \Illuminate\Support\Facades\Schema::hasColumn('products', 'shade_groups')) {
+            $pary['shade_groups'] = json_encode($parsedGroups);
+        }
 
         $pid = Product::insertGetId($pary);
         
@@ -104,15 +122,69 @@ class ProductController extends Controller
         $commissionRate = $pricingService->getEffectiveCommissionRate(Auth::id(), null, $cid, null, $mid);
 
         $hasIsGstColumn = \Illuminate\Support\Facades\Schema::hasColumn('product_attributes', 'is_gst_included');
+        $hasGstRateColumn = \Illuminate\Support\Facades\Schema::hasColumn('product_attributes', 'gst_rate');
+        $hasGroupNameColumn = \Illuminate\Support\Facades\Schema::hasColumn('product_attributes', 'group_name');
         $hasMrpColumn = \Illuminate\Support\Facades\Schema::hasColumn('product_attributes', 'mrp');
 
-        if ($request->has('boxpacking')) {
+        // 1. Group-based pricing insertion (Asian Paints Style)
+        if (!empty($parsedGroups) && is_array($parsedGroups)) {
+            foreach ($parsedGroups as $gIndex => $grp) {
+                $groupName = trim($grp['name'] ?? ('Group ' . ($gIndex + 1)));
+                $isGroupGst = !empty($grp['is_gst_included']) && ((int)$grp['is_gst_included'] === 1 || $grp['is_gst_included'] === '1' || $grp['is_gst_included'] === true);
+                $groupGstRate = !empty($grp['gst_rate']) ? (float)$grp['gst_rate'] : (float)($tax ?: 18.00);
+                $shades = (array)($grp['shades'] ?? []);
+                $packs = (array)($grp['packs'] ?? []);
+
+                foreach ($shades as $shadeId) {
+                    foreach ($packs as $packId => $packData) {
+                        $sellerPrice = (float)($packData['seller_price'] ?? 0);
+                        if (isset($packData['price']) && is_numeric($packData['price']) && (float)$packData['price'] > 0) {
+                            $customerPrice = round((float)$packData['price'], 2);
+                        } else {
+                            $customerPrice = round($sellerPrice * (1 + ($commissionRate / 100)), 2);
+                        }
+                        $mrp = isset($packData['mrp']) && is_numeric($packData['mrp']) ? round((float)$packData['mrp'], 2) : null;
+                        $packLitres = $pricingService->parsePackLitres($packId);
+
+                        $patbu = array(
+                            "product_id"      => $pid,
+                            "color"           => $shadeId,
+                            "quantity"        => $packId,
+                            "oldprice"        => $customerPrice,
+                            "seller_price"    => $sellerPrice,
+                            "commission_rate" => $commissionRate,
+                            "pack_litres"     => $packLitres,
+                            "price"           => $customerPrice,
+                            "status"          => '1',
+                        );
+
+                        if ($hasGroupNameColumn) {
+                            $patbu['group_name'] = $groupName;
+                        }
+                        if ($hasIsGstColumn) {
+                            $patbu['is_gst_included'] = $isGroupGst ? 1 : 0;
+                        }
+                        if ($hasGstRateColumn) {
+                            $patbu['gst_rate'] = $groupGstRate;
+                        }
+                        if ($hasMrpColumn) {
+                            $patbu['mrp'] = $mrp;
+                        }
+
+                        ProductAttributes::insert($patbu);
+                    }
+                }
+            }
+        } elseif ($request->has('boxpacking')) {
+            // 2. Fallback: Flat array insertion
             foreach($request->boxpacking as $key=>$bxpackg){
                 // Factory price
                 $sellerPrice = (float)($request->seller_price[$key] ?? ($request->price[$key] ?? 0));
                 
                 // GST Included
-                $isGstIncluded = !empty($request->is_gst_included[$key]) && (int)$request->is_gst_included[$key] === 1;
+                $isGstIncluded = !empty($request->is_gst_included[$key]) && ((int)$request->is_gst_included[$key] === 1 || $request->is_gst_included[$key] === '1');
+                $gstRate = !empty($request->gst_rate[$key]) ? (float)$request->gst_rate[$key] : (float)($tax ?: 18.00);
+                $groupName = $request->group_name[$key] ?? 'Group 1';
 
                 // Display price (user-edited or calculated)
                 if (isset($request->price[$key]) && is_numeric($request->price[$key]) && (float)$request->price[$key] > 0) {
@@ -138,8 +210,14 @@ class ProductController extends Controller
                                 "status"          => '1',
                             );
 
+                if ($hasGroupNameColumn) {
+                    $patbu['group_name'] = $groupName;
+                }
                 if ($hasIsGstColumn) {
                     $patbu['is_gst_included'] = $isGstIncluded ? 1 : 0;
+                }
+                if ($hasGstRateColumn) {
+                    $patbu['gst_rate'] = $gstRate;
                 }
                 if ($hasMrpColumn) {
                     $patbu['mrp'] = $mrp;
@@ -161,7 +239,10 @@ class ProductController extends Controller
                 'previous_status' => 'draft',
                 'new_status'      => 'pending_review',
                 'notes'           => 'Product submitted with GST-inclusive pricing. Routed to Admin Review Bucket for Display Price approval.',
-                'metadata'        => ['commission_rate' => $commissionRate],
+                'metadata'        => [
+                    'commission_rate' => $commissionRate,
+                    'shade_groups'    => $parsedGroups,
+                ],
             ]);
 
             return redirect('/seller/product')->with('success', 'Product submitted successfully! Because GST is included, this product has been sent to the Admin Review Bucket for Display Price review and approval before publishing.');
@@ -284,8 +365,419 @@ class ProductController extends Controller
         $data['commissionRate'] = $commissionRate;
         $data['companydetail'] = Company::where('user_id', Auth::id())->first();
 
+        // Pass structured shade groups
+        $data['shadeGroups'] = $pricingService->formatShadeGroupsForProduct($pro);
+
+        // Pass product review & revision audit histories for both panels
+        $data['reviewHistories'] = \App\Models\ProductReviewHistory::where('product_id', $id)
+            ->with(['reviewer', 'seller'])
+            ->orderBy('id', 'desc')
+            ->get();
+
+        // Pass all box packings
+        $data['boxPackings'] = BoxPacking::all();
+
         return view('product.edit',$data);
   }
+
+    /**
+     * Seller Action: Update entire Shade Group pricing (Factory Price, Display Price, GST, MRP)
+     */
+    public function updateGroupPricing(Request $request, $id)
+    {
+        $product = Product::findOrFail($id);
+        if ($product->user_id != Auth::id() && !Auth::user()->isAdmin()) {
+            abort(403, 'Unauthorized.');
+        }
+
+        $groupName = trim($request->input('group_name'));
+        $groupId = $request->input('group_id');
+        $isGstIncluded = $request->boolean('is_gst_included') || $request->input('is_gst_included') == '1' || $request->input('is_gst_included') === 1 ? 1 : 0;
+        $gstRate = (float)$request->input('gst_rate', $product->tax ?: 18.00);
+        $packsData = $request->input('packs', []);
+
+        $pricingService = app(\App\Services\PaintPricingService::class);
+        $commissionRate = $pricingService->getEffectiveCommissionRate(Auth::id(), null, $product->category_id, null, $product->maincategory_id);
+
+        $groups = $pricingService->formatShadeGroupsForProduct($product);
+        $targetGroup = null;
+        $targetIndex = null;
+        foreach ($groups as $idx => $g) {
+            if (($groupId && ($g['group_id'] ?? '') === $groupId) || strcasecmp($g['name'], $groupName) === 0) {
+                $targetGroup = $g;
+                $targetIndex = $idx;
+                break;
+            }
+        }
+
+        if (!$targetGroup) {
+            return back()->with('error', "Group '{$groupName}' not found on this product.");
+        }
+
+        $shadeIds = (array)($targetGroup['shades'] ?? []);
+        $updatedSkus = 0;
+
+        foreach ($packsData as $packId => $pData) {
+            $factoryPrice = (float)($pData['seller_price'] ?? 0);
+            $displayPrice = !empty($pData['price']) && is_numeric($pData['price']) 
+                ? round((float)$pData['price'], 2)
+                : round($factoryPrice * (1 + ($commissionRate / 100)), 2);
+            $mrp = !empty($pData['mrp']) && is_numeric($pData['mrp']) ? round((float)$pData['mrp'], 2) : null;
+
+            foreach ($shadeIds as $shadeId) {
+                $attr = ProductAttributes::where('product_id', $product->id)
+                    ->where('color', $shadeId)
+                    ->where('quantity', $packId)
+                    ->first();
+
+                $attrData = [
+                    'group_name'      => $groupName,
+                    'seller_price'    => $factoryPrice,
+                    'price'           => $displayPrice,
+                    'oldprice'        => $displayPrice,
+                    'commission_rate' => $commissionRate,
+                    'is_gst_included' => $isGstIncluded,
+                    'gst_rate'        => $gstRate,
+                    'mrp'             => $mrp,
+                ];
+
+                if ($attr) {
+                    $attr->update($attrData);
+                } else {
+                    $attrData['product_id'] = $product->id;
+                    $attrData['color'] = $shadeId;
+                    $attrData['quantity'] = $packId;
+                    $attrData['pack_litres'] = $pricingService->parsePackLitres($packId);
+                    $attrData['status'] = '1';
+                    ProductAttributes::create($attrData);
+                }
+                $updatedSkus++;
+            }
+        }
+
+        // Update groups JSON on product
+        $updatedStoredGroups = [];
+        foreach ($groups as $idx => $g) {
+            if ($idx === $targetIndex) {
+                $g['name'] = $groupName;
+                $g['is_gst_included'] = $isGstIncluded;
+                $g['gst_rate'] = $gstRate;
+                $g['packs'] = $packsData;
+            }
+            $updatedStoredGroups[] = [
+                'group_id'        => $g['group_id'] ?? ('group_' . ($idx + 1)),
+                'name'            => $g['name'],
+                'shades'          => (array)$g['shades'],
+                'is_gst_included' => $g['is_gst_included'],
+                'gst_rate'        => $g['gst_rate'],
+                'packs'           => $g['packs'],
+            ];
+        }
+
+        $pUpdate = ['shade_groups' => $updatedStoredGroups];
+        if ($isGstIncluded) {
+            $pUpdate['has_gst_included'] = 1;
+            $pUpdate['approval_status'] = 'pending_review';
+            $pUpdate['status'] = 'Deactive';
+            $pUpdate['submitted_at'] = now();
+        }
+        $product->update($pUpdate);
+
+        // Audit Log
+        \App\Models\ProductReviewHistory::create([
+            'product_id'      => $product->id,
+            'company_id'      => $product->user?->company?->id ?? 0,
+            'seller_user_id'  => Auth::id(),
+            'reviewer_id'     => Auth::user()->isAdmin() ? Auth::id() : null,
+            'action'          => 'seller_updated_group_pricing',
+            'previous_status' => $product->approval_status,
+            'new_status'      => $product->approval_status,
+            'notes'           => "Updated pricing for Shade Group '{$groupName}' ({$updatedSkus} SKUs affected). GST Included: " . ($isGstIncluded ? "Yes ({$gstRate}%)" : 'No'),
+            'metadata'        => [
+                'group_name' => $groupName,
+                'packs'      => $packsData,
+                'gst_rate'   => $gstRate,
+            ],
+        ]);
+
+        return back()->with('success', "Shade group '{$groupName}' pricing updated successfully! ({$updatedSkus} SKUs updated)");
+    }
+
+    /**
+     * Seller Action: Add a shade into an existing group (preventing duplicate shades across groups)
+     */
+    public function addShadeToGroup(Request $request, $id)
+    {
+        $product = Product::findOrFail($id);
+        if ($product->user_id != Auth::id() && !Auth::user()->isAdmin()) {
+            abort(403, 'Unauthorized.');
+        }
+
+        $colorId = (int)$request->input('color_id');
+        $groupName = trim($request->input('group_name'));
+
+        if (!$colorId) {
+            return back()->with('error', 'Please select a valid shade to add.');
+        }
+
+        // Check non-repetition: Shade cannot belong to another group for this product!
+        $existingOtherGroup = ProductAttributes::where('product_id', $product->id)
+            ->where('color', $colorId)
+            ->where('group_name', '!=', $groupName)
+            ->whereNotNull('group_name')
+            ->first();
+
+        if ($existingOtherGroup) {
+            return back()->with('error', "This shade already belongs to group '{$existingOtherGroup->group_name}'. Shades cannot be repeated across multiple groups.");
+        }
+
+        $pricingService = app(\App\Services\PaintPricingService::class);
+        $groups = $pricingService->formatShadeGroupsForProduct($product);
+
+        $targetGroup = null;
+        $targetIndex = null;
+        foreach ($groups as $idx => $g) {
+            if (strcasecmp($g['name'], $groupName) === 0) {
+                $targetGroup = $g;
+                $targetIndex = $idx;
+                break;
+            }
+        }
+
+        if (!$targetGroup) {
+            return back()->with('error', "Group '{$groupName}' not found.");
+        }
+
+        // Inherit group pricing and pack sizes for this shade
+        $packs = $targetGroup['packs'] ?? [];
+        $commissionRate = $pricingService->getEffectiveCommissionRate(Auth::id(), null, $product->category_id, null, $product->maincategory_id);
+        $isGst = !empty($targetGroup['is_gst_included']) ? 1 : 0;
+        $gstRate = !empty($targetGroup['gst_rate']) ? (float)$targetGroup['gst_rate'] : ($product->tax ?: 18.00);
+
+        foreach ($packs as $packId => $pData) {
+            $sellerPrice = (float)($pData['seller_price'] ?? 0);
+            $displayPrice = !empty($pData['price']) && is_numeric($pData['price']) 
+                ? (float)$pData['price'] 
+                : round($sellerPrice * (1 + ($commissionRate / 100)), 2);
+            $mrp = !empty($pData['mrp']) ? (float)$pData['mrp'] : null;
+
+            ProductAttributes::updateOrCreate(
+                [
+                    'product_id' => $product->id,
+                    'color'      => $colorId,
+                    'quantity'   => $packId,
+                ],
+                [
+                    'group_name'      => $groupName,
+                    'seller_price'    => $sellerPrice,
+                    'price'           => $displayPrice,
+                    'oldprice'        => $displayPrice,
+                    'commission_rate' => $commissionRate,
+                    'pack_litres'     => $pricingService->parsePackLitres($packId),
+                    'is_gst_included' => $isGst,
+                    'gst_rate'        => $gstRate,
+                    'mrp'             => $mrp,
+                    'status'          => '1',
+                ]
+            );
+        }
+
+        // Update JSON
+        if (!in_array($colorId, $groups[$targetIndex]['shades'])) {
+            $groups[$targetIndex]['shades'][] = $colorId;
+        }
+
+        $product->update([
+            'shade_groups' => array_map(function ($g) {
+                return [
+                    'group_id'        => $g['group_id'] ?? '',
+                    'name'            => $g['name'],
+                    'shades'          => (array)$g['shades'],
+                    'is_gst_included' => $g['is_gst_included'],
+                    'gst_rate'        => $g['gst_rate'],
+                    'packs'           => $g['packs'],
+                ];
+            }, $groups)
+        ]);
+
+        $shadeName = Helper::getcolorsnamebyid($colorId);
+
+        \App\Models\ProductReviewHistory::create([
+            'product_id'      => $product->id,
+            'company_id'      => $product->user?->company?->id ?? 0,
+            'seller_user_id'  => Auth::id(),
+            'reviewer_id'     => null,
+            'action'          => 'seller_added_shade_to_group',
+            'previous_status' => $product->approval_status,
+            'new_status'      => $product->approval_status,
+            'notes'           => "Added shade '{$shadeName}' to group '{$groupName}'.",
+            'metadata'        => ['color_id' => $colorId, 'group_name' => $groupName],
+        ]);
+
+        return back()->with('success', "Shade '{$shadeName}' added to group '{$groupName}' successfully!");
+    }
+
+    /**
+     * Seller Action: Remove a shade from a group
+     */
+    public function removeShadeFromGroup(Request $request, $id)
+    {
+        $product = Product::findOrFail($id);
+        if ($product->user_id != Auth::id() && !Auth::user()->isAdmin()) {
+            abort(403, 'Unauthorized.');
+        }
+
+        $colorId = (int)$request->input('color_id');
+        $groupName = trim($request->input('group_name'));
+
+        // Delete attributes for this shade under this group
+        ProductAttributes::where('product_id', $product->id)
+            ->where('color', $colorId)
+            ->where('group_name', $groupName)
+            ->delete();
+
+        $pricingService = app(\App\Services\PaintPricingService::class);
+        $groups = $pricingService->formatShadeGroupsForProduct($product);
+
+        foreach ($groups as &$g) {
+            if (strcasecmp($g['name'], $groupName) === 0) {
+                $g['shades'] = array_values(array_filter($g['shades'], fn($sid) => (int)$sid !== $colorId));
+            }
+        }
+
+        $product->update([
+            'shade_groups' => array_map(function ($g) {
+                return [
+                    'group_id'        => $g['group_id'] ?? '',
+                    'name'            => $g['name'],
+                    'shades'          => (array)$g['shades'],
+                    'is_gst_included' => $g['is_gst_included'],
+                    'gst_rate'        => $g['gst_rate'],
+                    'packs'           => $g['packs'],
+                ];
+            }, $groups)
+        ]);
+
+        $shadeName = Helper::getcolorsnamebyid($colorId);
+
+        \App\Models\ProductReviewHistory::create([
+            'product_id'      => $product->id,
+            'company_id'      => $product->user?->company?->id ?? 0,
+            'seller_user_id'  => Auth::id(),
+            'reviewer_id'     => null,
+            'action'          => 'seller_removed_shade_from_group',
+            'previous_status' => $product->approval_status,
+            'new_status'      => $product->approval_status,
+            'notes'           => "Removed shade '{$shadeName}' from group '{$groupName}'.",
+            'metadata'        => ['color_id' => $colorId, 'group_name' => $groupName],
+        ]);
+
+        return back()->with('success', "Shade '{$shadeName}' removed from group '{$groupName}'.");
+    }
+
+    /**
+     * Seller Action: Create a new Shade Group on an existing product
+     */
+    public function createShadeGroup(Request $request, $id)
+    {
+        $product = Product::findOrFail($id);
+        if ($product->user_id != Auth::id() && !Auth::user()->isAdmin()) {
+            abort(403, 'Unauthorized.');
+        }
+
+        $groupName = trim($request->input('group_name'));
+        if (empty($groupName)) {
+            $groupName = 'Group ' . (ProductAttributes::where('product_id', $product->id)->distinct('group_name')->count('group_name') + 1);
+        }
+
+        $shadeIds = (array)$request->input('shades', []);
+        $packsData = (array)$request->input('packs', []);
+        $isGst = $request->boolean('is_gst_included') || $request->input('is_gst_included') == '1' ? 1 : 0;
+        $gstRate = (float)$request->input('gst_rate', $product->tax ?: 18.00);
+
+        // Check non-repetition
+        $alreadyAssigned = ProductAttributes::where('product_id', $product->id)
+            ->whereIn('color', $shadeIds)
+            ->whereNotNull('group_name')
+            ->pluck('color')
+            ->unique()
+            ->all();
+
+        if (!empty($alreadyAssigned)) {
+            $names = ShadeCard::whereIn('id', $alreadyAssigned)->pluck('name')->implode(', ');
+            return back()->with('error', "The following shades are already assigned to another group: {$names}. A shade cannot belong to multiple groups.");
+        }
+
+        $pricingService = app(\App\Services\PaintPricingService::class);
+        $commissionRate = $pricingService->getEffectiveCommissionRate(Auth::id(), null, $product->category_id, null, $product->maincategory_id);
+
+        foreach ($shadeIds as $colorId) {
+            foreach ($packsData as $packId => $pData) {
+                $sellerPrice = (float)($pData['seller_price'] ?? 0);
+                $displayPrice = !empty($pData['price']) && is_numeric($pData['price']) 
+                    ? (float)$pData['price'] 
+                    : round($sellerPrice * (1 + ($commissionRate / 100)), 2);
+                $mrp = !empty($pData['mrp']) && is_numeric($pData['mrp']) ? (float)$pData['mrp'] : null;
+
+                ProductAttributes::create([
+                    'product_id'      => $product->id,
+                    'color'           => $colorId,
+                    'quantity'        => $packId,
+                    'group_name'      => $groupName,
+                    'seller_price'    => $sellerPrice,
+                    'price'           => $displayPrice,
+                    'oldprice'        => $displayPrice,
+                    'commission_rate' => $commissionRate,
+                    'pack_litres'     => $pricingService->parsePackLitres($packId),
+                    'is_gst_included' => $isGst,
+                    'gst_rate'        => $gstRate,
+                    'mrp'             => $mrp,
+                    'status'          => '1',
+                ]);
+            }
+        }
+
+        $newGroups = $pricingService->formatShadeGroupsForProduct($product);
+        $product->update([
+            'shade_groups' => array_map(function ($g) {
+                return [
+                    'group_id'        => $g['group_id'] ?? '',
+                    'name'            => $g['name'],
+                    'shades'          => (array)$g['shades'],
+                    'is_gst_included' => $g['is_gst_included'],
+                    'gst_rate'        => $g['gst_rate'],
+                    'packs'           => $g['packs'],
+                ];
+            }, $newGroups)
+        ]);
+
+        if ($isGst) {
+            $product->update([
+                'has_gst_included' => 1,
+                'approval_status'  => 'pending_review',
+                'status'           => 'Deactive',
+                'submitted_at'     => now(),
+            ]);
+        }
+
+        \App\Models\ProductReviewHistory::create([
+            'product_id'      => $product->id,
+            'company_id'      => $product->user?->company?->id ?? 0,
+            'seller_user_id'  => Auth::id(),
+            'reviewer_id'     => null,
+            'action'          => 'seller_created_shade_group',
+            'previous_status' => $product->approval_status,
+            'new_status'      => $product->approval_status,
+            'notes'           => "Created new shade group '{$groupName}' with " . count($shadeIds) . " shade(s).",
+            'metadata'        => [
+                'group_name' => $groupName,
+                'shades'     => $shadeIds,
+                'gst_rate'   => $gstRate,
+            ],
+        ]);
+
+        return back()->with('success', "New shade group '{$groupName}' created successfully!");
+    }
      public function productdetail(Request $request){ 
          $rt=array();$rmn["sellerdetail"]=array();
          $rmn = Product::where("id",$request->get('productid'))->first();

@@ -34,6 +34,7 @@ class Product extends Model
         'user_id',
         'hsncode',
         'tax',
+        'shade_groups',
     ];
     
     public function maincategory(){
@@ -125,6 +126,9 @@ class Product extends Model
 
     protected $casts = [
         'shadecard'         => 'array',
+        'shade_groups'      => 'array',
+        'multipleimages'    => 'array',
+        'has_gst_included'  => 'boolean',
         'submitted_at'      => 'datetime',
         'reviewed_at'       => 'datetime',
         'last_validated_at' => 'datetime',

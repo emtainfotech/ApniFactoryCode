@@ -15,6 +15,8 @@ class ProductAttributes extends Model
         'oldprice',
         'seller_price',
         'is_gst_included',
+        'gst_rate',
+        'group_name',
         'commission_rate',
         'pack_litres',
         'price',
@@ -24,6 +26,7 @@ class ProductAttributes extends Model
 
     protected $casts = [
         'is_gst_included' => 'boolean',
+        'gst_rate'        => 'float',
         'seller_price'    => 'float',
         'price'           => 'float',
         'mrp'             => 'float',

@@ -504,4 +504,105 @@ class PaintPricingService
             ];
         });
     }
+
+    /**
+     * Format shade groups for a product.
+     * If stored in products.shade_groups JSON, parse and resolve names.
+     * Otherwise, reconstruct from product_attributes grouping by group_name.
+     */
+    public function formatShadeGroupsForProduct(Product $product): array
+    {
+        $attributes = $product->product_attributes()->with(['boxPacking', 'shadeCard'])->get();
+        if ($attributes->isEmpty()) {
+            return [];
+        }
+
+        // 1. If stored in shade_groups JSON, use it and verify with attributes
+        $storedGroups = is_array($product->shade_groups) 
+            ? $product->shade_groups 
+            : (is_string($product->shade_groups) ? json_decode($product->shade_groups, true) : null);
+
+        if (!empty($storedGroups) && is_array($storedGroups)) {
+            $formatted = [];
+            foreach ($storedGroups as $idx => $grp) {
+                $groupName = $grp['name'] ?? ('Group ' . ($idx + 1));
+                $shadeIds = (array)($grp['shades'] ?? []);
+                $isGst = !empty($grp['is_gst_included']) && ($grp['is_gst_included'] === 1 || $grp['is_gst_included'] === '1' || $grp['is_gst_included'] === true);
+                $gstRate = !empty($grp['gst_rate']) ? (float)$grp['gst_rate'] : (float)($product->tax ?: 18.00);
+
+                // Find shades info
+                $shadesInfo = ShadeCard::whereIn('id', $shadeIds)->get(['id', 'name', 'hexcode']);
+
+                // Find matching attributes for packs
+                $groupAttrs = $attributes->whereIn('color', $shadeIds);
+                $packs = [];
+                foreach ($groupAttrs as $attr) {
+                    $pid = $attr->quantity;
+                    if (!isset($packs[$pid])) {
+                        $packs[$pid] = [
+                            'pack_id'      => $pid,
+                            'pack_name'    => $attr->boxPacking?->name ?? ('Pack #' . $pid),
+                            'seller_price' => (float)($attr->seller_price ?: $attr->price),
+                            'price'        => (float)$attr->price,
+                            'mrp'          => $attr->mrp ? (float)$attr->mrp : null,
+                        ];
+                    }
+                }
+
+                $formatted[] = [
+                    'group_id'        => $grp['group_id'] ?? ('group_' . ($idx + 1)),
+                    'name'            => $groupName,
+                    'shades'          => $shadeIds,
+                    'shades_info'     => $shadesInfo->toArray(),
+                    'is_gst_included' => $isGst,
+                    'gst_rate'        => $gstRate,
+                    'packs'           => $packs,
+                ];
+            }
+            if (!empty($formatted)) {
+                return $formatted;
+            }
+        }
+
+        // 2. Fallback: Reconstruct from product_attributes grouping by group_name
+        $grouped = $attributes->groupBy(function ($attr) {
+            return !empty($attr->group_name) ? trim($attr->group_name) : 'Group 1';
+        });
+
+        $result = [];
+        $gIdx = 1;
+        foreach ($grouped as $groupName => $attrs) {
+            $shadeIds = $attrs->pluck('color')->unique()->values()->all();
+            $shadesInfo = ShadeCard::whereIn('id', $shadeIds)->get(['id', 'name', 'hexcode']);
+            $isGst = $attrs->contains(fn($a) => (int)$a->is_gst_included === 1 || $a->is_gst_included === '1');
+            $gstRate = $attrs->whereNotNull('gst_rate')->pluck('gst_rate')->first() ?: ($product->tax ?: 18.00);
+
+            $packs = [];
+            foreach ($attrs as $attr) {
+                $pid = $attr->quantity;
+                if (!isset($packs[$pid])) {
+                    $packs[$pid] = [
+                        'pack_id'      => $pid,
+                        'pack_name'    => $attr->boxPacking?->name ?? ('Pack #' . $pid),
+                        'seller_price' => (float)($attr->seller_price ?: $attr->price),
+                        'price'        => (float)$attr->price,
+                        'mrp'          => $attr->mrp ? (float)$attr->mrp : null,
+                    ];
+                }
+            }
+
+            $result[] = [
+                'group_id'        => 'group_' . $gIdx,
+                'name'            => $groupName,
+                'shades'          => $shadeIds,
+                'shades_info'     => $shadesInfo->toArray(),
+                'is_gst_included' => $isGst,
+                'gst_rate'        => (float)$gstRate,
+                'packs'           => $packs,
+            ];
+            $gIdx++;
+        }
+
+        return $result;
+    }
 }

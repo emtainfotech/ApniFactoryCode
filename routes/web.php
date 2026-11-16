@@ -166,6 +166,10 @@ Route::delete('/product/filter/{id}', [ProductController::class, 'destroyFilter'
         Route::delete('/seller/product/{product}', [ProductController::class,"destroy"])->name('product.delete');
         Route::get('/seller/product/edit/{id}', [ProductController::class,"editview"])->name('product.edit');
         Route::post('/seller/product/edit/{id}', [ProductController::class,"update"]);
+        Route::post('/seller/product/{id}/update-group-pricing', [ProductController::class, 'updateGroupPricing'])->name('seller.product.update-group-pricing')->whereNumber('id');
+        Route::post('/seller/product/{id}/add-shade-to-group', [ProductController::class, 'addShadeToGroup'])->name('seller.product.add-shade-to-group')->whereNumber('id');
+        Route::post('/seller/product/{id}/remove-shade-from-group', [ProductController::class, 'removeShadeFromGroup'])->name('seller.product.remove-shade-from-group')->whereNumber('id');
+        Route::post('/seller/product/{id}/create-shade-group', [ProductController::class, 'createShadeGroup'])->name('seller.product.create-shade-group')->whereNumber('id');
         Route::post('/seller/addproductattribute', [ProductAttributesController::class,"store"])->name('product.addproductattribute');
         
         // Paint & Universal Smart Pricing Routes (Product-wise and Category-wise)

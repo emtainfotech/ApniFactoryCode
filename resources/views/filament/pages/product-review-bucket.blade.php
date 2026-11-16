@@ -32,13 +32,14 @@
             <div class="p-4 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 rounded-xl flex items-start gap-3">
                 <svg class="w-6 h-6 text-amber-600 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
                 <div class="text-sm text-amber-900 dark:text-amber-200">
-                    <strong>GST Display Price Review Bucket:</strong> Only product packings with <em>"GST Included = Yes"</em> requiring admin verification are displayed here. You can review factory prices, adjust customer display prices, and approve the product live to the marketplace. Once approved, the record moves to <strong>Review History</strong>.
+                    <strong>GST Display Price Review Bucket:</strong> Only product packings with <em>"GST Included = Yes"</em> requiring admin verification are displayed here. Review factory prices, adjust customer display prices directly below, and approve the product live to the marketplace. Once approved, records move to <strong>Review History</strong>.
                 </div>
             </div>
 
             @forelse($products as $prod)
                 @php
                     $gstSkus = $prod->product_attributes->filter(fn($sku) => (int)$sku->is_gst_included === 1 || $sku->is_gst_included == '1');
+                    $groups = $prod->formatted_shade_groups ?? [];
                 @endphp
                 @if($gstSkus->count() > 0)
                     <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-5 space-y-4">
@@ -58,6 +59,7 @@
                                         <span>Seller: <strong>{{ $prod->user?->company?->name ?? 'User #' . $prod->user_id }}</strong></span>
                                         <span>Category: <strong>{{ $prod->category?->name ?? 'N/A' }}</strong></span>
                                         <span>Brand: <strong>{{ $prod->brand?->name ?? 'N/A' }}</strong></span>
+                                        <span>Default Tax: <strong>{{ $prod->tax ?: 18 }}% GST</strong></span>
                                     </div>
                                 </div>
                             </div>
@@ -72,62 +74,167 @@
                             </div>
                         </div>
 
-                        <!-- Product Attributes / SKUs Table with ONLY GST Included = Yes -->
+                        <!-- Update Pricing Form -->
                         <form method="POST" action="{{ route('admin.catalogue.reviews.update-pricing', $prod->id) }}">
                             @csrf
-                            <div class="overflow-x-auto">
-                                <table class="w-full text-left text-xs">
-                                    <thead class="bg-gray-50 dark:bg-gray-900 text-gray-600 dark:text-gray-400 font-semibold uppercase">
-                                        <tr>
-                                            <th class="px-3 py-2">Packing</th>
-                                            <th class="px-3 py-2">Color / Shade</th>
-                                            <th class="px-3 py-2">Factory Price (₹)</th>
-                                            <th class="px-3 py-2 text-center">GST Incl.</th>
-                                            <th class="px-3 py-2">Display Price (₹)</th>
-                                            <th class="px-3 py-2">MRP (₹)</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
-                                        @foreach($gstSkus as $sku)
-                                            <tr>
-                                                <td class="px-3 py-2 font-semibold text-gray-800 dark:text-gray-200">
-                                                    {{ $sku->boxPacking?->name ?? 'Pack #' . $sku->quantity }}
-                                                </td>
-                                                <td class="px-3 py-2 text-gray-600 dark:text-gray-300">
-                                                    {{ $sku->shadeCard?->name ?? 'Color #' . $sku->color }}
-                                                </td>
-                                                <td class="px-3 py-2">
-                                                    <input type="number" step="0.01" min="0" 
-                                                        name="attributes[{{ $sku->id }}][seller_price]" 
-                                                        value="{{ $sku->seller_price }}" 
-                                                        class="rounded border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-xs font-semibold py-1 px-2 w-28">
-                                                </td>
-                                                <td class="px-3 py-2 text-center">
-                                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300">
-                                                        Yes
+
+                            @if(!empty($groups) && count($groups) > 0)
+                                <!-- Asian Paints Style Shade Groups Pricing Matrix -->
+                                <div class="space-y-4">
+                                    @foreach($groups as $gIdx => $grp)
+                                        @php
+                                            $grpName = $grp['name'] ?? ('Group ' . ($gIdx + 1));
+                                            $isGrpGst = !empty($grp['is_gst_included']);
+                                            $grpRate = $grp['gst_rate'] ?? ($prod->tax ?: 18);
+                                            $grpShades = $grp['shades_info'] ?? [];
+                                            $packs = $grp['packs'] ?? [];
+                                        @endphp
+                                        <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-3 bg-gray-50/50 dark:bg-gray-750">
+                                            <div class="flex flex-wrap justify-between items-center gap-2 pb-2 mb-2 border-b border-gray-200 dark:border-gray-700">
+                                                <div class="flex items-center gap-2">
+                                                    <span class="px-2 py-0.5 rounded text-xs font-bold bg-primary-100 text-primary-800 dark:bg-primary-900/50 dark:text-primary-300">
+                                                        {{ $grpName }}
                                                     </span>
-                                                    <input type="hidden" name="attributes[{{ $sku->id }}][is_gst_included]" value="1">
-                                                </td>
-                                                <td class="px-3 py-2">
-                                                    <input type="number" step="0.01" min="0" 
-                                                        name="attributes[{{ $sku->id }}][price]" 
-                                                        value="{{ $sku->price }}" 
-                                                        class="rounded border-primary-400 dark:border-primary-600 dark:bg-gray-700 text-xs font-bold text-primary-600 py-1 px-2 w-28">
-                                                </td>
-                                                <td class="px-3 py-2">
-                                                    <input type="number" step="0.01" min="0" 
-                                                        name="attributes[{{ $sku->id }}][mrp]" 
-                                                        value="{{ $sku->mrp }}" 
-                                                        placeholder="MRP"
-                                                        class="rounded border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-xs py-1 px-2 w-24">
-                                                </td>
+                                                    <span class="text-xs text-gray-500">
+                                                        ({{ count($grpShades) }} shades assigned)
+                                                    </span>
+                                                </div>
+                                                <div class="flex items-center gap-2">
+                                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold {{ $isGrpGst ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300' : 'bg-gray-100 text-gray-700' }}">
+                                                        GST Included: {{ $isGrpGst ? 'Yes' : 'No' }} ({{ $grpRate }}%)
+                                                    </span>
+                                                </div>
+                                            </div>
+
+                                            <!-- Shades list in this group -->
+                                            <div class="flex flex-wrap items-center gap-1 mb-3">
+                                                @foreach($grpShades as $sInfo)
+                                                    <span class="inline-flex items-center text-[11px] bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-full px-2 py-0.5 text-gray-700 dark:text-gray-300">
+                                                        <span class="w-2.5 h-2.5 rounded-full mr-1 border border-black/20" style="background-color: {{ $sInfo['hexcode'] ?? '#6c757d' }};"></span>
+                                                        {{ $sInfo['name'] }}
+                                                    </span>
+                                                @endforeach
+                                            </div>
+
+                                            <!-- Group Rate Card Table (Columns = Pack sizes) -->
+                                            <div class="overflow-x-auto">
+                                                <table class="w-full text-center text-xs border border-gray-200 dark:border-gray-700">
+                                                    <thead class="bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 font-bold uppercase">
+                                                        <tr>
+                                                            <th class="px-3 py-2 text-left" style="width: 160px;">Tier</th>
+                                                            @foreach($packs as $pid => $pData)
+                                                                <th class="px-3 py-2">{{ $pData['pack_name'] ?? 'Pack #' . $pid }}</th>
+                                                            @endforeach
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody class="divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-800">
+                                                        <!-- ROW 1: Factory Price (₹) -->
+                                                        <tr class="bg-gray-50/50 dark:bg-gray-850">
+                                                            <td class="px-3 py-2 text-left font-semibold text-gray-700 dark:text-gray-300">
+                                                                Factory Price (₹)
+                                                            </td>
+                                                            @foreach($packs as $pid => $pData)
+                                                                <td class="px-3 py-2 font-mono font-semibold text-gray-800 dark:text-gray-200">
+                                                                    ₹{{ number_format((float)($pData['seller_price'] ?? 0), 2) }}
+                                                                    <input type="hidden" name="groups[{{ $grp['group_id'] }}][packs][{{ $pid }}][seller_price]" value="{{ $pData['seller_price'] }}">
+                                                                </td>
+                                                            @endforeach
+                                                        </tr>
+
+                                                        <!-- ROW 2: Display Price (₹) Placed JUST BELOW Factory Price! -->
+                                                        <tr class="bg-blue-50/50 dark:bg-blue-900/20">
+                                                            <td class="px-3 py-2 text-left font-bold text-primary-600 dark:text-primary-400">
+                                                                Display Price (₹) *
+                                                                <div class="text-[10px] text-gray-400 font-normal">Editable by admin</div>
+                                                            </td>
+                                                            @foreach($packs as $pid => $pData)
+                                                                <td class="px-3 py-2">
+                                                                    <input type="number" step="0.01" min="0" 
+                                                                        name="groups[{{ $grp['group_id'] }}][packs][{{ $pid }}][price]" 
+                                                                        value="{{ $pData['price'] }}" 
+                                                                        class="rounded border-primary-400 dark:border-primary-600 dark:bg-gray-700 text-xs font-bold text-primary-600 py-1 px-2 text-center w-24">
+                                                                </td>
+                                                            @endforeach
+                                                        </tr>
+
+                                                        <!-- ROW 3: MRP (₹) -->
+                                                        <tr>
+                                                            <td class="px-3 py-2 text-left text-gray-500">
+                                                                MRP (₹)
+                                                            </td>
+                                                            @foreach($packs as $pid => $pData)
+                                                                <td class="px-3 py-2">
+                                                                    <input type="number" step="0.01" min="0" 
+                                                                        name="groups[{{ $grp['group_id'] }}][packs][{{ $pid }}][mrp]" 
+                                                                        value="{{ $pData['mrp'] }}" 
+                                                                        placeholder="MRP"
+                                                                        class="rounded border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-xs py-1 px-2 text-center w-20">
+                                                                </td>
+                                                            @endforeach
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            @else
+                                <!-- Fallback: Flat Attributes Table if no groups formatted -->
+                                <div class="overflow-x-auto">
+                                    <table class="w-full text-left text-xs">
+                                        <thead class="bg-gray-50 dark:bg-gray-900 text-gray-600 dark:text-gray-400 font-semibold uppercase">
+                                            <tr>
+                                                <th class="px-3 py-2">Packing</th>
+                                                <th class="px-3 py-2">Color / Shade</th>
+                                                <th class="px-3 py-2">Factory Price (₹)</th>
+                                                <th class="px-3 py-2 text-center">GST Incl.</th>
+                                                <th class="px-3 py-2">Display Price (₹)</th>
+                                                <th class="px-3 py-2">MRP (₹)</th>
                                             </tr>
-                                        @endforeach
-                                    </tbody>
-                                </table>
-                            </div>
+                                        </thead>
+                                        <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+                                            @foreach($gstSkus as $sku)
+                                                <tr>
+                                                    <td class="px-3 py-2 font-semibold text-gray-800 dark:text-gray-200">
+                                                        {{ $sku->boxPacking?->name ?? 'Pack #' . $sku->quantity }}
+                                                    </td>
+                                                    <td class="px-3 py-2 text-gray-600 dark:text-gray-300">
+                                                        {{ $sku->shadeCard?->name ?? 'Color #' . $sku->color }}
+                                                    </td>
+                                                    <td class="px-3 py-2">
+                                                        <input type="number" step="0.01" min="0" 
+                                                            name="attributes[{{ $sku->id }}][seller_price]" 
+                                                            value="{{ $sku->seller_price }}" 
+                                                            class="rounded border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-xs font-semibold py-1 px-2 w-28">
+                                                    </td>
+                                                    <td class="px-3 py-2 text-center">
+                                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300">
+                                                            Yes ({{ $sku->gst_rate ?: 18 }}%)
+                                                        </span>
+                                                        <input type="hidden" name="attributes[{{ $sku->id }}][is_gst_included]" value="1">
+                                                    </td>
+                                                    <td class="px-3 py-2">
+                                                        <input type="number" step="0.01" min="0" 
+                                                            name="attributes[{{ $sku->id }}][price]" 
+                                                            value="{{ $sku->price }}" 
+                                                            class="rounded border-primary-400 dark:border-primary-600 dark:bg-gray-700 text-xs font-bold text-primary-600 py-1 px-2 w-28">
+                                                    </td>
+                                                    <td class="px-3 py-2">
+                                                        <input type="number" step="0.01" min="0" 
+                                                            name="attributes[{{ $sku->id }}][mrp]" 
+                                                            value="{{ $sku->mrp }}" 
+                                                            placeholder="MRP"
+                                                            class="rounded border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-xs py-1 px-2 w-24">
+                                                    </td>
+                                                </tr>
+                                            @endforeach
+                                        </tbody>
+                                    </table>
+                                </div>
+                            @endif
+
                             <div class="flex justify-end pt-3">
-                                <button type="submit" class="px-3 py-1.5 text-xs font-semibold rounded bg-primary-600 hover:bg-primary-500 text-white shadow-sm flex items-center gap-1">
+                                <button type="submit" class="px-4 py-2 text-xs font-semibold rounded bg-primary-600 hover:bg-primary-500 text-white shadow-sm flex items-center gap-1.5">
                                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>
                                     Save Price Changes & Log
                                 </button>
@@ -184,6 +291,11 @@
                                     $actionName = match($log->action) {
                                         'approved', 'approved_and_published' => 'Approved & Published Live',
                                         'pricing_adjusted_by_admin' => 'Pricing Adjusted by Admin',
+                                        'submitted_for_gst_review' => 'Submitted for GST Review',
+                                        'seller_updated_group_pricing' => 'Seller Updated Group Pricing',
+                                        'seller_created_shade_group' => 'Seller Created Shade Group',
+                                        'seller_added_shade_to_group' => 'Added Shade to Group',
+                                        'seller_removed_shade_from_group' => 'Removed Shade from Group',
                                         'rejected' => 'Rejected',
                                         'corrections_requested' => 'Corrections Requested',
                                         default => ucfirst(str_replace('_', ' ', $log->action)),
@@ -191,6 +303,7 @@
                                     $actionColor = match($log->action) {
                                         'approved', 'approved_and_published' => 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300',
                                         'pricing_adjusted_by_admin' => 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300',
+                                        'submitted_for_gst_review' => 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300',
                                         'rejected' => 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300',
                                         default => 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300',
                                     };
@@ -223,7 +336,7 @@
                                         </span>
                                     </td>
                                     <td class="px-4 py-3 text-gray-600 dark:text-gray-300 font-medium">
-                                        {{ $log->reviewer?->name ?? 'Platform Admin' }}
+                                        {{ $log->reviewer?->name ?? ($log->seller?->name ?? 'Platform Admin') }}
                                     </td>
                                     <td class="px-4 py-3 text-gray-500 max-w-xs truncate" title="{{ $log->notes }}">
                                         {{ $log->notes ?: 'Reviewed and logged.' }}

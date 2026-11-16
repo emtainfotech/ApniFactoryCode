@@ -15,6 +15,7 @@ class ProductAttributesController extends Controller
      $sellerPrice = $request->input('seller_price', $request->input('price'));
      $displayPrice = $request->input('price');
      $isGstIncluded = $request->boolean('is_gst_included') || $request->input('is_gst_included') == '1' || $request->input('is_gst_included') === 1 ? 1 : 0;
+     $gstRate = $request->input('gst_rate') !== null ? (float)$request->input('gst_rate') : null;
      $mrp = $request->input('mrp', null);
 
      $attr = ProductAttributes::find($id);
@@ -29,6 +30,9 @@ class ProductAttributesController extends Controller
      if (Schema::hasColumn('product_attributes', 'is_gst_included')) {
          $updateData['is_gst_included'] = $isGstIncluded;
      }
+     if ($gstRate !== null && Schema::hasColumn('product_attributes', 'gst_rate')) {
+         $updateData['gst_rate'] = $gstRate;
+     }
      if (Schema::hasColumn('product_attributes', 'mrp')) {
          $updateData['mrp'] = $mrp;
      }
@@ -38,9 +42,24 @@ class ProductAttributesController extends Controller
 
      $attr->update($updateData);
 
+     // Log to ProductReviewHistory
+     $product = Product::find($attr->product_id);
+     if ($product) {
+         \App\Models\ProductReviewHistory::create([
+             'product_id'      => $product->id,
+             'company_id'      => $product->user?->company?->id ?? 0,
+             'seller_user_id'  => auth()->id(),
+             'reviewer_id'     => auth()->user() && auth()->user()->isAdmin() ? auth()->id() : null,
+             'action'          => 'variant_price_updated',
+             'previous_status' => $product->approval_status,
+             'new_status'      => $isGstIncluded ? 'pending_review' : $product->approval_status,
+             'notes'           => "Updated variant SKU #{$id} (Pack: {$attr->quantity}, Shade: {$attr->color}). Factory: ₹{$sellerPrice}, Display: ₹{$displayPrice}" . ($isGstIncluded ? " [GST Incl. {$gstRate}%]" : ''),
+             'metadata'        => $updateData,
+         ]);
+     }
+
      // If GST is included, route product to admin review bucket
      if ($isGstIncluded) {
-         $product = Product::find($attr->product_id);
          if ($product) {
              $pUpdate = [];
              if (Schema::hasColumn('products', 'has_gst_included')) {

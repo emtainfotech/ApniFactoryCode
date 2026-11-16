@@ -5,7 +5,73 @@
     $effectiveCommission = isset($commissionRate) ? (float)$commissionRate : 25.00;
     $catName = isset($category) && $category ? $category->name : 'General Category';
     $mainCatName = isset($mainCategory) && $mainCategory ? $mainCategory->name : '';
+    $defaultTax = isset($formdata['tax']) ? (float)$formdata['tax'] : 18.00;
+
+    // Extract unique pack sizes and unique shades from Step 1 attributes
+    $selectedPackMap = [];
+    $selectedShadeMap = [];
+
+    if (!empty($formdata['attributes']) && is_array($formdata['attributes'])) {
+        foreach ($formdata['attributes'] as $attrStr) {
+            $parts = explode('-&-', $attrStr);
+            $pId = (int)($parts[0] ?? 0);
+            $cId = (int)($parts[1] ?? 0);
+            if ($pId && !isset($selectedPackMap[$pId])) {
+                $selectedPackMap[$pId] = Helper::getboxpackingnamebyid($pId);
+            }
+            if ($cId && !isset($selectedShadeMap[$cId])) {
+                $cName = Helper::getcolorsnamebyid($cId);
+                $sc = \App\Models\ShadeCard::find($cId);
+                $selectedShadeMap[$cId] = [
+                    'id'      => $cId,
+                    'name'    => $cName ?: "Shade #{$cId}",
+                    'hexcode' => $sc?->hexcode ?? '#6c757d',
+                ];
+            }
+        }
+    }
 @endphp
+
+<style>
+    .shade-dot {
+        height: 14px;
+        width: 14px;
+        border: 1px solid rgba(0,0,0,0.2);
+        border-radius: 50%;
+        display: inline-block;
+        margin-right: 5px;
+        vertical-align: middle;
+    }
+    .group-card {
+        border-left: 4px solid #0d6efd;
+        transition: all 0.2s ease-in-out;
+    }
+    .group-card:hover {
+        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    }
+    .tier-badge {
+        font-size: 0.75rem;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+    }
+    .shade-pill {
+        display: inline-flex;
+        align-items: center;
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 20px;
+        padding: 3px 10px;
+        margin: 2px 4px 2px 0;
+        font-size: 0.8rem;
+    }
+    .shade-pill .remove-shade {
+        cursor: pointer;
+        margin-left: 6px;
+        color: #dc3545;
+        font-weight: bold;
+    }
+</style>
+
 <!--start page wrapper -->
 <div class="page-wrapper">
     <div class="page-content">
@@ -18,7 +84,7 @@
                     <ol class="breadcrumb mb-0 p-0">
                         <li class="breadcrumb-item"><a href="javascript:;"><i class="bx bx-home-alt"></i> Home</a></li>
                         <li class="breadcrumb-item"><a href="{{ url('seller/product') }}">Products</a></li>
-                        <li class="breadcrumb-item active" aria-current="page">Step 2: Pricing & Packaging</li>
+                        <li class="breadcrumb-item active" aria-current="page">Step 2: Shade Groups & Pricing (Asian Paints Style)</li>
                     </ol>
                 </nav>
             </div>
@@ -29,41 +95,54 @@
             <div class="card-body p-4">
                 <div class="d-flex flex-wrap justify-content-between align-items-center pb-3 border-bottom mb-4">
                     <div>
-                        <h4 class="mb-1 text-dark fw-bold"><i class="fa-solid fa-calculator text-primary me-2"></i>Configure Product Pricing & Pack Sizes</h4>
-                        <p class="text-muted mb-0 small">Enter factory prices for your packaging variants. Display prices will be calculated automatically based on admin commission structure.</p>
+                        <h4 class="mb-1 text-dark fw-bold">
+                            <i class="fa-solid fa-layer-group text-primary me-2"></i>Shade Group Pricing & Rate Matrix
+                        </h4>
+                        <p class="text-muted mb-0 small">
+                            Configure Asian Paints style shade groups (e.g. Gr-0 Whites, Gr-1 Standard, Gr-2 Accent). Enter Factory Price once per group & packing size; display prices calculate automatically just below each group.
+                        </p>
                     </div>
-                    <div class="text-end mt-2 mt-md-0">
+                    <div class="text-end mt-2 mt-md-0 d-flex align-items-center gap-2">
                         <span class="badge bg-light-primary text-primary px-3 py-2 fs-6 rounded-pill border border-primary">
                             <i class="fa-solid fa-percent me-1"></i> Category Commission: <strong>{{ number_format($effectiveCommission, 2) }}%</strong>
                         </span>
+                        <button type="button" class="btn btn-primary btn-sm rounded-pill px-3 shadow-sm" id="btnAddNewGroup" onclick="addNewShadeGroup()">
+                            <i class="fa-solid fa-plus me-1"></i> Add New Shade Group
+                        </button>
                     </div>
                 </div>
 
                 <!-- Info Alert Banner -->
                 <div class="alert alert-info border-0 bg-light-info text-dark alert-dismissible fade show mb-4" role="alert">
-                    <div class="d-flex align-items-center">
-                        <div class="fs-3 text-info me-3"><i class="fa-solid fa-circle-info"></i></div>
-                        <div>
-                            <strong>Pricing & Admin Review Guidelines:</strong>
-                            <ul class="mb-0 mt-1 small ps-3">
-                                <li><strong>Factory Price:</strong> Base manufacturing amount you receive.</li>
-                                <li><strong>GST Included:</strong> If marked, this product will be routed to the <strong>Admin Panel Review Bucket</strong> for display price review and approval.</li>
-                                <li><strong>Display Price:</strong> Auto-calculated as <code>Factory Price + {{ number_format($effectiveCommission, 2) }}%</code> commission. You can also manually fine-tune it.</li>
-                                <li><strong>Shade Auto-Fill:</strong> Use the <em>"Apply to all shades"</em> button to quickly copy pricing across colors for the same pack size.</li>
+                    <div class="d-flex align-items-start">
+                        <div class="fs-4 text-info me-3 mt-1"><i class="fa-solid fa-circle-info"></i></div>
+                        <div class="small">
+                            <strong>How Shade Grouping Works:</strong>
+                            <ul class="mb-0 mt-1 ps-3">
+                                <li><strong>Single Price Entry:</strong> All shades assigned to a group automatically share the same factory price per pack size.</li>
+                                <li><strong>Editable Group Names:</strong> Default names are <code>Group 1</code>, <code>Group 2</code>, etc. You can rename them (e.g. <code>Gr-0 Whites</code>, <code>Gr-1 Deep</code>).</li>
+                                <li><strong>Non-Repeating Shades:</strong> A color shade can belong to <em>only one group</em>. Assigning a shade to a new group removes it from other groups automatically.</li>
+                                <li><strong>Display Price Just Below Factory Price:</strong> Automatically calculated as <code>Factory Price + {{ number_format($effectiveCommission, 2) }}%</code>. You can also edit it.</li>
+                                <li><strong>GST Included:</strong> If GST is included, specify <strong>How much GST (%)</strong> (e.g. 18%, 28%, 12%, 5%). Products with GST included land in the Admin Review Bucket for approval.</li>
                             </ul>
                         </div>
                     </div>
                 </div>
 
-                <form method="post" action="{{ route('product.store') }}" enctype="multipart/form-data" id="productPricingForm">
+                <form method="post" action="{{ route('product.store') }}" enctype="multipart/form-data" id="productPricingForm" onsubmit="return handleFormSubmit(event)">
                     @csrf
                     <input type="hidden" name="previousdata" value="{{ json_encode($formdata) }}">
                     <input type="hidden" id="categoryCommissionRate" value="{{ $effectiveCommission }}">
+                    <input type="hidden" name="shade_groups_data" id="shadeGroupsDataInput" value="">
+
+                    <!-- Flat attributes container (populated by JS on submit for backward compatibility) -->
+                    <div id="hiddenFlatAttributesContainer"></div>
 
                     <!-- Image Upload Box -->
                     <div class="card border mb-4">
-                        <div class="card-header bg-light py-2 fw-semibold">
-                            <i class="fa-solid fa-images text-secondary me-2"></i>Product Gallery Images
+                        <div class="card-header bg-light py-2 fw-semibold d-flex justify-content-between align-items-center">
+                            <span><i class="fa-solid fa-images text-secondary me-2"></i>Product Gallery Images</span>
+                            <span class="badge bg-secondary">Upload product & packing photos</span>
                         </div>
                         <div class="card-body">
                             <div class="upload__box">
@@ -78,125 +157,46 @@
                         </div>
                     </div>
 
-                    <!-- Pricing Table -->
-                    <div class="card border">
-                        <div class="card-header bg-light py-3 d-flex flex-wrap justify-content-between align-items-center">
-                            <div class="fw-semibold text-dark">
-                                <i class="fa-solid fa-table-list text-primary me-2"></i>Variant Pricing Table ({{ count($formdata['attributes'] ?? []) }} Combinations)
+                    <!-- Unassigned Shades Pool (Alert) -->
+                    <div id="unassignedShadesBanner" class="card border-warning bg-light-warning mb-4" style="display: none;">
+                        <div class="card-body py-2 px-3 d-flex flex-wrap align-items-center justify-content-between gap-2">
+                            <div class="d-flex align-items-center gap-2">
+                                <i class="fa-solid fa-triangle-exclamation text-warning fs-5"></i>
+                                <span class="small fw-semibold text-dark">
+                                    <span id="unassignedCount">0</span> shades are not assigned to any group yet.
+                                </span>
                             </div>
-                            <div class="small text-muted">
-                                Category: <strong>{{ $mainCatName ? $mainCatName . ' > ' : '' }}{{ $catName }}</strong>
-                            </div>
+                            <div id="unassignedPillsContainer" class="d-flex flex-wrap align-items-center gap-1"></div>
                         </div>
+                    </div>
 
-                        <div class="card-body p-0">
-                            <div class="table-responsive">
-                                <table id="pricingTable" class="table table-hover table-striped align-middle mb-0" style="width:100%" data-commission="{{ $effectiveCommission }}">
-                                    <thead class="table-dark">
-                                        <tr>
-                                            <th style="min-width: 120px;">Packing</th>
-                                            <th style="min-width: 140px;">Color / Shade</th>
-                                            <th style="min-width: 160px;">Factory Price (₹) <span class="text-danger">*</span></th>
-                                            <th style="min-width: 130px; text-align: center;">GST Included?</th>
-                                            <th style="min-width: 160px;">Display Price (+{{ number_format($effectiveCommission, 2) }}%) <span class="text-danger">*</span></th>
-                                            <th style="min-width: 140px;">MRP Price (₹) <span class="text-muted small">(Optional)</span></th>
-                                            <th style="min-width: 120px; text-align: center;">Quick Action</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @foreach($formdata['attributes'] as $key => $attr)
-                                            @php
-                                                $dt = explode('-&-', $attr);
-                                                $packId = $dt[0] ?? 0;
-                                                $colorId = $dt[1] ?? 0;
-                                                $packName = Helper::getboxpackingnamebyid($packId);
-                                                $colorName = Helper::getcolorsnamebyid($colorId);
-                                            @endphp
-                                            <tr data-row-index="{{ $key }}" data-pack-id="{{ $packId }}" data-pack-name="{{ $packName }}">
-                                                <input type="hidden" value="{{ $packId }}" name="boxpacking[]">
-                                                <input type="hidden" value="{{ $colorId }}" name="color[]">
+                    <!-- Container for Shade Groups -->
+                    <div id="shadeGroupsContainer" class="space-y-4">
+                        <!-- Rendered dynamically by JavaScript -->
+                    </div>
 
-                                                <!-- 1. Packing -->
-                                                <td>
-                                                    <span class="badge bg-light text-dark border px-2 py-1 fw-bold fs-7">
-                                                        <i class="fa-solid fa-box me-1 text-secondary"></i>{{ $packName }}
-                                                    </span>
-                                                </td>
-
-                                                <!-- 2. Color -->
-                                                <td>
-                                                    <span class="d-inline-flex align-items-center">
-                                                        <i class="fa-solid fa-palette me-2 text-primary"></i>
-                                                        <span class="fw-semibold">{{ $colorName }}</span>
-                                                    </span>
-                                                </td>
-
-                                                <!-- 3. Factory Price (Enter Price) -->
-                                                <td>
-                                                    <div class="input-group input-group-sm">
-                                                        <span class="input-group-text">₹</span>
-                                                        <input type="number" name="seller_price[]" class="form-control factory-price-input" step="0.01" min="0" placeholder="Factory Price" required>
-                                                    </div>
-                                                </td>
-
-                                                <!-- 4. GST Included Checkbox -->
-                                                <td class="text-center">
-                                                    <div class="form-check d-flex justify-content-center align-items-center gap-1 mb-0">
-                                                        <input type="hidden" name="is_gst_included[{{ $key }}]" value="0">
-                                                        <input type="checkbox" name="is_gst_included[{{ $key }}]" value="1" class="form-check-input gst-checkbox" id="gstCheck_{{ $key }}">
-                                                        <label class="form-check-label small text-muted" for="gstCheck_{{ $key }}">Incl. GST</label>
-                                                    </div>
-                                                </td>
-
-                                                <!-- 5. Display Price (Auto calculated, editable) -->
-                                                <td>
-                                                    <div class="input-group input-group-sm">
-                                                        <span class="input-group-text bg-light-primary text-primary fw-bold">₹</span>
-                                                        <input type="number" name="price[]" class="form-control display-price-input fw-bold" step="0.01" min="0" placeholder="Display Price" required>
-                                                    </div>
-                                                    <small class="text-muted d-block mt-1 fst-italic" style="font-size: 0.72rem;">Auto-calculated, editable</small>
-                                                </td>
-
-                                                <!-- 6. MRP Price (Optional) -->
-                                                <td>
-                                                    <div class="input-group input-group-sm">
-                                                        <span class="input-group-text">₹</span>
-                                                        <input type="number" name="mrp[]" class="form-control mrp-input" step="0.01" min="0" placeholder="MRP">
-                                                    </div>
-                                                </td>
-
-                                                <!-- 7. Quick Copy Action -->
-                                                <td class="text-center">
-                                                    <button type="button" class="btn btn-outline-primary btn-sm btn-copy-pack" title="Copy this price to all {{ $packName }} shades">
-                                                        <i class="fa-solid fa-clone me-1"></i> Copy to {{ $packName }}
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        @endforeach
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-
+                    <!-- Bottom Bar / Submit Actions -->
+                    <div class="card border mt-4">
                         <div class="card-footer bg-white p-3">
                             <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
-                                <div class="text-muted small">
-                                    <span id="gstNoticePill" class="badge bg-light-secondary text-secondary px-3 py-2 border">
-                                        <i class="fa-solid fa-shield-halved me-1"></i> No GST-inclusive variants selected. Direct publishing enabled.
+                                <div>
+                                    <span id="gstGlobalNoticePill" class="badge bg-light-secondary text-secondary px-3 py-2 border">
+                                        <i class="fa-solid fa-shield-halved me-1"></i> No GST-inclusive groups selected. Direct publishing enabled.
                                     </span>
                                 </div>
                                 <div class="d-flex gap-2">
                                     <a href="{{ url('seller/product/add') }}" class="btn btn-outline-secondary">
                                         <i class="fa-solid fa-arrow-left me-1"></i> Back
                                     </a>
-                                    <button type="submit" class="btn btn-primary px-4 fw-bold">
-                                        <i class="fa-solid fa-floppy-disk me-1"></i> Save Product
+                                    <button type="submit" class="btn btn-primary px-4 fw-bold shadow-sm">
+                                        <i class="fa-solid fa-floppy-disk me-1"></i> Save Product & Pricing
                                     </button>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </form>
+
             </div>
         </div>
     </div>
@@ -204,107 +204,508 @@
 <!--end page wrapper -->
 
 <script>
-document.addEventListener('DOMContentLoaded', function () {
-    const table = document.getElementById('pricingTable');
-    if (!table) return;
+// State Management for Shade Groups
+const allShades = @json(array_values($selectedShadeMap));
+const allPacks = @json($selectedPackMap); // { pack_id: "Pack Name" }
+const packIds = Object.keys(allPacks);
+const commissionRate = parseFloat("{{ $effectiveCommission }}") || 25.00;
+const defaultTaxRate = parseFloat("{{ $defaultTax }}") || 18.00;
 
-    const commissionRate = parseFloat(table.getAttribute('data-commission')) || 25.00;
-    const gstNoticePill = document.getElementById('gstNoticePill');
-
-    // Function to calculate Display Price: round(FactoryPrice * (1 + commission / 100), 2)
-    function calculateDisplayPrice(factoryPrice) {
-        if (isNaN(factoryPrice) || factoryPrice <= 0) return '';
-        const calculated = factoryPrice * (1 + (commissionRate / 100));
-        return calculated.toFixed(2);
+// Groups array
+let groups = [
+    {
+        id: 'group_1',
+        name: 'Group 1',
+        shades: allShades.map(s => s.id), // Initially all selected shades belong to Group 1
+        is_gst_included: false,
+        gst_rate: defaultTaxRate,
+        packs: {} // pack_id => { seller_price, price, mrp }
     }
+];
 
-    // Update GST review banner state
-    function updateGstNoticeState() {
-        const gstCheckboxes = table.querySelectorAll('.gst-checkbox');
-        let hasGstChecked = false;
-        gstCheckboxes.forEach(cb => {
-            if (cb.checked) hasGstChecked = true;
-        });
+// Initialize packs default prices
+packIds.forEach(pid => {
+    groups[0].packs[pid] = { seller_price: '', price: '', mrp: '' };
+});
 
-        if (hasGstChecked) {
-            gstNoticePill.className = 'badge bg-light-warning text-dark px-3 py-2 border border-warning';
-            gstNoticePill.innerHTML = '<i class="fa-solid fa-triangle-exclamation text-warning me-1"></i> <strong>GST Included marked:</strong> Product will be sent to Admin Review Bucket for display price approval.';
+let groupCounter = 1;
+
+// Helper: Get shades assigned to any group EXCEPT the given groupId
+function getAssignedShadeIds(excludeGroupId = null) {
+    const assigned = new Set();
+    groups.forEach(g => {
+        if (!excludeGroupId || g.id !== excludeGroupId) {
+            (g.shades || []).forEach(sid => assigned.add(parseInt(sid)));
+        }
+    });
+    return assigned;
+}
+
+// Helper: Calculate Display Price
+function calcDisplayPrice(factoryPrice) {
+    const val = parseFloat(factoryPrice);
+    if (isNaN(val) || val <= 0) return '';
+    return (val * (1 + (commissionRate / 100))).toFixed(2);
+}
+
+// Render All Groups
+function renderGroups() {
+    const container = document.getElementById('shadeGroupsContainer');
+    if (!container) return;
+
+    let html = '';
+
+    // Check for unassigned shades
+    const allAssigned = getAssignedShadeIds(null);
+    const unassigned = allShades.filter(s => !allAssigned.has(s.id));
+    const unassignedBanner = document.getElementById('unassignedShadesBanner');
+    const unassignedCountEl = document.getElementById('unassignedCount');
+    const unassignedPillsContainer = document.getElementById('unassignedPillsContainer');
+
+    if (unassignedBanner) {
+        if (unassigned.length > 0) {
+            unassignedBanner.style.display = 'block';
+            unassignedCountEl.innerText = unassigned.length;
+            unassignedPillsContainer.innerHTML = unassigned.map(s => `
+                <span class="shade-pill bg-white">
+                    <span class="shade-dot" style="background-color: ${s.hexcode};"></span>
+                    ${s.name}
+                </span>
+            `).join('');
         } else {
-            gstNoticePill.className = 'badge bg-light-secondary text-secondary px-3 py-2 border';
-            gstNoticePill.innerHTML = '<i class="fa-solid fa-shield-halved me-1"></i> No GST-inclusive variants selected. Direct publishing enabled.';
+            unassignedBanner.style.display = 'none';
         }
     }
 
-    // Real-time calculation on Factory Price input
-    table.addEventListener('input', function (event) {
-        if (event.target.classList.contains('factory-price-input')) {
-            const row = event.target.closest('tr');
-            const factoryVal = parseFloat(event.target.value);
-            const displayInput = row.querySelector('.display-price-input');
-            if (displayInput) {
-                displayInput.value = calculateDisplayPrice(factoryVal);
-            }
+    let hasAnyGst = false;
+
+    groups.forEach((group, gIdx) => {
+        if (group.is_gst_included) hasAnyGst = true;
+
+        // Shades assigned to this group
+        const groupShades = allShades.filter(s => group.shades.includes(s.id));
+
+        // Available shades that can be added to this group (unassigned shades)
+        const otherAssigned = getAssignedShadeIds(group.id);
+        const availableToAdd = allShades.filter(s => !otherAssigned.has(s.id) && !group.shades.includes(s.id));
+
+        html += `
+        <div class="card border group-card mb-4 shadow-sm" id="card_${group.id}">
+            <div class="card-header bg-white py-3 border-bottom">
+                <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="badge bg-primary px-2 py-1 fs-6">
+                            <i class="fa-solid fa-layer-group me-1"></i> #${gIdx + 1}
+                        </span>
+                        <div class="input-group input-group-sm" style="max-width: 280px;">
+                            <span class="input-group-text fw-bold bg-light">Group Name:</span>
+                            <input type="text" class="form-control fw-bold text-dark" value="${escapeHtml(group.name)}" 
+                                onchange="updateGroupName('${group.id}', this.value)" placeholder="e.g. Gr-1, Whites, Standard..." required>
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex align-items-center gap-3">
+                        <!-- GST Included Checkbox & Rate Input -->
+                        <div class="d-flex align-items-center gap-2 bg-light px-3 py-1.5 rounded border">
+                            <div class="form-check mb-0">
+                                <input class="form-check-input" type="checkbox" id="gst_${group.id}" 
+                                    ${group.is_gst_included ? 'checked' : ''} onchange="toggleGroupGst('${group.id}', this.checked)">
+                                <label class="form-check-label small fw-bold text-dark" for="gst_${group.id}">
+                                    GST Included?
+                                </label>
+                            </div>
+                            
+                            <div id="gstRateBox_${group.id}" class="d-flex align-items-center gap-1 ms-2" style="${group.is_gst_included ? '' : 'display: none !important;'}">
+                                <label class="small text-muted mb-0">Rate:</label>
+                                <div class="input-group input-group-sm" style="width: 85px;">
+                                    <input type="number" step="0.01" min="0" max="100" class="form-control form-control-sm text-center fw-bold" 
+                                        value="${group.gst_rate || defaultTaxRate}" onchange="updateGroupGstRate('${group.id}', this.value)">
+                                    <span class="input-group-text p-1">%</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        ${groups.length > 1 ? `
+                            <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeGroup('${group.id}')" title="Delete Group">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        ` : ''}
+                    </div>
+                </div>
+
+                <!-- GST Notice Banner if checked -->
+                ${group.is_gst_included ? `
+                    <div class="alert alert-warning py-1 px-3 mt-2 mb-0 small border-warning d-flex align-items-center gap-2">
+                        <i class="fa-solid fa-triangle-exclamation text-warning"></i>
+                        <span><strong>GST Included:</strong> All packings in this group will be routed to Admin Review Bucket for Display Price approval with <strong>${group.gst_rate}%</strong> GST.</span>
+                    </div>
+                ` : ''}
+
+                <!-- Assigned Shades Chips Container -->
+                <div class="mt-3 pt-2 border-top">
+                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+                        <div class="small fw-bold text-secondary">
+                            <i class="fa-solid fa-palette me-1 text-primary"></i> Assigned Shades (${groupShades.length}):
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            ${availableToAdd.length > 0 ? `
+                                <div class="dropdown">
+                                    <button class="btn btn-outline-primary btn-sm dropdown-toggle py-0 px-2" type="button" data-bs-toggle="dropdown" aria-expanded="false" style="font-size: 0.78rem;">
+                                        <i class="fa-solid fa-plus me-1"></i> Add Shade (${availableToAdd.length} Available)
+                                    </button>
+                                    <ul class="dropdown-menu dropdown-menu-end shadow" style="max-height: 240px; overflow-y: auto;">
+                                        <li><h6 class="dropdown-header">Select shade to assign</h6></li>
+                                        ${availableToAdd.map(s => `
+                                            <li>
+                                                <a class="dropdown-item d-flex align-items-center small py-1" href="javascript:;" onclick="addShadeToGroup('${group.id}', ${s.id})">
+                                                    <span class="shade-dot" style="background-color: ${s.hexcode};"></span>
+                                                    ${s.name}
+                                                </a>
+                                            </li>
+                                        `).join('')}
+                                    </ul>
+                                </div>
+                            ` : `
+                                <span class="badge bg-light text-muted border" style="font-size: 0.72rem;">All shades assigned</span>
+                            `}
+                        </div>
+                    </div>
+
+                    <div class="d-flex flex-wrap align-items-center">
+                        ${groupShades.length > 0 ? groupShades.map(s => `
+                            <span class="shade-pill">
+                                <span class="shade-dot" style="background-color: ${s.hexcode};"></span>
+                                ${s.name}
+                                <span class="remove-shade" onclick="removeShadeFromGroup('${group.id}', ${s.id})" title="Remove shade from group">&times;</span>
+                            </span>
+                        `).join('') : `
+                            <span class="text-danger small fst-italic py-1">No shades assigned to this group yet. Use '+ Add Shade' above.</span>
+                        `}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Rate Matrix Table (Asian Paints Rate Card Style) -->
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-bordered align-middle mb-0 text-center" style="width: 100%;">
+                        <thead class="table-dark">
+                            <tr>
+                                <th style="width: 200px; text-align: left;" class="ps-3">Pricing Tier</th>
+                                ${packIds.map(pid => `
+                                    <th style="min-width: 120px;">
+                                        <div class="fw-bold">${escapeHtml(allPacks[pid])}</div>
+                                    </th>
+                                `).join('')}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- ROW 1: Factory Price (₹) -->
+                            <tr class="table-light">
+                                <td class="text-start ps-3 fw-bold text-dark">
+                                    <span class="badge bg-secondary me-1 tier-badge">1. Factory Price</span>
+                                    <div class="small text-muted fw-normal">Base manufacturing rate you receive</div>
+                                </td>
+                                ${packIds.map(pid => {
+                                    const pVal = group.packs[pid] ? group.packs[pid].seller_price : '';
+                                    return `
+                                        <td>
+                                            <div class="input-group input-group-sm">
+                                                <span class="input-group-text">₹</span>
+                                                <input type="number" step="0.01" min="0" class="form-control form-control-sm text-end fw-semibold factory-input" 
+                                                    value="${pVal !== undefined ? pVal : ''}" 
+                                                    placeholder="0.00" 
+                                                    oninput="handleFactoryPriceChange('${group.id}', '${pid}', this.value)" required>
+                                            </div>
+                                        </td>
+                                    `;
+                                }).join('')}
+                            </tr>
+
+                            <!-- ROW 2: Display Price (Auto-calculated, Placed JUST BELOW Factory Price!) -->
+                            <tr style="background-color: #f0f7ff;">
+                                <td class="text-start ps-3 fw-bold text-primary">
+                                    <span class="badge bg-primary me-1 tier-badge">2. Display Price</span>
+                                    <div class="small text-muted fw-normal">+${commissionRate}% comm. (Editable)</div>
+                                </td>
+                                ${packIds.map(pid => {
+                                    const dVal = group.packs[pid] ? group.packs[pid].price : '';
+                                    return `
+                                        <td>
+                                            <div class="input-group input-group-sm">
+                                                <span class="input-group-text bg-light-primary text-primary fw-bold">₹</span>
+                                                <input type="number" step="0.01" min="0" class="form-control form-control-sm text-end fw-bold text-primary display-input" 
+                                                    id="disp_${group.id}_${pid}"
+                                                    value="${dVal !== undefined ? dVal : ''}" 
+                                                    placeholder="Auto" 
+                                                    oninput="handleDisplayPriceChange('${group.id}', '${pid}', this.value)" required>
+                                            </div>
+                                        </td>
+                                    `;
+                                }).join('')}
+                            </tr>
+
+                            <!-- ROW 3: MRP Price (₹) Optional -->
+                            <tr>
+                                <td class="text-start ps-3 text-muted">
+                                    <span class="badge bg-light text-dark border me-1 tier-badge">3. MRP Price</span>
+                                    <div class="small text-muted fw-normal">Maximum Retail Price (Optional)</div>
+                                </td>
+                                ${packIds.map(pid => {
+                                    const mVal = group.packs[pid] ? group.packs[pid].mrp : '';
+                                    return `
+                                        <td>
+                                            <div class="input-group input-group-sm">
+                                                <span class="input-group-text">₹</span>
+                                                <input type="number" step="0.01" min="0" class="form-control form-control-sm text-end text-muted" 
+                                                    value="${mVal !== undefined && mVal !== null ? mVal : ''}" 
+                                                    placeholder="MRP" 
+                                                    oninput="handleMrpChange('${group.id}', '${pid}', this.value)">
+                                            </div>
+                                        </td>
+                                    `;
+                                }).join('')}
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        `;
+    });
+
+    container.innerHTML = html;
+
+    // Update global GST notice pill
+    const globalNoticePill = document.getElementById('gstGlobalNoticePill');
+    if (globalNoticePill) {
+        if (hasAnyGst) {
+            globalNoticePill.className = 'badge bg-light-warning text-dark px-3 py-2 border border-warning';
+            globalNoticePill.innerHTML = '<i class="fa-solid fa-triangle-exclamation text-warning me-1"></i> <strong>GST Included marked in groups:</strong> Product will be sent to Admin Review Bucket for display price approval.';
+        } else {
+            globalNoticePill.className = 'badge bg-light-secondary text-secondary px-3 py-2 border';
+            globalNoticePill.innerHTML = '<i class="fa-solid fa-shield-halved me-1"></i> No GST-inclusive groups selected. Direct publishing enabled.';
+        }
+    }
+}
+
+// Group Actions
+function addNewShadeGroup() {
+    groupCounter++;
+    const newId = 'group_' + Date.now();
+    const newName = 'Group ' + (groups.length + 1);
+
+    // Initial packs map
+    const packsMap = {};
+    packIds.forEach(pid => {
+        packsMap[pid] = { seller_price: '', price: '', mrp: '' };
+    });
+
+    // Find any unassigned shades to place in new group
+    const assigned = getAssignedShadeIds(null);
+    const unassignedShades = allShades.filter(s => !assigned.has(s.id)).map(s => s.id);
+
+    groups.push({
+        id: newId,
+        name: newName,
+        shades: unassignedShades, // Can be empty or unassigned shades
+        is_gst_included: false,
+        gst_rate: defaultTaxRate,
+        packs: packsMap
+    });
+
+    renderGroups();
+}
+
+function removeGroup(groupId) {
+    if (groups.length <= 1) {
+        alert('At least one shade group must exist.');
+        return;
+    }
+    const targetGroup = groups.find(g => g.id === groupId);
+    if (!targetGroup) return;
+
+    if (!confirm(`Are you sure you want to delete '${targetGroup.name}'? Its assigned shades will become unassigned.`)) {
+        return;
+    }
+
+    groups = groups.filter(g => g.id !== groupId);
+    renderGroups();
+}
+
+function updateGroupName(groupId, newName) {
+    const grp = groups.find(g => g.id === groupId);
+    if (grp) {
+        grp.name = newName.trim() || 'Untitled Group';
+    }
+}
+
+function toggleGroupGst(groupId, isChecked) {
+    const grp = groups.find(g => g.id === groupId);
+    if (grp) {
+        grp.is_gst_included = isChecked;
+        const rateBox = document.getElementById('gstRateBox_' + groupId);
+        if (rateBox) {
+            rateBox.style.display = isChecked ? 'flex' : 'none';
+        }
+        renderGroups();
+    }
+}
+
+function updateGroupGstRate(groupId, rateVal) {
+    const grp = groups.find(g => g.id === groupId);
+    if (grp) {
+        grp.gst_rate = parseFloat(rateVal) || defaultTaxRate;
+    }
+}
+
+function addShadeToGroup(groupId, shadeId) {
+    shadeId = parseInt(shadeId);
+    // Remove shade from ANY other group first (ensuring NON-REPETITION)
+    groups.forEach(g => {
+        g.shades = g.shades.filter(sid => parseInt(sid) !== shadeId);
+    });
+
+    const targetGrp = groups.find(g => g.id === groupId);
+    if (targetGrp && !targetGrp.shades.includes(shadeId)) {
+        targetGrp.shades.push(shadeId);
+    }
+    renderGroups();
+}
+
+function removeShadeFromGroup(groupId, shadeId) {
+    shadeId = parseInt(shadeId);
+    const targetGrp = groups.find(g => g.id === groupId);
+    if (targetGrp) {
+        targetGrp.shades = targetGrp.shades.filter(sid => parseInt(sid) !== shadeId);
+    }
+    renderGroups();
+}
+
+// Pricing Input Handlers
+function handleFactoryPriceChange(groupId, packId, val) {
+    const grp = groups.find(g => g.id === groupId);
+    if (!grp) return;
+
+    if (!grp.packs[packId]) {
+        grp.packs[packId] = { seller_price: '', price: '', mrp: '' };
+    }
+    grp.packs[packId].seller_price = val;
+
+    // Auto-calculate Display Price directly below Factory Price!
+    const displayVal = calcDisplayPrice(val);
+    grp.packs[packId].price = displayVal;
+
+    const dispInput = document.getElementById(`disp_${groupId}_${packId}`);
+    if (dispInput) {
+        dispInput.value = displayVal;
+    }
+}
+
+function handleDisplayPriceChange(groupId, packId, val) {
+    const grp = groups.find(g => g.id === groupId);
+    if (grp && grp.packs[packId]) {
+        grp.packs[packId].price = val;
+    }
+}
+
+function handleMrpChange(groupId, packId, val) {
+    const grp = groups.find(g => g.id === groupId);
+    if (grp && grp.packs[packId]) {
+        grp.packs[packId].mrp = val;
+    }
+}
+
+function escapeHtml(text) {
+    if (!text) return '';
+    return String(text)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
+// Form Submission Handler
+function handleFormSubmit(event) {
+    // 1. Verify every group that has shades has valid factory prices
+    let hasError = false;
+    let errorMessage = '';
+
+    // Check if any shades are unassigned
+    const assignedIds = getAssignedShadeIds(null);
+    const unassigned = allShades.filter(s => !assignedIds.has(s.id));
+    if (unassigned.length > 0) {
+        if (!confirm(`Warning: ${unassigned.length} color shade(s) are not assigned to any group. Do you want to proceed without pricing them?`)) {
+            return false;
+        }
+    }
+
+    groups.forEach(grp => {
+        if (grp.shades.length > 0) {
+            packIds.forEach(pid => {
+                const sp = grp.packs[pid] ? grp.packs[pid].seller_price : '';
+                if (!sp || parseFloat(sp) <= 0) {
+                    hasError = true;
+                    errorMessage = `Please enter a valid Factory Price for '${allPacks[pid]}' in '${grp.name}'.`;
+                }
+            });
         }
     });
 
-    // GST Checkbox change listener
-    table.addEventListener('change', function (event) {
-        if (event.target.classList.contains('gst-checkbox')) {
-            updateGstNoticeState();
-        }
-    });
+    if (hasError) {
+        alert(errorMessage);
+        return false;
+    }
 
-    // "Copy to all shades of this pack size" button handler
-    table.addEventListener('click', function (event) {
-        const btn = event.target.closest('.btn-copy-pack');
-        if (!btn) return;
+    // 2. Serialize Groups JSON into shade_groups_data
+    const cleanGroups = groups.map(g => ({
+        group_id: g.id,
+        name: g.name,
+        shades: g.shades,
+        is_gst_included: g.is_gst_included ? 1 : 0,
+        gst_rate: g.gst_rate || defaultTaxRate,
+        packs: g.packs
+    }));
 
-        const sourceRow = btn.closest('tr');
-        const packId = sourceRow.getAttribute('data-pack-id');
-        const packName = sourceRow.getAttribute('data-pack-name');
+    document.getElementById('shadeGroupsDataInput').value = JSON.stringify(cleanGroups);
 
-        const factoryVal = sourceRow.querySelector('.factory-price-input').value;
-        const isGst = sourceRow.querySelector('.gst-checkbox').checked;
-        const displayVal = sourceRow.querySelector('.display-price-input').value;
-        const mrpVal = sourceRow.querySelector('.mrp-input').value;
+    // 3. Generate flat attributes for backward compatibility
+    const flatContainer = document.getElementById('hiddenFlatAttributesContainer');
+    flatContainer.innerHTML = '';
 
-        if (!factoryVal || parseFloat(factoryVal) <= 0) {
-            alert('Please enter a valid Factory Price before copying.');
-            return;
-        }
+    cleanGroups.forEach(grp => {
+        const isGst = grp.is_gst_included ? 1 : 0;
+        const gstRate = grp.gst_rate;
+        const gName = grp.name;
 
-        // Apply to all rows sharing the same packId
-        const matchingRows = table.querySelectorAll(`tr[data-pack-id="${packId}"]`);
-        let copiedCount = 0;
+        grp.shades.forEach(shadeId => {
+            packIds.forEach(packId => {
+                const pData = grp.packs[packId] || {};
+                const sPrice = pData.seller_price || 0;
+                const dPrice = pData.price || calcDisplayPrice(sPrice);
+                const mrp = pData.mrp || '';
 
-        matchingRows.forEach(row => {
-            if (row !== sourceRow) {
-                row.querySelector('.factory-price-input').value = factoryVal;
-                row.querySelector('.gst-checkbox').checked = isGst;
-                row.querySelector('.display-price-input').value = displayVal;
-                row.querySelector('.mrp-input').value = mrpVal;
-                copiedCount++;
-
-                // Visual highlight effect
-                row.classList.add('table-success');
-                setTimeout(() => row.classList.remove('table-success'), 900);
-            }
+                flatContainer.innerHTML += `
+                    <input type="hidden" name="boxpacking[]" value="${packId}">
+                    <input type="hidden" name="color[]" value="${shadeId}">
+                    <input type="hidden" name="seller_price[]" value="${sPrice}">
+                    <input type="hidden" name="price[]" value="${dPrice}">
+                    <input type="hidden" name="is_gst_included[]" value="${isGst}">
+                    <input type="hidden" name="gst_rate[]" value="${gstRate}">
+                    <input type="hidden" name="group_name[]" value="${escapeHtml(gName)}">
+                    <input type="hidden" name="mrp[]" value="${mrp}">
+                `;
+            });
         });
-
-        updateGstNoticeState();
-
-        // Temporary toast / button feedback
-        const originalHtml = btn.innerHTML;
-        btn.innerHTML = `<i class="fa-solid fa-check text-success me-1"></i> Copied to ${copiedCount}!`;
-        btn.classList.replace('btn-outline-primary', 'btn-success');
-        setTimeout(() => {
-            btn.innerHTML = originalHtml;
-            btn.classList.replace('btn-success', 'btn-outline-primary');
-        }, 1500);
     });
 
-    // Initial check
-    updateGstNoticeState();
+    return true;
+}
+
+// Initial render
+document.addEventListener('DOMContentLoaded', function () {
+    renderGroups();
 });
 </script>
 @endsection

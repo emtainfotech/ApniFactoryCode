@@ -58,6 +58,11 @@ class ProductReviewBucket extends Page
             ->orderBy('id', 'desc')
             ->get();
 
+        $pricingService = app(\App\Services\PaintPricingService::class);
+        foreach ($pendingProducts as $prod) {
+            $prod->formatted_shade_groups = $pricingService->formatShadeGroupsForProduct($prod);
+        }
+
         // 2. Review History & Audit Logs
         $historyLogs = ProductReviewHistory::with(['product.brand', 'product.category', 'company', 'reviewer', 'seller'])
             ->orderBy('id', 'desc')
