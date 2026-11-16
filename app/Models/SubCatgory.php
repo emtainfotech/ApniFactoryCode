@@ -14,6 +14,7 @@ class SubCatgory extends Model
         'title',
         'name',
         'image',
+        'commission_rate',
         'status',
         'mid',
         'cid',

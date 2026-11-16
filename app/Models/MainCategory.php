@@ -12,8 +12,15 @@ class MainCategory extends Model
         'title',
         'name',
         'image',
-        'status','sequence'
+        'commission_rate',
+        'status',
+        'sequence'
     ];
+
+    public function categories()
+    {
+        return $this->hasMany(Category::class, 'maincategory_id', 'id');
+    }
 
     public function getStatusAttribute($value)
     {

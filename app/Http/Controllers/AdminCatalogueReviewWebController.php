@@ -35,7 +35,10 @@ class AdminCatalogueReviewWebController extends Controller
         $currentStatus = $request->input('status', 'pending');
         $filters = $request->only(['category_id', 'brand_id', 'company_id', 'search', 'date_from', 'date_to']);
 
-        if ($currentStatus === 'pending') {
+        if ($currentStatus === 'gst_review') {
+            $filters['has_gst_included'] = 1;
+            $filters['status'] = null;
+        } elseif ($currentStatus === 'pending') {
             $filters['status'] = null; // triggers pending_review & resubmitted
         } elseif ($currentStatus !== 'all') {
             $filters['status'] = $currentStatus;
@@ -48,6 +51,7 @@ class AdminCatalogueReviewWebController extends Controller
         // Counts for tabs
         $counts = [
             'pending'               => Product::whereIn('approval_status', ['pending_review', 'resubmitted'])->count(),
+            'gst_review'            => Product::where('has_gst_included', 1)->whereIn('approval_status', ['pending_review', 'resubmitted'])->count(),
             'pending_review'        => Product::where('approval_status', 'pending_review')->count(),
             'resubmitted'           => Product::where('approval_status', 'resubmitted')->count(),
             'corrections_requested' => Product::where('approval_status', 'corrections_requested')->count(),
@@ -103,6 +107,56 @@ class AdminCatalogueReviewWebController extends Controller
         } catch (\Throwable $e) {
             return back()->with('error', $e->getMessage());
         }
+    }
+
+    /**
+     * Admin Action: Update product attribute pricing (Display Price, Factory Price, MRP).
+     */
+    public function updatePricing(Request $request, int $id)
+    {
+        $this->ensureAdmin();
+
+        $product = Product::findOrFail($id);
+        $attributesData = $request->input('attributes', []);
+
+        $updatedCount = 0;
+        foreach ($attributesData as $attrId => $vals) {
+            $attr = \App\Models\ProductAttributes::where('product_id', $product->id)->find($attrId);
+            if ($attr) {
+                $updates = [];
+                if (isset($vals['price']) && is_numeric($vals['price'])) {
+                    $updates['price'] = round((float)$vals['price'], 2);
+                }
+                if (isset($vals['seller_price']) && is_numeric($vals['seller_price'])) {
+                    $updates['seller_price'] = round((float)$vals['seller_price'], 2);
+                }
+                if (isset($vals['mrp'])) {
+                    $updates['mrp'] = is_numeric($vals['mrp']) ? round((float)$vals['mrp'], 2) : null;
+                }
+                if (isset($vals['is_gst_included'])) {
+                    $updates['is_gst_included'] = (int)$vals['is_gst_included'] === 1;
+                }
+                if (!empty($updates)) {
+                    $attr->update($updates);
+                    $updatedCount++;
+                }
+            }
+        }
+
+        // Record in review audit history
+        \App\Models\ProductReviewHistory::create([
+            'product_id'      => $product->id,
+            'company_id'      => $product->user?->company?->id ?? 0,
+            'seller_user_id'  => $product->user_id,
+            'reviewer_id'     => auth()->id(),
+            'action'          => 'pricing_adjusted_by_admin',
+            'previous_status' => $product->approval_status,
+            'new_status'      => $product->approval_status,
+            'notes'           => "Admin updated pricing on {$updatedCount} SKU attribute(s).",
+            'metadata'        => $attributesData,
+        ]);
+
+        return back()->with('success', "Product pricing updated successfully ({$updatedCount} SKUs modified).");
     }
 
     /**

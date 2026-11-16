@@ -21,17 +21,18 @@ class ProductController extends Controller
  //  list / store destroy
   public function store(Request $request){ 
       $previousdata = json_decode($request->previousdata);
-      $name = $previousdata->name;
-    //   $slug = $previousdata->slug;
-      $mid = $previousdata->maincategory;
-      $cid = $previousdata->category;
-      $description = $previousdata->details;
-      $Brand = $previousdata->brand;
-      $tax = $previousdata->tax;
-      $hsncode = $previousdata->hsncode;
+      $name = $previousdata->name ?? 'Untitled Product';
+      $mid = $previousdata->maincategory ?? 0;
+      $cid = $previousdata->category ?? 0;
+      $description = $previousdata->details ?? '';
+      $Brand = $previousdata->brand ?? 0;
+      $tax = $previousdata->tax ?? 0;
+      $hsncode = $previousdata->hsncode ?? '';
       $delimiter = '-';
       $slug = strtolower(trim(preg_replace('/[\s-]+/', $delimiter, preg_replace('/[^A-Za-z0-9-]+/', $delimiter, preg_replace('/[&]/', 'and', preg_replace('/[\']/', '', iconv('UTF-8', 'ASCII//TRANSLIT', $name))))), $delimiter));
-    $slug = $slug.'-'.rand(1000,999999);
+      $slug = $slug.'-'.rand(1000,999999);
+      $images = [];
+      $img = 'product/default.jpg';
       if($files=$request->file('images')){
         foreach($files as $key=>$file){
             $ext = $file->getClientOriginalExtension() ?: 'jpg';
@@ -42,51 +43,103 @@ class ProductController extends Controller
             }
         }
         $proid = Product::orderBy('id','desc')->first();
-        if(empty($proid)){$prid=1;}else{$prid=$proid->id+1;}
-      $pary = array(
-                    "maincategory_id"=>$mid,
-                    "category_id"=>$cid,
-                    "subcategory_id"=>0,
-                    "name"=>$name,
-                    "slug"=>$slug,
-                    "title"=>$slug,
-                    "description"=>$description,
-                    "status"=>'1',
-                    "brand_id"=>$Brand,
-                    "product_id"=>$prid,
-                    "user_id"=>Auth::user()->id,
-                    "multipleimages"=>json_encode($images),
-                    "image"=>$img,
-                    "hsncode"=>$hsncode,
-                    "tax"=>$tax
-                    );
+        $prid = empty($proid) ? 1 : $proid->id + 1;
+
+        // Check if any attribute has GST included
+        $hasGstIncluded = false;
+        if ($request->has('is_gst_included')) {
+            foreach ((array)$request->is_gst_included as $gstVal) {
+                if ((int)$gstVal === 1 || $gstVal === '1' || $gstVal === true) {
+                    $hasGstIncluded = true;
+                    break;
+                }
+            }
+        }
+
+        $approvalStatus = $hasGstIncluded ? 'pending_review' : 'approved';
+        $productStatus = $hasGstIncluded ? 'Deactive' : 'Active';
+
+        $pary = array(
+                      "maincategory_id"=>$mid,
+                      "category_id"=>$cid,
+                      "subcategory_id"=>0,
+                      "name"=>$name,
+                      "slug"=>$slug,
+                      "title"=>$slug,
+                      "description"=>$description,
+                      "status"=>$productStatus,
+                      "approval_status"=>$approvalStatus,
+                      "has_gst_included"=>$hasGstIncluded ? 1 : 0,
+                      "submitted_at"=>$hasGstIncluded ? now() : null,
+                      "brand_id"=>$Brand,
+                      "product_id"=>$prid,
+                      "user_id"=>Auth::user()->id,
+                      "multipleimages"=>json_encode($images),
+                      "image"=>$img,
+                      "hsncode"=>$hsncode,
+                      "tax"=>$tax
+                      );
         $pid = Product::insertGetId($pary);
         
         $pricingService = app(\App\Services\PaintPricingService::class);
-        $commissionRate = $pricingService->getEffectiveCommissionRate(Auth::id(), $pid);
+        $commissionRate = $pricingService->getEffectiveCommissionRate(Auth::id(), null, $cid, null, $mid);
 
-        foreach($request->boxpacking as $key=>$bxpackg){
-            $enteredPrice = (float)($request->price[$key] ?? 0);
-            $packLitres = $pricingService->parsePackLitres($bxpackg);
-            
-            // Treat entered price as Seller Factory Base Price, calculate Customer Price with commission
-            $sellerPrice = $enteredPrice;
-            $customerPrice = round($sellerPrice * (1 + ($commissionRate / 100)), 2);
+        if ($request->has('boxpacking')) {
+            foreach($request->boxpacking as $key=>$bxpackg){
+                // Factory price
+                $sellerPrice = (float)($request->seller_price[$key] ?? ($request->price[$key] ?? 0));
+                
+                // GST Included
+                $isGstIncluded = !empty($request->is_gst_included[$key]) && (int)$request->is_gst_included[$key] === 1;
 
-            $patbu = array(
-                            "product_id"      => $pid,
-                            "color"           => $request->color[$key],
-                            "quantity"        => $bxpackg,
-                            "oldprice"        => $customerPrice,
-                            "seller_price"    => $sellerPrice,
-                            "commission_rate" => $commissionRate,
-                            "pack_litres"     => $packLitres,
-                            "price"           => $customerPrice
-                        );
-            ProductAttributes::insert($patbu);            
+                // Display price (user-edited or calculated)
+                if (isset($request->price[$key]) && is_numeric($request->price[$key]) && (float)$request->price[$key] > 0) {
+                    $customerPrice = round((float)$request->price[$key], 2);
+                } else {
+                    $customerPrice = round($sellerPrice * (1 + ($commissionRate / 100)), 2);
+                }
+
+                // MRP (optional)
+                $mrp = isset($request->mrp[$key]) && is_numeric($request->mrp[$key]) ? round((float)$request->mrp[$key], 2) : null;
+
+                $packLitres = $pricingService->parsePackLitres($bxpackg);
+
+                $patbu = array(
+                                "product_id"      => $pid,
+                                "color"           => $request->color[$key] ?? null,
+                                "quantity"        => $bxpackg,
+                                "oldprice"        => $customerPrice,
+                                "seller_price"    => $sellerPrice,
+                                "is_gst_included" => $isGstIncluded ? 1 : 0,
+                                "commission_rate" => $commissionRate,
+                                "pack_litres"     => $packLitres,
+                                "price"           => $customerPrice,
+                                "mrp"             => $mrp,
+                                "status"          => '1',
+                            );
+                ProductAttributes::insert($patbu);            
+            }
         }
         
-        return redirect('/seller/product')->withErrors(["Successfully Added"]);
+        // If GST Included, record in ProductReviewHistory
+        if ($hasGstIncluded) {
+            $company = Company::where('user_id', Auth::id())->first();
+            \App\Models\ProductReviewHistory::create([
+                'product_id'      => $pid,
+                'company_id'      => $company?->id,
+                'seller_user_id'  => Auth::id(),
+                'reviewer_id'     => null,
+                'action'          => 'submitted_for_gst_review',
+                'previous_status' => 'draft',
+                'new_status'      => 'pending_review',
+                'notes'           => 'Product submitted with GST-inclusive pricing. Routed to Admin Review Bucket for Display Price approval.',
+                'metadata'        => ['commission_rate' => $commissionRate],
+            ]);
+
+            return redirect('/seller/product')->with('success', 'Product submitted successfully! Because GST is included, this product has been sent to the Admin Review Bucket for Display Price review and approval before publishing.');
+        }
+
+        return redirect('/seller/product')->with('success', 'Product successfully created and published.');
   }
   public function list(Request $request){
         $data['title'] = 'Product';

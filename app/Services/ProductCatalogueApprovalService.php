@@ -231,16 +231,35 @@ class ProductCatalogueApprovalService
         array &$warnings
     ): void {
         $variants = $product->variants()->get();
+        $legacyAttributes = $product->product_attributes()->get();
 
-        if ($variants->isEmpty()) {
+        if ($variants->isEmpty() && $legacyAttributes->isEmpty()) {
             $failedChecks[] = [
                 'rule'        => 'product.variants.none',
                 'field'       => 'variants',
-                'message'     => 'Product must have at least one variant configuration.',
+                'message'     => 'Product must have at least one variant configuration or packaging attribute.',
                 'entity_type' => 'product',
                 'entity_id'   => $product->id,
                 'is_blocking' => true,
             ];
+            return;
+        }
+
+        // If product uses ProductAttributes (standard packaging & shade variants)
+        if ($variants->isEmpty() && $legacyAttributes->isNotEmpty()) {
+            $passedChecks[] = "Product has {$legacyAttributes->count()} packaging attribute variant(s) configured.";
+            foreach ($legacyAttributes as $attr) {
+                if ((float)$attr->seller_price <= 0 && (float)$attr->price <= 0) {
+                    $failedChecks[] = [
+                        'rule'        => 'attribute.pricing.zero',
+                        'field'       => 'seller_price',
+                        'message'     => "Variant SKU #{$attr->id} has a price of ₹0.00. Factory/Display price must be greater than zero.",
+                        'entity_type' => 'attribute',
+                        'entity_id'   => $attr->id,
+                        'is_blocking' => true,
+                    ];
+                }
+            }
             return;
         }
 
@@ -505,6 +524,11 @@ class ProductCatalogueApprovalService
             }
         }
 
+        // Filter by GST Included Bucket
+        if (!empty($filters['has_gst_included'])) {
+            $query->where('has_gst_included', 1);
+        }
+
         // Category Filter
         if (!empty($filters['category_id'])) {
             $query->where('category_id', (int)$filters['category_id']);
@@ -564,6 +588,8 @@ class ProductCatalogueApprovalService
             'user.company',
             'variants',
             'listings',
+            'product_attributes.boxPacking',
+            'product_attributes.shadeCard',
             'attributeValues.attribute.options',
             'attributeValues.option',
             'validationResults' => fn($q) => $q->take(5),
@@ -576,6 +602,7 @@ class ProductCatalogueApprovalService
             'company'                 => $product->user?->company,
             'variants'                => $product->variants,
             'listings'                => $product->listings,
+            'product_attributes'      => $product->product_attributes,
             'dynamic_attributes'      => $product->attributeValues,
             'latest_validation'       => $product->validationResults->first(),
             'recent_validations'      => $product->validationResults,

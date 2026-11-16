@@ -22,6 +22,7 @@ class Product extends Model
         'multipleimages',
         'status',
         'approval_status',
+        'has_gst_included',
         'submitted_at',
         'reviewed_at',
         'reviewed_by',

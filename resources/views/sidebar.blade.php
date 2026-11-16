@@ -52,6 +52,7 @@
                 <li><a href="{{route('seller.commissions.agreements')}}"><i class="fa-solid fa-percent me-2 text-success"></i>Commission Agreements</a></li>
                 <li><a href="{{url('seller/product')}}"><i class="fa-solid fa-list-ul me-2"></i>List All</a></li>
                 <li><a href="{{route('seller.paint-pricing.index')}}"><i class="fa-solid fa-paint-roller me-2" style="color: #6f42c1;"></i>Paint Pricing Manager</a></li>
+                <li><a href="{{route('seller.category-pricing.index')}}"><i class="fa-solid fa-tags me-2 text-warning"></i>Category Pricing / Offers</a></li>
             </ul>
         </li>
         
@@ -190,6 +191,12 @@
             <a href="{{ route('admin.commissions.rules.index') }}">
                 <div class="parent-icon"><i class="fa-solid fa-hand-holding-dollar text-info"></i></div>
                 <div class="menu-title">Commission Rules</div>
+            </a>
+        </li>
+        <li>
+            <a href="{{ route('admin.commissions.categories') }}">
+                <div class="parent-icon"><i class="fa-solid fa-sitemap text-primary"></i></div>
+                <div class="menu-title">Category Commission Tree</div>
             </a>
         </li>
         <li>

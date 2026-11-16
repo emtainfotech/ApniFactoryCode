@@ -100,9 +100,27 @@ Route::group(['middleware' => ['auth']], function () {
         Route::get('/seller/product/bulk-sample-excel', [ProductController::class, 'downloadBulkSampleExcel'])->name('seller.product.bulk-sample-excel');
         Route::get('/seller/product/bulk-sample', [ProductController::class, 'downloadBulkSampleCsv'])->name('seller.product.bulk-sample');
         Route::get('/seller/product/add', [ProductController::class,"addform"]);
-        Route::post('/seller/product/add', function () {
-            $data['title'] = 'Add Poduct'; $data['formdata'] = $_POST;$data['formfiles'] = $_FILES;
-            return view('product.addnext',$data);
+        Route::post('/seller/product/add', function (\Illuminate\Http\Request $request) {
+            $data['title'] = 'Add Product Pricing & Review';
+            $data['formdata'] = $request->all();
+            $data['formfiles'] = $_FILES;
+
+            $mainCatId = $request->input('maincategory');
+            $catId = $request->input('category');
+            $pricingService = app(\App\Services\PaintPricingService::class);
+            $commissionRate = $pricingService->getEffectiveCommissionRate(
+                Auth::id(),
+                null,
+                $catId,
+                null,
+                $mainCatId
+            );
+
+            $data['commissionRate'] = $commissionRate;
+            $data['mainCategory'] = \App\Models\MainCategory::find($mainCatId);
+            $data['category'] = \App\Models\Category::find($catId);
+
+            return view('product.addnext', $data);
         });
 
 Route::delete('/product/filter/{id}', [ProductController::class, 'destroyFilter'])->name('product.filter.delete');
@@ -121,6 +139,11 @@ Route::delete('/product/filter/{id}', [ProductController::class, 'destroyFilter'
         Route::post('/seller/paint-pricing/category/apply', [PaintPricingController::class, 'categoryApply'])->name('seller.paint-pricing.category.apply');
         Route::post('/seller/paint-pricing/sku-override', [PaintPricingController::class, 'updateSingleSku'])->name('seller.paint-pricing.sku-override');
         Route::get('/seller/paint-pricing/audit/{id}', [PaintPricingController::class, 'auditHistory'])->name('seller.paint-pricing.audit');
+        
+        // Seller Category Product Pricing & Offer Manager
+        Route::get('/seller/category-pricing', [\App\Http\Controllers\SellerCategoryPricingController::class, 'index'])->name('seller.category-pricing.index');
+        Route::post('/seller/category-pricing/update-sku', [\App\Http\Controllers\SellerCategoryPricingController::class, 'updateSku'])->name('seller.category-pricing.update-sku');
+        Route::post('/seller/category-pricing/bulk-apply', [\App\Http\Controllers\SellerCategoryPricingController::class, 'bulkApply'])->name('seller.category-pricing.bulk-apply');
          
         Route::get('/seller/coupon', [CouponController::class,"index"]);
         Route::post('/seller/coupon', [CouponController::class,"store"]);
@@ -228,6 +251,7 @@ Route::delete('/product/filter/{id}', [ProductController::class, 'destroyFilter'
         Route::post('/admin/catalogue/reviews/{id}/approve', [\App\Http\Controllers\AdminCatalogueReviewWebController::class, 'approve'])->name('admin.catalogue.reviews.approve')->whereNumber('id');
         Route::post('/admin/catalogue/reviews/{id}/reject', [\App\Http\Controllers\AdminCatalogueReviewWebController::class, 'reject'])->name('admin.catalogue.reviews.reject')->whereNumber('id');
         Route::post('/admin/catalogue/reviews/{id}/request-corrections', [\App\Http\Controllers\AdminCatalogueReviewWebController::class, 'requestCorrections'])->name('admin.catalogue.reviews.request-corrections')->whereNumber('id');
+        Route::post('/admin/catalogue/reviews/{id}/update-pricing', [\App\Http\Controllers\AdminCatalogueReviewWebController::class, 'updatePricing'])->name('admin.catalogue.reviews.update-pricing')->whereNumber('id');
 
         // --- Phase 3.1: Admin Price Revision Review Queue (Admin Web Portal) ---
         Route::get('/admin/pricing/revisions',           [\App\Http\Controllers\AdminPriceRevisionWebController::class, 'queue'])->name('admin.pricing.revisions.queue');
@@ -252,6 +276,8 @@ Route::delete('/product/filter/{id}', [ProductController::class, 'destroyFilter'
         Route::post('/admin/commissions/rules/{id}/reject',  [\App\Http\Controllers\AdminCommissionRuleWebController::class, 'reject'])->name('admin.commissions.rules.reject')->whereNumber('id');
         Route::post('/admin/commissions/rules/{id}/deactivate', [\App\Http\Controllers\AdminCommissionRuleWebController::class, 'deactivate'])->name('admin.commissions.rules.deactivate')->whereNumber('id');
         Route::get('/admin/commissions/orders/{id}',     [\App\Http\Controllers\AdminCommissionRuleWebController::class, 'orderBreakdown'])->name('admin.commissions.orders.show')->whereNumber('id');
+        Route::get('/admin/commissions/categories',      [\App\Http\Controllers\AdminCommissionCategoryTreeController::class, 'index'])->name('admin.commissions.categories');
+        Route::post('/admin/commissions/category-update', [\App\Http\Controllers\AdminCommissionCategoryTreeController::class, 'update'])->name('admin.commissions.categories.update');
 
         // --- Phase 4.3: Finance Payment Reconciliation ---
         Route::get('/admin/finance/payments',           [\App\Http\Controllers\FinancePaymentWebController::class, 'index'])->name('admin.finance.payments.index');

@@ -14,10 +14,20 @@ class ProductAttributes extends Model
         'quantity',
         'oldprice',
         'seller_price',
+        'is_gst_included',
         'commission_rate',
         'pack_litres',
         'price',
+        'mrp',
         'status',
+    ];
+
+    protected $casts = [
+        'is_gst_included' => 'boolean',
+        'seller_price'    => 'float',
+        'price'           => 'float',
+        'mrp'             => 'float',
+        'commission_rate' => 'float',
     ];
 
     public function product()

@@ -233,6 +233,102 @@
                     </div>
                 </div>
 
+                <!-- Product Attributes & Display Pricing Moderation (Admin Pricing Adjustments) -->
+                <div class="card mb-4 border border-primary">
+                    <div class="card-header bg-primary text-white py-3 d-flex flex-wrap justify-content-between align-items-center">
+                        <div class="fw-bold fs-6">
+                            <i class="fa-solid fa-calculator me-2"></i> Packaging & Display Price Review ({{ ($product_attributes ?? collect())->count() }} SKUs)
+                        </div>
+                        @if($product->has_gst_included)
+                            <span class="badge bg-warning text-dark fw-bold">
+                                <i class="fa-solid fa-triangle-exclamation me-1"></i> GST Included - Display Price Review Required
+                            </span>
+                        @endif
+                    </div>
+                    <div class="card-body">
+                        @if(isset($product_attributes) && $product_attributes->isNotEmpty())
+                            <form method="POST" action="{{ route('admin.catalogue.reviews.update-pricing', $product->id) }}">
+                                @csrf
+                                <div class="table-responsive">
+                                    <table class="table table-bordered table-hover align-middle mb-3">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Packing</th>
+                                                <th>Color</th>
+                                                <th>Factory Price (₹)</th>
+                                                <th>GST Incl.?</th>
+                                                <th>Display Price (₹)</th>
+                                                <th>MRP (₹)</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach($product_attributes as $skuAttr)
+                                                <tr>
+                                                    <td>
+                                                        <strong>{{ $skuAttr->boxPacking?->name ?? 'Pack #' . $skuAttr->quantity }}</strong>
+                                                    </td>
+                                                    <td>
+                                                        <span class="d-inline-flex align-items-center">
+                                                            <i class="fa-solid fa-palette text-secondary me-1"></i>
+                                                            {{ $skuAttr->shadeCard?->name ?? 'Shade #' . $skuAttr->color }}
+                                                        </span>
+                                                    </td>
+                                                    <td>
+                                                        <div class="input-group input-group-sm">
+                                                            <span class="input-group-text">₹</span>
+                                                            <input type="number" step="0.01" min="0" 
+                                                                name="attributes[{{ $skuAttr->id }}][seller_price]" 
+                                                                value="{{ $skuAttr->seller_price }}" 
+                                                                class="form-control admin-factory-price"
+                                                                data-sku-id="{{ $skuAttr->id }}">
+                                                        </div>
+                                                    </td>
+                                                    <td class="text-center">
+                                                        <select name="attributes[{{ $skuAttr->id }}][is_gst_included]" class="form-select form-select-sm">
+                                                            <option value="1" {{ $skuAttr->is_gst_included ? 'selected' : '' }}>Yes (Incl)</option>
+                                                            <option value="0" {{ !$skuAttr->is_gst_included ? 'selected' : '' }}>No (Excl)</option>
+                                                        </select>
+                                                    </td>
+                                                    <td>
+                                                        <div class="input-group input-group-sm">
+                                                            <span class="input-group-text bg-light-primary text-primary fw-bold">₹</span>
+                                                            <input type="number" step="0.01" min="0" 
+                                                                name="attributes[{{ $skuAttr->id }}][price]" 
+                                                                value="{{ $skuAttr->price }}" 
+                                                                class="form-control admin-display-price fw-bold"
+                                                                data-sku-id="{{ $skuAttr->id }}">
+                                                        </div>
+                                                    </td>
+                                                    <td>
+                                                        <div class="input-group input-group-sm">
+                                                            <span class="input-group-text">₹</span>
+                                                            <input type="number" step="0.01" min="0" 
+                                                                name="attributes[{{ $skuAttr->id }}][mrp]" 
+                                                                value="{{ $skuAttr->mrp }}" 
+                                                                class="form-control" 
+                                                                placeholder="Optional MRP">
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            @endforeach
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <small class="text-muted">
+                                        <i class="fa-solid fa-info-circle me-1"></i> Admin can adjust Display Price or Factory Price directly before publishing live.
+                                    </small>
+                                    <button type="submit" class="btn btn-primary btn-sm px-3 fw-bold">
+                                        <i class="fa-solid fa-floppy-disk me-1"></i> Save Pricing Adjustments
+                                    </button>
+                                </div>
+                            </form>
+                        @else
+                            <p class="text-muted text-center py-3 mb-0">No packaging attributes configured for this product.</p>
+                        @endif
+                    </div>
+                </div>
+
                 <!-- Seller SKU Listings Table -->
                 <div class="card mb-4">
                     <div class="card-header bg-white py-3 fw-bold">

@@ -12,6 +12,7 @@ class Category extends Model
         'title',
         'name',
         'image',
+        'commission_rate',
         'status',
         'maincategory_id',
         'addby',

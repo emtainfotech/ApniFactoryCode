@@ -45,6 +45,11 @@
                         </a>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link {{ $currentStatus === 'gst_review' ? 'active' : '' }}" href="{{ route('admin.catalogue.reviews', ['status' => 'gst_review']) }}">
+                            <i class="fa-solid fa-triangle-exclamation text-warning me-1"></i> GST Review Bucket <span class="badge bg-warning text-dark ms-1">{{ $counts['gst_review'] }}</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link {{ $currentStatus === 'resubmitted' ? 'active' : '' }}" href="{{ route('admin.catalogue.reviews', ['status' => 'resubmitted']) }}">
                             Resubmitted <span class="badge bg-info text-dark ms-1">{{ $counts['resubmitted'] }}</span>
                         </a>
@@ -182,6 +187,11 @@
                                         <span class="badge {{ $statusBadge }} text-capitalize px-2 py-1">
                                             {{ str_replace('_', ' ', $p->approval_status ?? 'draft') }}
                                         </span>
+                                        @if($p->has_gst_included)
+                                            <span class="badge bg-warning text-dark px-2 py-1 mt-1 d-block" title="Submitted with GST Included: Price review required">
+                                                <i class="fa-solid fa-file-invoice-dollar me-1"></i> GST Included
+                                            </span>
+                                        @endif
                                     </td>
                                     <td>
                                         @if($p->submitted_at)

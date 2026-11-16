@@ -59,24 +59,57 @@ class PaintPricingService
     }
 
     /**
-     * Get effective commission rate for a seller / product (default 25%).
+     * Get effective commission rate for a seller / product / category / subcategory (default 25%).
+     * Follows hierarchical precedence: SubCategory -> Category -> MainCategory -> Seller/Company -> Default 25%.
      */
-    public function getEffectiveCommissionRate($sellerId = null, $productId = null): float
+    public function getEffectiveCommissionRate($sellerId = null, $productId = null, $categoryId = null, $subcategoryId = null, $maincategoryId = null): float
     {
+        // 1. If product provided, load category IDs
+        if ($productId) {
+            $product = Product::find($productId);
+            if ($product) {
+                $subcategoryId = $subcategoryId ?: $product->subcategory_id;
+                $categoryId = $categoryId ?: $product->category_id;
+                $maincategoryId = $maincategoryId ?: $product->maincategory_id;
+                $sellerId = $sellerId ?: $product->user_id;
+            }
+        }
+
+        // 2. Check SubCategory commission
+        if ($subcategoryId) {
+            $subcat = \App\Models\SubCatgory::find($subcategoryId);
+            if ($subcat && $subcat->commission_rate !== null && (float)$subcat->commission_rate >= 0) {
+                return (float)$subcat->commission_rate;
+            }
+            if ($subcat && !$categoryId) {
+                $categoryId = $subcat->cid ?: $subcat->category_id;
+            }
+        }
+
+        // 3. Check Category commission
+        if ($categoryId) {
+            $cat = \App\Models\Category::find($categoryId);
+            if ($cat && $cat->commission_rate !== null && (float)$cat->commission_rate >= 0) {
+                return (float)$cat->commission_rate;
+            }
+            if ($cat && !$maincategoryId) {
+                $maincategoryId = $cat->maincategory_id;
+            }
+        }
+
+        // 4. Check MainCategory commission
+        if ($maincategoryId) {
+            $mainCat = \App\Models\MainCategory::find($maincategoryId);
+            if ($mainCat && $mainCat->commission_rate !== null && (float)$mainCat->commission_rate >= 0) {
+                return (float)$mainCat->commission_rate;
+            }
+        }
+
+        // 5. Check Seller/Company agreed commission
         if ($sellerId) {
             $company = Company::where('user_id', $sellerId)->first();
             if ($company && !empty($company->comission) && (float)$company->comission > 0) {
                 return (float)$company->comission;
-            }
-        }
-
-        if ($productId) {
-            $product = Product::find($productId);
-            if ($product && !empty($product->user_id)) {
-                $company = Company::where('user_id', $product->user_id)->first();
-                if ($company && !empty($company->comission) && (float)$company->comission > 0) {
-                    return (float)$company->comission;
-                }
             }
         }
 
