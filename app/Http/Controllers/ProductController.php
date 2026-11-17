@@ -118,11 +118,16 @@ class ProductController extends Controller
                       "user_id"         => Auth::user()->id,
                       "multipleimages"  => json_encode($images),
                       "image"           => $img,
-                      "home_image"      => $homeImage ?: $img,
-                      "show_on_home"    => $request->has('show_on_home') ? ($request->show_on_home ? 1 : 0) : 1,
                       "hsncode"         => $hsncode,
                       "tax"             => $tax
                       );
+
+        if (\Illuminate\Support\Facades\Schema::hasColumn('products', 'home_image')) {
+            $pary['home_image'] = $homeImage ?: $img;
+        }
+        if (\Illuminate\Support\Facades\Schema::hasColumn('products', 'show_on_home')) {
+            $pary['show_on_home'] = $request->has('show_on_home') ? ($request->show_on_home ? 1 : 0) : 1;
+        }
 
         if (\Illuminate\Support\Facades\Schema::hasColumn('products', 'has_gst_included')) {
             $pary['has_gst_included'] = $hasGstIncluded ? 1 : 0;
@@ -993,23 +998,27 @@ class ProductController extends Controller
     $detail->multipleimages = array_values($finalImages);
     $detail->image = $fnlimgs;
 
-    if ($request->hasFile('home_image')) {
-        $targetDir = storage_path('app/public/product');
-        if (!file_exists($targetDir)) {
-            @mkdir($targetDir, 0775, true);
+    if (\Illuminate\Support\Facades\Schema::hasColumn('products', 'home_image')) {
+        if ($request->hasFile('home_image')) {
+            $targetDir = storage_path('app/public/product');
+            if (!file_exists($targetDir)) {
+                @mkdir($targetDir, 0775, true);
+            }
+            $hfile = $request->file('home_image');
+            if ($hfile->isValid()) {
+                $hname = time() . '_home_' . uniqid() . '.' . ($hfile->getClientOriginalExtension() ?: 'jpg');
+                $hfile->move($targetDir, $hname);
+                $detail->home_image = 'product/' . $hname;
+            }
+        } elseif ($request->filled('home_image_choice')) {
+            $detail->home_image = $request->input('home_image_choice');
         }
-        $hfile = $request->file('home_image');
-        if ($hfile->isValid()) {
-            $hname = time() . '_home_' . uniqid() . '.' . ($hfile->getClientOriginalExtension() ?: 'jpg');
-            $hfile->move($targetDir, $hname);
-            $detail->home_image = 'product/' . $hname;
-        }
-    } elseif ($request->filled('home_image_choice')) {
-        $detail->home_image = $request->input('home_image_choice');
     }
 
-    if ($request->has('show_on_home')) {
-        $detail->show_on_home = $request->show_on_home ? 1 : 0;
+    if (\Illuminate\Support\Facades\Schema::hasColumn('products', 'show_on_home')) {
+        if ($request->has('show_on_home')) {
+            $detail->show_on_home = $request->show_on_home ? 1 : 0;
+        }
     }
 
     if ($request->filled('name')) {

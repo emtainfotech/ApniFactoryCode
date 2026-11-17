@@ -57,5 +57,24 @@ HTML)
 </script>
 HTML)
         );
+
+        // Self-healing schema check: ensures required product columns exist in production database
+        try {
+            if (\Illuminate\Support\Facades\Schema::hasTable('products')) {
+                if (!\Illuminate\Support\Facades\Schema::hasColumn('products', 'home_image') ||
+                    !\Illuminate\Support\Facades\Schema::hasColumn('products', 'show_on_home')) {
+                    \Illuminate\Support\Facades\Schema::table('products', function (\Illuminate\Database\Schema\Blueprint $table) {
+                        if (!\Illuminate\Support\Facades\Schema::hasColumn('products', 'home_image')) {
+                            $table->string('home_image')->nullable()->after('multipleimages');
+                        }
+                        if (!\Illuminate\Support\Facades\Schema::hasColumn('products', 'show_on_home')) {
+                            $table->boolean('show_on_home')->default(true)->after('home_image');
+                        }
+                    });
+                }
+            }
+        } catch (\Throwable $e) {
+            // Silently suppress if DB is unreachable during early artisan or composer lifecycle
+        }
     }
 }
