@@ -196,6 +196,23 @@ class CartController extends Controller
              DB::table("cartattribute")->where("customer_id", $userid)->delete();
              DB::table("cart")->where("customer_id", $userid)->delete();
          }
+
+         // Automatically resolve the least (lowest) product price attribute if none specified
+         if (empty($reqdata['attributes'])) {
+             $lowestAttr = ProductAttributes::where("product_id", $productid)
+                 ->where(function($q) {
+                     $q->whereNull('status')->orWhereIn('status', ['active', 'Active', '1']);
+                 })
+                 ->whereRaw('CAST(price AS DECIMAL(12,2)) > 0')
+                 ->orderByRaw('CAST(price AS DECIMAL(12,2)) asc')
+                 ->first();
+             if ($lowestAttr) {
+                 $reqdata['attributes'] = [
+                     ['id' => $lowestAttr->id, 'qty' => 1]
+                 ];
+             }
+         }
+
          $check = DB::table("cart")->where("customer_id",$userid)->where("product_id",$productid)->first();
         if(empty($check)){
              ////////////////////////////////////////if attribute array empty h to entry na ho////

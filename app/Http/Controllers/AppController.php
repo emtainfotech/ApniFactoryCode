@@ -666,8 +666,16 @@ class AppController extends Controller
           }
           $pids = $productlist->pluck('id')->toArray();
           $attributes = DB::table('product_attributes')
-              ->select('product_id', 'color', DB::raw('MIN(CAST(price AS DECIMAL(12,2))) as min_price'))
+              ->select(
+                  'product_id',
+                  'color',
+                  DB::raw('MIN(CAST(price AS DECIMAL(12,2))) as min_price'),
+                  DB::raw('SUBSTRING_INDEX(GROUP_CONCAT(id ORDER BY CAST(price AS DECIMAL(12,2)) ASC), ",", 1) as attribute_id')
+              )
               ->whereIn('product_id', $pids)
+              ->where(function($q) {
+                  $q->whereNull('status')->orWhereIn('status', ['active', 'Active', '1']);
+              })
               ->whereRaw('CAST(price AS DECIMAL(12,2)) > 0')
               ->groupBy('product_id', 'color')
               ->get();
@@ -692,6 +700,7 @@ class AppController extends Controller
                       'hexcode' => '',
                       'hexcode_image' => '',
                       'colorid' => '0',
+                      'attribute_id' => 0,
                   ];
               } else {
                   foreach ($prodAttrs as $pat) {
@@ -709,6 +718,7 @@ class AppController extends Controller
                           'hexcode' => $hexcode,
                           'hexcode_image' => ($hexcode == '' && $sc) ? ($sc->image ?? '') : '',
                           'colorid' => $pat->color ?: '0',
+                          'attribute_id' => (int)($pat->attribute_id ?? 0),
                       ];
                   }
               }
